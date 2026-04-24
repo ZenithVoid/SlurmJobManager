@@ -4,18 +4,11 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:vm="clr-namespace:SlurmJobManager.App.ViewModels"
     xmlns:views="clr-namespace:SlurmJobManager.App.Views"
     mc:Ignorable="d"
     Title="Slurm Job Manager"
-    Height="800"
-    Width="1200"
-    MinHeight="600"
-    MinWidth="900">
-
-    <Window.DataContext>
-        <vm:MainViewModel />
-    </Window.DataContext>
+    Height="800" Width="1280"
+    MinHeight="600" MinWidth="960">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -24,37 +17,54 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Title bar -->
+        <!-- Title bar with connection status -->
         <Border Grid.Row="0" Background="#1E1E2E" Padding="12,8">
-            <TextBlock Text="Slurm Job Manager"
-                       Foreground="White"
-                       FontSize="18"
-                       FontWeight="SemiBold"
-                       VerticalAlignment="Center" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="Slurm Job Manager"
+                           Foreground="White"
+                           FontSize="18" FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Connection.StatusText}"
+                           Foreground="#A6E3A1"
+                           FontSize="13" VerticalAlignment="Center" />
+            </Grid>
         </Border>
 
-        <!-- Main content: three panels -->
+        <!-- Three-panel content area -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="320" MinWidth="200" />
+                <ColumnDefinition Width="380" MinWidth="280" />
                 <ColumnDefinition Width="5" />
-                <ColumnDefinition Width="*" MinWidth="300" />
+                <ColumnDefinition Width="*"   MinWidth="300" />
                 <ColumnDefinition Width="5" />
-                <ColumnDefinition Width="380" MinWidth="200" />
+                <ColumnDefinition Width="420" MinWidth="280" />
             </Grid.ColumnDefinitions>
 
-            <!-- Left: Task Editor -->
+            <!-- Left: Connection + Task Editor (scrollable) -->
             <Border Grid.Column="0" BorderBrush="#3A3A5C" BorderThickness="0,0,1,0">
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Background="#2A2A3E" Padding="8,6">
-                        <TextBlock Text="Task Editor" Foreground="#CDD6F4" FontWeight="Bold" />
+                        <TextBlock Text="Connection &amp; Task Editor"
+                                   Foreground="#CDD6F4" FontWeight="Bold" />
                     </Border>
-                    <views:TaskEditorView DataContext="{Binding TaskEditor}" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <views:ConnectionView DataContext="{Binding Connection}" />
+                            <Separator Background="#3A3A5C" Margin="0,4" />
+                            <views:TaskEditorView DataContext="{Binding TaskEditor}" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </DockPanel>
             </Border>
 
-            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
-                          Background="#3A3A5C" />
+            <GridSplitter Grid.Column="1" Width="5"
+                          HorizontalAlignment="Stretch" Background="#3A3A5C" />
 
             <!-- Centre: Monitor -->
             <Border Grid.Column="2" BorderBrush="#3A3A5C" BorderThickness="0,0,1,0">
@@ -66,23 +76,29 @@
                 </DockPanel>
             </Border>
 
-            <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch"
-                          Background="#3A3A5C" />
+            <GridSplitter Grid.Column="3" Width="5"
+                          HorizontalAlignment="Stretch" Background="#3A3A5C" />
 
-            <!-- Right: Log Viewer -->
+            <!-- Right: Log Viewer + Console tabs -->
             <DockPanel Grid.Column="4">
                 <Border DockPanel.Dock="Top" Background="#2A2A3E" Padding="8,6">
-                    <TextBlock Text="Log Viewer" Foreground="#CDD6F4" FontWeight="Bold" />
+                    <TextBlock Text="Logs &amp; Console" Foreground="#CDD6F4" FontWeight="Bold" />
                 </Border>
-                <views:LogViewerView DataContext="{Binding LogViewer}" />
+                <TabControl Background="#1E1E2E" BorderBrush="#3A3A5C">
+                    <TabItem Header="Log Viewer" Foreground="#CDD6F4">
+                        <views:LogViewerView DataContext="{Binding LogViewer}" />
+                    </TabItem>
+                    <TabItem Header="Console" Foreground="#CDD6F4">
+                        <views:ConsoleView DataContext="{Binding Console}" />
+                    </TabItem>
+                </TabControl>
             </DockPanel>
         </Grid>
 
         <!-- Status bar -->
         <Border Grid.Row="2" Background="#181825" Padding="8,4">
             <TextBlock Text="{Binding StatusMessage}"
-                       Foreground="#A6ADC8"
-                       FontSize="12" />
+                       Foreground="#A6ADC8" FontSize="12" />
         </Border>
     </Grid>
 </Window>

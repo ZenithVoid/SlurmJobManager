@@ -1,0 +1,101 @@
+<UserControl
+    x:Class="SlurmJobManager.App.Views.ConnectionView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignHeight="260" d:DesignWidth="380"
+    Background="#1E1E2E">
+
+    <StackPanel Margin="12">
+
+        <TextBlock Text="SSH Connection"
+                   Foreground="#89B4FA" FontWeight="Bold" Margin="0,0,0,8" />
+
+        <!-- Host + Port -->
+        <Grid Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="70" />
+            </Grid.ColumnDefinitions>
+            <DockPanel Grid.Column="0">
+                <TextBlock DockPanel.Dock="Top" Text="Host" Foreground="#CDD6F4" Margin="0,0,0,2" />
+                <TextBox Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}"
+                         Background="#313244" Foreground="#CDD6F4"
+                         BorderBrush="#45475A" Padding="6,4" />
+            </DockPanel>
+            <DockPanel Grid.Column="1" Margin="6,0,0,0">
+                <TextBlock DockPanel.Dock="Top" Text="Port" Foreground="#CDD6F4" Margin="0,0,0,2" />
+                <TextBox Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}"
+                         Background="#313244" Foreground="#CDD6F4"
+                         BorderBrush="#45475A" Padding="6,4" />
+            </DockPanel>
+        </Grid>
+
+        <!-- Username -->
+        <TextBlock Text="Username" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                 Background="#313244" Foreground="#CDD6F4"
+                 BorderBrush="#45475A" Padding="6,4" Margin="0,0,0,6" />
+
+        <!-- Password (wired in code-behind) -->
+        <TextBlock Text="Password" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <PasswordBox x:Name="PwdBox"
+                     Background="#313244" Foreground="#CDD6F4"
+                     BorderBrush="#45475A" Padding="6,4" Margin="0,0,0,6" />
+
+        <!-- Private key -->
+        <TextBlock Text="Private Key (optional)" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <Grid Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0"
+                     Text="{Binding PrivateKeyPath, UpdateSourceTrigger=PropertyChanged}"
+                     Background="#313244" Foreground="#CDD6F4"
+                     BorderBrush="#45475A" Padding="6,4" />
+            <Button Grid.Column="1" Content="…"
+                    Command="{Binding BrowseKeyCommand}"
+                    Margin="4,0,0,0" Padding="8,4"
+                    Background="#585B70" Foreground="White" BorderThickness="0" />
+        </Grid>
+
+        <!-- Passphrase (wired in code-behind) -->
+        <TextBlock Text="Key Passphrase (optional)" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <PasswordBox x:Name="PassphraseBox"
+                     Background="#313244" Foreground="#CDD6F4"
+                     BorderBrush="#45475A" Padding="6,4" Margin="0,0,0,8" />
+
+        <!-- Action buttons -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Content="Connect"
+                    Command="{Binding ConnectCommand}"
+                    Padding="6,4" Margin="0,0,4,0"
+                    Background="#A6E3A1" Foreground="#1E1E2E"
+                    FontWeight="Bold" BorderThickness="0" />
+            <Button Grid.Column="1" Content="Disconnect"
+                    Command="{Binding DisconnectCommand}"
+                    Padding="6,4" Margin="0,0,4,0"
+                    Background="#F38BA8" Foreground="#1E1E2E"
+                    FontWeight="Bold" BorderThickness="0" />
+            <Button Grid.Column="2" Content="Test"
+                    Command="{Binding TestConnectionCommand}"
+                    Padding="6,4"
+                    Background="#89B4FA" Foreground="#1E1E2E"
+                    FontWeight="Bold" BorderThickness="0" />
+        </Grid>
+
+        <!-- Status message -->
+        <TextBlock Text="{Binding StatusMessage}"
+                   Foreground="#F9E2AF" FontSize="11"
+                   TextWrapping="Wrap" Margin="0,6,0,0" />
+
+    </StackPanel>
+</UserControl>
