@@ -7,22 +7,29 @@ namespace SlurmJobManager.App.Views;
 
 public partial class ConsoleView : UserControl
 {
+    private ConsoleViewModel? _subscribedVm;
+
     public ConsoleView()
     {
         InitializeComponent();
-        DataContextChanged += (_, _) => SubscribeOutput();
+        DataContextChanged += (_, _) => ResubscribeOutput();
     }
 
-    private void SubscribeOutput()
+    private void ResubscribeOutput()
     {
-        if (DataContext is ConsoleViewModel vm)
-        {
-            vm.OutputLines.CollectionChanged += (_, e) =>
-            {
-                if (e.Action == NotifyCollectionChangedAction.Add && OutputList.Items.Count > 0)
-                    OutputList.ScrollIntoView(OutputList.Items[^1]);
-            };
-        }
+        if (_subscribedVm != null)
+            _subscribedVm.OutputLines.CollectionChanged -= OnOutputLinesChanged;
+
+        _subscribedVm = DataContext as ConsoleViewModel;
+
+        if (_subscribedVm != null)
+            _subscribedVm.OutputLines.CollectionChanged += OnOutputLinesChanged;
+    }
+
+    private void OnOutputLinesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Add && OutputList.Items.Count > 0)
+            OutputList.ScrollIntoView(OutputList.Items[OutputList.Items.Count - 1]);
     }
 
     private void CmdInput_KeyDown(object sender, KeyEventArgs e)

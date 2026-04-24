@@ -5,12 +5,13 @@ using SlurmJobManager.Core.Interfaces;
 namespace SlurmJobManager.App.ViewModels;
 
 /// <summary>
-/// Embedded remote-command console with ↑/↓ history (max 20 entries).
+/// Embedded remote-command console with ↑/↓ history (max 50 entries),
+/// stderr/stdout visual distinction, execution time, and exit code display.
 /// </summary>
 public sealed class ConsoleViewModel : ViewModelBase
 {
     private readonly ISshClientService _ssh;
-    private const int MaxHistory = 20;
+    private const int MaxHistory = 50;
 
     private string _commandInput = string.Empty;
     private bool _isBusy;
@@ -19,13 +20,14 @@ public sealed class ConsoleViewModel : ViewModelBase
     public string CommandInput { get => _commandInput; set => SetField(ref _commandInput, value); }
     public bool IsBusy         { get => _isBusy;        private set => SetField(ref _isBusy, value); }
 
-    public ObservableCollection<string> OutputLines { get; } = new();
+    public ObservableCollection<ConsoleLine> OutputLines { get; } = new();
     public List<string> CommandHistory { get; } = new();
 
     public ICommand ExecuteCommand     { get; }
     public ICommand ClearCommand       { get; }
     public ICommand HistoryUpCommand   { get; }
     public ICommand HistoryDownCommand { get; }
+    public ICommand CopyOutputCommand  { get; }
 
     public ConsoleViewModel(ISshClientService ssh)
     {
@@ -35,6 +37,7 @@ public sealed class ConsoleViewModel : ViewModelBase
         ClearCommand       = new RelayCommand(() => OutputLines.Clear());
         HistoryUpCommand   = new RelayCommand(HistoryUp);
         HistoryDownCommand = new RelayCommand(HistoryDown);
+        CopyOutputCommand  = new RelayCommand(CopyOutput);
     }
 
     private async Task ExecuteAsync(CancellationToken ct)
@@ -44,7 +47,7 @@ public sealed class ConsoleViewModel : ViewModelBase
 
         if (!_ssh.IsConnected)
         {
-            OutputLines.Add("[error] Not connected. Please connect first.");
+            OutputLines.Add(ConsoleLine.Error("Not connected. Please connect first."));
             return;
         }
 
@@ -52,25 +55,28 @@ public sealed class ConsoleViewModel : ViewModelBase
         CommandInput  = string.Empty;
         _historyIndex = -1;
 
-        OutputLines.Add($"$ {cmd}");
+        OutputLines.Add(ConsoleLine.Command($"$ {cmd}"));
         IsBusy = true;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(cmd, ct);
+            sw.Stop();
 
             foreach (var line in stdout.Split('\n'))
-                if (line.Length > 0) OutputLines.Add(line);
+                if (line.Length > 0) OutputLines.Add(ConsoleLine.Stdout(line));
 
             if (!string.IsNullOrWhiteSpace(stderr))
                 foreach (var line in stderr.Split('\n'))
-                    if (line.Length > 0) OutputLines.Add($"[stderr] {line}");
+                    if (line.Length > 0) OutputLines.Add(ConsoleLine.Stderr(line));
 
-            if (exitCode != 0)
-                OutputLines.Add($"[exit {exitCode}]");
+            var meta = $"[exit {exitCode} | {sw.ElapsedMilliseconds} ms]";
+            OutputLines.Add(ConsoleLine.Meta(meta));
         }
         catch (Exception ex)
         {
-            OutputLines.Add($"[error] {ex.Message}");
+            sw.Stop();
+            OutputLines.Add(ConsoleLine.Error($"[error] {ex.Message}"));
         }
         finally { IsBusy = false; }
     }
@@ -95,5 +101,11 @@ public sealed class ConsoleViewModel : ViewModelBase
         if (_historyIndex <= 0) { _historyIndex = -1; CommandInput = string.Empty; return; }
         _historyIndex--;
         CommandInput = CommandHistory[_historyIndex];
+    }
+
+    private void CopyOutput()
+    {
+        var text = string.Join(Environment.NewLine, OutputLines.Select(l => l.Text));
+        System.Windows.Clipboard.SetText(text);
     }
 }

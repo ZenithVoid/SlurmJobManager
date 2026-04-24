@@ -2,5 +2,14 @@
     x:Class="SlurmJobManager.App.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Application.Resources />
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Theme (Dark default; swapped at runtime for Light) -->
+                <ResourceDictionary Source="pack://application:,,,/SlurmJobManager.App;component/Themes/Dark.xaml" />
+                <!-- Unified control styles -->
+                <ResourceDictionary Source="pack://application:,,,/SlurmJobManager.App;component/Styles/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
 </Application>
