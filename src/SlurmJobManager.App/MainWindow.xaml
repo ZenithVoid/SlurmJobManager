@@ -2,16 +2,19 @@
     x:Class="SlurmJobManager.App.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:conv="clr-namespace:SlurmJobManager.App.Converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:views="clr-namespace:SlurmJobManager.App.Views"
     mc:Ignorable="d"
     Title="Slurm Job Manager"
     Height="800" Width="1280"
-    MinHeight="600" MinWidth="960"
+    MinHeight="600" MinWidth="900"
     Background="{DynamicResource BgBaseBrush}">
 
     <Window.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+
         <!-- Fade-in storyboard for content panels -->
         <Storyboard x:Key="FadeIn">
             <DoubleAnimation
@@ -22,136 +25,148 @@
     </Window.Resources>
 
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <!-- Sidebar -->
+            <ColumnDefinition Width="200" MinWidth="160" />
+            <!-- Resize handle -->
+            <ColumnDefinition Width="1" />
+            <!-- Main content -->
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-        <!-- Title bar -->
-        <Border Grid.Row="0" Background="{DynamicResource BgPanelBrush}" Padding="12,8">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0"
-                           Text="Slurm Job Manager"
-                           Foreground="{DynamicResource TextPrimaryBrush}"
-                           FontSize="18" FontWeight="SemiBold"
-                           VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1"
-                           Text="{Binding Connection.StatusText}"
-                           Foreground="{DynamicResource AccentGreenBrush}"
-                           FontSize="13" VerticalAlignment="Center"
-                           Margin="0,0,12,0" />
-                <!-- Theme toggle -->
-                <Button Grid.Column="2"
-                        Content="{Binding ThemeToggleLabel}"
-                        Command="{Binding ToggleThemeCommand}"
-                        Style="{StaticResource NeutralButtonStyle}"
-                        Padding="8,4" />
-            </Grid>
-        </Border>
+        <!-- ── Sidebar ─────────────────────────────────────────────────── -->
+        <Border Grid.Column="0"
+                Background="{DynamicResource BgPanelBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,1,0">
+            <DockPanel>
 
-        <!-- Three-panel content area -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="380" MinWidth="280" />
-                <ColumnDefinition Width="5" />
-                <ColumnDefinition Width="*"   MinWidth="300" />
-                <ColumnDefinition Width="5" />
-                <ColumnDefinition Width="420" MinWidth="280" />
-            </Grid.ColumnDefinitions>
-
-            <!-- Left panel: Connection + Task Editor -->
-            <Border Grid.Column="0"
-                    BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="0,0,1,0"
-                    x:Name="LeftPanel">
-                <Border.Triggers>
-                    <EventTrigger RoutedEvent="Loaded">
-                        <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
-                    </EventTrigger>
-                </Border.Triggers>
-                <DockPanel>
-                    <Border DockPanel.Dock="Top"
-                            Background="{DynamicResource BgPanelBrush}"
-                            Padding="8,6">
-                        <TextBlock Text="Connection &amp; Task Editor"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   FontWeight="Bold" />
-                    </Border>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                  Background="{DynamicResource BgBaseBrush}">
-                        <StackPanel>
-                            <views:ConnectionView DataContext="{Binding Connection}" />
-                            <Separator />
-                            <views:TaskEditorView DataContext="{Binding TaskEditor}" />
-                        </StackPanel>
-                    </ScrollViewer>
-                </DockPanel>
-            </Border>
-
-            <GridSplitter Grid.Column="1" Width="5" />
-
-            <!-- Centre panel: Monitor -->
-            <Border Grid.Column="2"
-                    BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="0,0,1,0"
-                    x:Name="CentrePanel">
-                <Border.Triggers>
-                    <EventTrigger RoutedEvent="Loaded">
-                        <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
-                    </EventTrigger>
-                </Border.Triggers>
-                <DockPanel>
-                    <Border DockPanel.Dock="Top"
-                            Background="{DynamicResource BgPanelBrush}"
-                            Padding="8,6">
-                        <TextBlock Text="Job Monitor"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   FontWeight="Bold" />
-                    </Border>
-                    <views:MonitorView DataContext="{Binding Monitor}" />
-                </DockPanel>
-            </Border>
-
-            <GridSplitter Grid.Column="3" Width="5" />
-
-            <!-- Right panel: Log Viewer + Console tabs -->
-            <DockPanel Grid.Column="4" x:Name="RightPanel">
-                <DockPanel.Triggers>
-                    <EventTrigger RoutedEvent="Loaded">
-                        <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
-                    </EventTrigger>
-                </DockPanel.Triggers>
+                <!-- App branding block -->
                 <Border DockPanel.Dock="Top"
-                        Background="{DynamicResource BgPanelBrush}"
-                        Padding="8,6">
-                    <TextBlock Text="Logs &amp; Console"
-                               Foreground="{DynamicResource TextSecondaryBrush}"
-                               FontWeight="Bold" />
+                        Padding="16,18,16,12"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,0,0,1">
+                    <StackPanel>
+                        <TextBlock Text="Slurm Job"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   FontSize="16" FontWeight="Bold"
+                                   LineHeight="20" />
+                        <TextBlock Text="Manager"
+                                   Foreground="{DynamicResource AccentBlueBrush}"
+                                   FontSize="16" FontWeight="Bold" />
+                    </StackPanel>
                 </Border>
-                <TabControl>
-                    <TabItem Header="Log Viewer">
-                        <views:LogViewerView DataContext="{Binding LogViewer}" />
-                    </TabItem>
-                    <TabItem Header="Console">
-                        <views:ConsoleView DataContext="{Binding Console}" />
-                    </TabItem>
-                </TabControl>
-            </DockPanel>
-        </Grid>
 
-        <!-- Status bar -->
-        <Border Grid.Row="2"
-                Background="{DynamicResource BgCrustBrush}"
-                Padding="8,4">
-            <TextBlock Text="{Binding StatusMessage}"
-                       Foreground="{DynamicResource TextSecondaryBrush}"
-                       FontSize="12" />
+                <!-- Connection status pill -->
+                <Border DockPanel.Dock="Top"
+                        Margin="10,10,10,2"
+                        Padding="10,5"
+                        Background="{DynamicResource BgCardBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6">
+                    <TextBlock Text="{Binding Connection.StatusText}"
+                               Foreground="{DynamicResource AccentGreenBrush}"
+                               FontSize="11"
+                               TextTrimming="CharacterEllipsis" />
+                </Border>
+
+                <!-- Status bar at bottom -->
+                <Border DockPanel.Dock="Bottom"
+                        Padding="12,8"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,1,0,0">
+                    <TextBlock Text="{Binding StatusMessage}"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               TextTrimming="CharacterEllipsis" />
+                </Border>
+
+                <!-- Navigation list -->
+                <ListBox ItemsSource="{Binding NavItems}"
+                         SelectedValue="{Binding ActiveTab, Mode=TwoWay}"
+                         SelectedValuePath="TabId"
+                         Style="{StaticResource SidebarListBoxStyle}"
+                         Margin="0,4,0,0" />
+
+            </DockPanel>
         </Border>
+
+        <!-- Sidebar / content separator -->
+        <Border Grid.Column="1"
+                Background="{DynamicResource BorderBrush}" />
+
+        <!-- ── Main content area ──────────────────────────────────────── -->
+        <Grid Grid.Column="2">
+
+            <!-- Dashboard -->
+            <views:DashboardView
+                DataContext="{Binding Dashboard}"
+                Visibility="{Binding ShowDashboard, Converter={StaticResource BoolToVis}}">
+                <views:DashboardView.Triggers>
+                    <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
+                    </EventTrigger>
+                </views:DashboardView.Triggers>
+            </views:DashboardView>
+
+            <!-- Tasks -->
+            <ScrollViewer
+                VerticalScrollBarVisibility="Auto"
+                Visibility="{Binding ShowTasks, Converter={StaticResource BoolToVis}}"
+                Background="{DynamicResource BgBaseBrush}">
+                <views:TaskEditorView DataContext="{Binding TaskEditor}"
+                                      Margin="24,20,24,20" />
+            </ScrollViewer>
+
+            <!-- Monitor -->
+            <views:MonitorView
+                DataContext="{Binding Monitor}"
+                Visibility="{Binding ShowMonitor, Converter={StaticResource BoolToVis}}"
+                Margin="24,20,24,20">
+                <views:MonitorView.Triggers>
+                    <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
+                    </EventTrigger>
+                </views:MonitorView.Triggers>
+            </views:MonitorView>
+
+            <!-- Logs -->
+            <views:LogViewerView
+                DataContext="{Binding LogViewer}"
+                Visibility="{Binding ShowLogs, Converter={StaticResource BoolToVis}}"
+                Margin="24,20,24,20">
+                <views:LogViewerView.Triggers>
+                    <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
+                    </EventTrigger>
+                </views:LogViewerView.Triggers>
+            </views:LogViewerView>
+
+            <!-- Console -->
+            <views:ConsoleView
+                DataContext="{Binding Console}"
+                Visibility="{Binding ShowConsole, Converter={StaticResource BoolToVis}}"
+                Margin="24,20,24,20">
+                <views:ConsoleView.Triggers>
+                    <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
+                    </EventTrigger>
+                </views:ConsoleView.Triggers>
+            </views:ConsoleView>
+
+            <!-- Settings -->
+            <views:SettingsView
+                DataContext="{Binding Settings}"
+                Visibility="{Binding ShowSettings, Converter={StaticResource BoolToVis}}">
+                <views:SettingsView.Triggers>
+                    <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
+                    </EventTrigger>
+                </views:SettingsView.Triggers>
+            </views:SettingsView>
+
+        </Grid>
     </Grid>
 </Window>

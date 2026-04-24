@@ -4,6 +4,83 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 
 ---
 
+## v5 — UI/UX Redesign (Sidebar Navigation)
+
+| Area | Capability |
+|------|-----------|
+| **Sidebar navigation** | Six tabs (Dashboard / Tasks / Monitor / Logs / Console / Settings) replace the old three-panel horizontal layout |
+| **Dashboard** | Live connection status, per-state job counters, and quick-action shortcuts |
+| **Settings tab** | SSH connection config, theme switch, and polling-interval control all in one place |
+| **Custom scrollbars** | Slim (10 px), rounded, theme-aware scrollbars across every scroll region |
+| **Layered resource dictionaries** | `Themes/Colors.{Dark,Light}.xaml`, `Themes/Typography.xaml`, `Styles/Buttons.xaml`, `Styles/Inputs.xaml`, `Styles/DataGrid.xaml`, `Styles/ScrollBars.xaml`, `Styles/TabsAndSidebar.xaml` |
+| **Card-based layout** | Rounded cards with subtle borders and consistent 8/12/16/24 spacing |
+| **Fade transitions** | 180 ms opacity fade-in when switching between tabs |
+
+---
+
+## UI Design & Navigation
+
+### Sidebar information architecture
+
+The application uses a **left sidebar** as the primary navigation surface. Six tabs are always visible:
+
+| # | Tab | Purpose |
+|---|-----|---------|
+| 1 | 🏠 **Dashboard** | Connection status, job stats summary, quick actions — *default view* |
+| 2 | ⚡ **Tasks** | Task root dir, Task ID, app path, parameter templates, sbatch submit |
+| 3 | 📊 **Monitor** | Live `squeue` table with filter, search, auto-poll, and job cancel |
+| 4 | 📋 **Logs** | Chunked `.out`/`.err` viewer with paging, follow-mode, and search |
+| 5 | ⌨ **Console** | Interactive remote command terminal with history and colour output |
+| 6 | ⚙ **Settings** | SSH connection config, theme toggle (dark/light), poll interval |
+
+The selected tab is highlighted with an accent-blue left border and a subtle background fill. Tab switching triggers a 180 ms fade-in animation on the content pane.
+
+### Theme & scrollbar customisation
+
+**Themes** are swapped at runtime by replacing the first entry in `Application.Resources.MergedDictionaries`:
+
+| Theme | Root file | Color tokens |
+|-------|-----------|--------------|
+| Dark (default) | `Themes/Dark.xaml` | `Themes/Colors.Dark.xaml` — Catppuccin Mocha-inspired |
+| Light | `Themes/Light.xaml` | `Themes/Colors.Light.xaml` — Catppuccin Latte-inspired |
+
+Typography tokens (font family, sizes, corner radii, spacing) live in `Themes/Typography.xaml` and are merged through `Styles/Controls.xaml`, so they are theme-independent.
+
+**Custom scrollbars** are defined in `Styles/ScrollBars.xaml`:
+- Width/height: **10 px**
+- Thumb corner radius: **5 px** (fully rounded)
+- Default thumb: semi-transparent `ScrollThumbBrush`
+- Hover: `ScrollThumbHoverBrush` (darker/brighter)
+- Dragging: `ScrollThumbActiveBrush` (accent colour)
+- Track: `ScrollTrackBrush` (barely visible)
+- All brushes are `DynamicResource` — they switch automatically on theme change
+- Virtualization in `ListBox` / `DataGrid` is preserved; custom scrollbars do not affect scrolling performance
+
+### Resource dictionary hierarchy
+
+```
+App.xaml
+├── Themes/Dark.xaml           ← swapped at runtime for Light.xaml
+│   └── Themes/Colors.Dark.xaml
+└── Styles/Controls.xaml
+    ├── Themes/Typography.xaml
+    ├── Styles/Buttons.xaml
+    ├── Styles/Inputs.xaml
+    ├── Styles/DataGrid.xaml
+    ├── Styles/ScrollBars.xaml
+    └── Styles/TabsAndSidebar.xaml
+```
+
+### Future extension suggestions
+
+- **Multi-cluster support**: add a cluster selector to the sidebar header; each cluster gets its own `ConnectionViewModel` + `MonitorViewModel` pair.
+- **Multi-workspace**: allow saving/loading named "workspaces" (connection profile + task set + template directory).
+- **Log highlighting**: add regex-based highlight rules per job type in the Logs tab.
+- **Job templates gallery**: a library of reusable sbatch templates browsable from the Dashboard.
+- **Notifications**: system-tray toasts when a monitored job changes state (RUNNING → COMPLETED / FAILED).
+
+---
+
 ## v4 — What's new (Security & Reliability)
 
 | Area | Capability |
