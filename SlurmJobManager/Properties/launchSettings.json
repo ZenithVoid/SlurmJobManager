@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "SlurmJobManager (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "SlurmJobManager (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
