@@ -4,7 +4,348 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 
 ---
 
-## v3 — What's new
+## v4 — What's new (Security & Reliability)
+
+| Area | Capability |
+|------|-----------|
+| **DPAPI credential storage** | Passwords and key passphrases are encrypted with Windows DPAPI before saving; never written in plain text |
+| **Save/Load Profile** | Connection settings can be persisted and restored; sensitive fields are transparently encrypted/decrypted |
+| **Unified timeouts** | Connection (10 s), command (30 s), and log-fetch (15 s) timeouts — all configurable via `AppSettings` |
+| **Cancellation** | Console command execution and log viewer loads both expose a **✕ Cancel** button |
+| **Exponential back-off retry** | Network glitches and transient SSH errors are automatically retried up to 3×; auth failures are never retried |
+| **Connection state machine** | States: Disconnected / Connecting / Connected / Reconnecting / Error |
+| **Auto-reconnect** | When polling detects a dropped connection it enters `Reconnecting`, retries up to 5×, then halts with an error |
+| **Reentrancy prevention** | Monitor polling tick skips if a previous refresh is still in flight |
+| **Graceful shutdown** | Polling and follow-mode timers are stopped; SSH resources are released when the main window closes |
+| **Log UI preservation** | Log viewer errors update only the status bar — previously loaded log lines are never cleared |
+| **Error classification** | Auth failures, network errors, timeouts, and missing files produce distinct actionable messages |
+| **Rolling local logs** | All key events written to `%AppData%\SlurmJobManager\logs\sjm-YYYYMMDD.log` (7-day rolling) |
+
+---
+
+## v3 — Previously
+
+| Area | Capability |
+|------|-----------|
+| **Theme switching** | Runtime light/dark toggle (Catppuccin-inspired palettes); all controls update instantly |
+| **Unified styles** | Shared ResourceDictionary for Button, TextBox, DataGrid, TabItem — no more inline hex colours |
+| **Smooth animations** | 180 ms fade-in on panel load; RUNNING jobs pulse softly in the monitor |
+| **Log viewer — Follow mode** | Tail-like auto-poll that appends new lines; configurable interval |
+| **Log viewer — Search** | Instant in-buffer keyword filter across all cached chunks |
+| **Log viewer — Chunk cache** | Bounded 20-chunk sliding window; oldest chunks evicted automatically; cache info shown |
+| **Log viewer — Range display** | `Showing 2201–2400 / ~1,200,000 lines` — always visible |
+| **Monitor — Filter** | Dropdown: All / PENDING / RUNNING / COMPLETED / FAILED / CANCELLED |
+| **Monitor — Keyword search** | Real-time filter by Job ID or job name |
+| **Console — History ×50** | Up/Down through last 50 commands |
+| **Console — Rich output** | Stdout (neutral), stderr (red), command prompt (green), meta/exit (yellow) |
+| **Console — Exec info** | Each command shows `[exit 0 | 123 ms]` after completion |
+| **Console — Copy** | One-click copy all output to clipboard |
+
+---
+
+## v2 — Previously
+
+| Area | Capability |
+|------|-----------|
+| **SSH Connection** | Connect/disconnect/test via password or private key (PEM/PPK); status indicator in title bar |
+| **Task Editor** | Root dir browser, auto-generate Task ID, save/load `task.json`, full lifecycle directory scaffold |
+| **Parameter Templates** | Browse local template directory, edit template content, save to `params/` with timestamp |
+| **sbatch Submission** | Render `{{KEY}}` template variables, upload script, run `sbatch`, parse Job ID, persist to `task.json` |
+| **Job Monitor** | `squeue` polling with configurable interval (2–10 s), state-coloured rows, cancel selected job |
+| **Log Viewer** | Chunked `.out`/`.err` viewer via `wc -l` + `sed`; configurable chunk size; paging controls |
+| **Console Panel** | Embedded remote command console with ↑/↓ history, auto-scroll, stdin-less execution |
+
+---
+
+## Security
+
+### Credential storage (DPAPI)
+
+Passwords and SSH private key passphrases are **never written to disk in plain text**.
+
+When you click **💾 Save Profile**, the application:
+1. Serialises non-sensitive fields (host, port, username, key path) as JSON to  
+   `%AppData%\SlurmJobManager\profile.json`
+2. Encrypts the password and passphrase with **Windows Data Protection API (DPAPI)**  
+   using `CurrentUser` scope and application-specific entropy
+3. Stores only the Base-64 cipher text in the JSON file
+
+On load (**📂 Load Profile**):
+- Cipher text is decrypted transparently
+- If decryption fails (e.g. profile moved to another machine or user), a warning is shown and the field is cleared — no crash
+
+#### Limitations
+
+- DPAPI is **user- and machine-scoped**: a profile saved on one machine cannot be decrypted on another.  
+  Re-enter credentials after migrating to a new PC.
+- The password field is held in memory as a plain string during the session (standard WPF constraint with `PasswordBox`).
+
+---
+
+## Stability mechanisms
+
+### Timeouts
+
+| Operation | Default | Setting key |
+|-----------|---------|-------------|
+| SSH connection | 10 s | `AppSettings.ConnectionTimeout` |
+| SSH command | 30 s | `AppSettings.CommandTimeout` |
+| Log chunk fetch | 15 s | `AppSettings.LogFetchTimeout` |
+
+### Retry with exponential back-off
+
+Transient failures (network glitches, SSH transport errors, socket errors) are automatically retried:
+
+| Parameter | Default |
+|-----------|---------|
+| Max retries | 3 |
+| Base delay | 1 s (then 2 s, 4 s) |
+
+Authentication failures (`SshAuthenticationException`) are **never** retried — they surface immediately with an actionable message.
+
+Each retry attempt is recorded in the local log file.
+
+### Connection state machine
+
+```
+Disconnected
+    │  (Connect clicked or auto-reconnect starts)
+    ▼
+Connecting ──► Error (auth / unreachable)
+    │
+    ▼
+Connected
+    │  (SSH drops during polling)
+    ▼
+Reconnecting ──► Error (threshold exceeded)
+    │  (success)
+    ▼
+Connected (polling resumes)
+```
+
+The current state is always visible in the Connection tab status bar.
+
+### Auto-reconnect
+
+When the monitor's polling tick detects a lost connection:
+1. Status changes to **↺ Reconnecting…**
+2. A reconnect is attempted using the current profile fields
+3. If successful, polling resumes transparently
+4. After `MaxReconnectAttempts` (default 5) consecutive failures, polling stops and status shows **✗ Error**
+
+### Cancellation
+
+| Operation | How to cancel |
+|-----------|---------------|
+| SSH command (Console) | Click **✕ Cancel** next to the Run button |
+| Log chunk load | Click **✕ Cancel** in the loading indicator bar |
+
+### Graceful shutdown
+
+When the main window closes:
+- The monitor polling timer is stopped
+- Follow-mode timer is stopped
+- Any in-flight load CancellationToken is cancelled
+- SSH connections are closed cleanly
+
+---
+
+## Application log file
+
+The application writes structured logs to a daily rolling file:
+
+```
+%AppData%\SlurmJobManager\logs\sjm-YYYYMMDD.log
+```
+
+Up to **7 days** of log files are retained automatically (older files are deleted).
+
+### What is logged
+
+| Category | Examples |
+|----------|---------|
+| Connection events | Connect, disconnect, reconnect attempts |
+| sbatch submission | Script path, returned job ID, errors |
+| Polling errors | Failure count, retry details |
+| Log fetch errors | File not found, timeout, SSH errors |
+| Retry events | Attempt number, delay, exception message |
+| Graceful shutdown | Stop events on application exit |
+
+---
+
+## Common errors and troubleshooting
+
+| Error message | Likely cause | Action |
+|---------------|-------------|--------|
+| Authentication failed — check username/password or key | Wrong credentials or key type | Verify username, password, or select the correct key file |
+| Network unreachable — check host/port and firewall | Wrong host/port, firewall, VPN not active | Ping the host; check VPN; verify port 22 is open |
+| Connection timed out | Server slow, host unreachable | Increase `AppSettings.ConnectionTimeout`; check network |
+| Failed to decrypt credential | Profile from different user/machine | Re-enter credentials and save the profile again |
+| Remote file not found | Wrong path in log viewer | Verify the remote `.out`/`.err` path in the log viewer |
+| Polling stopped after N failures | Extended network outage | Restore network, then click **▶ Poll** to restart |
+
+---
+
+## UI/UX Features
+
+### Theme switching
+Click **☀ Light** / **🌙 Dark** in the title bar to swap the application colour palette instantly.
+The two themes are defined in:
+- `src/SlurmJobManager.App/Themes/Dark.xaml`  — Catppuccin Mocha-inspired dark palette
+- `src/SlurmJobManager.App/Themes/Light.xaml` — Catppuccin Latte-inspired light palette
+
+All brushes are dynamic resources — adding a third theme requires only a new XAML file and a URI change.
+
+### Animations
+- **Panel fade-in**: Left, Centre, and Right panels each fade in on load (180 ms, opacity 0→1).
+- **Running job pulse**: Rows with state `RUNNING` subtly pulse between 100 % and 70 % opacity (1.5 s, auto-reverse).  Both animations run entirely on the WPF compositor and do not touch the UI thread.
+
+### Virtualised log list
+The log `ListBox` uses `VirtualizingStackPanel` with `VirtualizationMode=Recycling` and `ScrollUnit=Item`.  Only the visible rows are materialised, so even a 1 M-line buffer scrolls smoothly.
+
+---
+
+## Large-Log Mode
+
+### How chunked loading works
+The log viewer never downloads a whole file.  Instead it uses `wc -l` + `sed` to slice the file by line number on the remote side and streams only the requested window.
+
+### Follow mode (tail-like)
+Enable the **Follow mode** checkbox.  Every N seconds (configurable via the interval slider) the viewer polls for lines *after* the current `EndLine`.  If new lines arrive they are appended and the list auto-scrolls to the bottom.
+
+### Chunk cache
+| Parameter | Default | Notes |
+|-----------|---------|-------|
+| Lines/chunk | 200 | Adjustable via slider (50–1000) |
+| Max cached chunks | 20 | Oldest chunk evicted automatically when limit is exceeded |
+| Effective memory window | 200 × 20 = 4 000 lines | ≈ 400 KB for typical log lines |
+
+The status bar shows e.g. `Cache: 12/20 chunk(s)` and `Showing 2201–2400 / ~1,200,000 lines`.
+
+### In-buffer search
+Type in the **🔍** search box to filter the currently cached lines.  The status shows `Search: 47/4000 match(es)`.  This is scoped to loaded chunks only — full remote grep is a planned feature.
+
+---
+
+## Performance Recommendations
+
+| Setting | Recommended | Notes |
+|---------|-------------|-------|
+| Poll interval | 3–5 s | Lower values increase SSH load |
+| Lines/chunk | 100–200 | 200 is a good default for log files with long lines |
+| Max cache chunks | 20 (fixed) | Keeps memory bounded; decrease for very long log lines |
+| Follow interval | 3–5 s | Match your job's stdout flush rate |
+
+---
+
+## Architecture
+
+```
+src/
+├── SlurmJobManager.Core/
+│   ├── Interfaces/
+│   │   ├── IAppLogger.cs             # NEW: application logging abstraction
+│   │   ├── IConnectionProfileStore.cs # NEW: encrypted profile persistence
+│   │   ├── ICredentialProtector.cs   # NEW: DPAPI encryption abstraction
+│   │   ├── ILogChunkService.cs
+│   │   ├── ISlurmService.cs
+│   │   ├── ISshClientService.cs
+│   │   └── ITaskStorageService.cs
+│   ├── Models/
+│   │   ├── AppSettings.cs            # NEW: timeout/retry/reconnect settings
+│   │   └── ...
+│   └── Services/
+├── SlurmJobManager.Infrastructure/
+│   ├── Logs/
+│   │   ├── SerilogAppLogger.cs       # NEW: rolling file logger via Serilog
+│   │   └── SshLogChunkService.cs     # UPDATED: per-fetch timeout, retry
+│   ├── Resilience/
+│   │   └── RetryHelper.cs            # NEW: exponential back-off retry
+│   ├── Security/
+│   │   ├── ConnectionProfileStore.cs # NEW: JSON profile with DPAPI encryption
+│   │   └── DpapiCredentialProtector.cs # NEW: DPAPI protect/unprotect
+│   ├── Ssh/
+│   │   ├── SlurmService.cs           # UPDATED: logger + retry
+│   │   └── SshClientService.cs       # UPDATED: configurable timeouts
+│   └── Storage/
+├── SlurmJobManager.App/
+│   ├── Themes/
+│   ├── Styles/
+│   ├── Converters/
+│   ├── ViewModels/
+│   │   ├── ConnectionViewModel.cs    # UPDATED: Reconnecting state, save/load profile, error classification
+│   │   ├── ConsoleViewModel.cs       # UPDATED: cancel command, logger
+│   │   ├── LogViewerViewModel.cs     # UPDATED: cancel command, error preservation, logger
+│   │   ├── MonitorViewModel.cs       # UPDATED: reconnect, reentrancy guard, logger, IDisposable
+│   │   └── ...
+│   ├── Views/
+│   │   ├── ConnectionView.xaml       # UPDATED: Save/Load Profile buttons
+│   │   ├── ConsoleView.xaml          # UPDATED: Cancel button
+│   │   ├── LogViewerView.xaml        # UPDATED: Cancel button in loading indicator
+│   │   └── ...
+│   └── App.xaml.cs                   # UPDATED: wires logger, DPAPI, settings, graceful shutdown
+```
+
+---
+
+## Requirements
+
+- **Windows** (WPF app, `net8.0-windows`)
+- **.NET 8 SDK**
+- SSH access to a Slurm cluster
+
+---
+
+## Build & run
+
+```bash
+dotnet restore SlurmJobManager.sln
+dotnet build   SlurmJobManager.sln
+dotnet run --project src/SlurmJobManager.App
+```
+
+---
+
+## Minimal workflow
+
+1. **Connect** — fill in Host / Port / Username / Password (or Private Key) → click **Connect**
+2. **Save profile** — click **💾 Save Profile** to persist credentials (encrypted with DPAPI)
+3. **Create task** — set Root Directory + click **New** for a Task ID → **Save Task**
+4. **Edit parameter file** — point to a template directory, pick a file, edit, **Save Param File**
+5. **Submit** — set Remote Work Directory + App Path → **Submit sbatch Job** → Job ID appears
+6. **Monitor** — type your cluster username → **▶ Poll** to start watching `squeue` output
+7. **View logs** — paste the remote `.out` / `.err` path → **⟳ Latest** → enable **Follow mode**
+
+---
+
+## Local task directory layout
+
+```
+{RootDirectory}/{TaskId}/
+├── task.json
+├── params/
+├── scripts/
+│   └── submit.sbatch
+├── logs/
+│   └── submit.log
+└── result-cache/
+```
+
+---
+
+## sbatch template variables
+
+| Variable | Value |
+|----------|-------|
+| `JOB_NAME` | Task ID |
+| `WORK_DIR` | Remote work directory |
+| `APP_PATH` | Application path on remote |
+| `PARAM_FILE` | Full path to selected parameter file on remote |
+| `STDOUT_FILE` | `{WORK_DIR}/logs/job.out` |
+| `STDERR_FILE` | `{WORK_DIR}/logs/job.err` |
+
+Extra rows in the **Extra Parameters** grid are substituted too.
+
 
 | Area | Capability |
 |------|-----------|

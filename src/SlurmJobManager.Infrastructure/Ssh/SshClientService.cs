@@ -6,12 +6,20 @@ namespace SlurmJobManager.Infrastructure.Ssh;
 
 /// <summary>
 /// SSH connectivity backed by SSH.NET (Renci.SshNet).
-/// Supports both password and private-key authentication.
+/// Supports both password and private-key authentication, configurable
+/// timeouts, and proper propagation of <see cref="CancellationToken"/>.
 /// </summary>
 public sealed class SshClientService : ISshClientService
 {
+    private readonly AppSettings _settings;
+
     private SshClient? _sshClient;
     private SftpClient? _sftpClient;
+
+    public SshClientService(AppSettings? settings = null)
+    {
+        _settings = settings ?? new AppSettings();
+    }
 
     public bool IsConnected => _sshClient?.IsConnected ?? false;
 
@@ -19,16 +27,25 @@ public sealed class SshClientService : ISshClientService
     {
         Disconnect();
 
-        AuthenticationMethod auth = BuildAuthMethod(profile);
-        var connInfo = new ConnectionInfo(profile.Host, profile.Port, profile.Username, auth);
+        ct.ThrowIfCancellationRequested();
 
-        _sshClient = new SshClient(connInfo);
+        AuthenticationMethod auth = BuildAuthMethod(profile);
+        var connInfo = new ConnectionInfo(profile.Host, profile.Port, profile.Username, auth)
+        {
+            Timeout = _settings.ConnectionTimeout,
+        };
+
+        _sshClient  = new SshClient(connInfo);
         _sftpClient = new SftpClient(connInfo);
 
-        _sshClient.Connect();
-        _sftpClient.Connect();
-
-        return Task.CompletedTask;
+        // SSH.NET Connect() is synchronous; run off the thread-pool so the UI stays responsive.
+        return Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            _sshClient.Connect();
+            ct.ThrowIfCancellationRequested();
+            _sftpClient.Connect();
+        }, ct);
     }
 
     public async Task<(string StdOut, string StdErr, int ExitCode)> ExecuteAsync(
@@ -37,24 +54,36 @@ public sealed class SshClientService : ISshClientService
         EnsureConnected();
 
         using var cmd = _sshClient!.CreateCommand(command);
-        await Task.Run(() => cmd.Execute(), ct);
+        cmd.CommandTimeout = _settings.CommandTimeout;
+
+        // Link the caller's token with the command timeout so whichever fires first wins.
+        using var timeoutCts = new CancellationTokenSource(_settings.CommandTimeout);
+        using var linked     = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+        await Task.Run(() => cmd.Execute(), linked.Token);
         return (cmd.Result, cmd.Error, cmd.ExitStatus ?? -1);
     }
 
     public Task UploadFileAsync(string localPath, string remotePath, CancellationToken ct = default)
     {
         EnsureConnected();
-        using var stream = File.OpenRead(localPath);
-        _sftpClient!.UploadFile(stream, remotePath, canOverride: true);
-        return Task.CompletedTask;
+        return Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            using var stream = File.OpenRead(localPath);
+            _sftpClient!.UploadFile(stream, remotePath, canOverride: true);
+        }, ct);
     }
 
     public Task DownloadFileAsync(string remotePath, string localPath, CancellationToken ct = default)
     {
         EnsureConnected();
-        using var stream = File.OpenWrite(localPath);
-        _sftpClient!.DownloadFile(remotePath, stream);
-        return Task.CompletedTask;
+        return Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            using var stream = File.OpenWrite(localPath);
+            _sftpClient!.DownloadFile(remotePath, stream);
+        }, ct);
     }
 
     public Task DisconnectAsync()

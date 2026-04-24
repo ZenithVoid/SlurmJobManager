@@ -80,6 +80,24 @@
                     Padding="6,4" />
         </Grid>
 
+        <!-- Profile persistence -->
+        <Grid Margin="0,6,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Content="💾 Save Profile"
+                    Command="{Binding SaveProfileCommand}"
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Padding="6,4" Margin="0,0,4,0"
+                    ToolTip="Save connection settings (password encrypted with DPAPI)" />
+            <Button Grid.Column="1" Content="📂 Load Profile"
+                    Command="{Binding LoadProfileCommand}"
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Padding="6,4"
+                    ToolTip="Load previously saved connection settings" />
+        </Grid>
+
         <!-- Status message -->
         <TextBlock Text="{Binding StatusMessage}"
                    Style="{StaticResource StatusTextStyle}" />
