@@ -4,12 +4,13 @@ using SlurmJobManager.Core.Models;
 
 namespace SlurmJobManager.App.ViewModels;
 
-public enum ConnectionStatus { Disconnected, Connecting, Connected, Error }
+public enum ConnectionStatus { Disconnected, Connecting, Connected, Reconnecting, Error }
 
-/// <summary>Manages SSH connection settings and lifecycle.</summary>
+/// <summary>Manages SSH connection settings, lifecycle, and encrypted profile persistence.</summary>
 public sealed class ConnectionViewModel : ViewModelBase
 {
-    private readonly ISshClientService _ssh;
+    private readonly ISshClientService        _ssh;
+    private readonly IConnectionProfileStore? _profileStore;
 
     private string _host = string.Empty;
     private int _port = 22;
@@ -31,7 +32,7 @@ public sealed class ConnectionViewModel : ViewModelBase
     public ConnectionStatus Status
     {
         get => _status;
-        private set
+        set
         {
             if (SetField(ref _status, value))
             {
@@ -43,10 +44,11 @@ public sealed class ConnectionViewModel : ViewModelBase
 
     public string StatusText => Status switch
     {
-        ConnectionStatus.Connected  => "● Connected",
-        ConnectionStatus.Connecting => "◎ Connecting…",
-        ConnectionStatus.Error      => "✗ Error",
-        _                           => "○ Disconnected",
+        ConnectionStatus.Connected    => "● Connected",
+        ConnectionStatus.Connecting   => "◎ Connecting…",
+        ConnectionStatus.Reconnecting => "↺ Reconnecting…",
+        ConnectionStatus.Error        => "✗ Error",
+        _                             => "○ Disconnected",
     };
 
     public string StatusMessage { get => _statusMessage; set => SetField(ref _statusMessage, value); }
@@ -57,16 +59,40 @@ public sealed class ConnectionViewModel : ViewModelBase
     public ICommand DisconnectCommand     { get; }
     public ICommand TestConnectionCommand { get; }
     public ICommand BrowseKeyCommand      { get; }
+    public ICommand SaveProfileCommand    { get; }
+    public ICommand LoadProfileCommand    { get; }
 
-    public ConnectionViewModel(ISshClientService ssh)
+    public ConnectionViewModel(ISshClientService ssh, IConnectionProfileStore? profileStore = null)
     {
-        _ssh = ssh ?? throw new ArgumentNullException(nameof(ssh));
+        _ssh          = ssh ?? throw new ArgumentNullException(nameof(ssh));
+        _profileStore = profileStore;
 
         ConnectCommand        = new AsyncRelayCommand(ConnectAsync,    () => !IsBusy && !IsConnected);
         DisconnectCommand     = new AsyncRelayCommand(DisconnectAsync, () => IsConnected);
         TestConnectionCommand = new AsyncRelayCommand(TestAsync,       () => !IsBusy);
         BrowseKeyCommand      = new RelayCommand(BrowseKey);
+        SaveProfileCommand    = new AsyncRelayCommand(SaveProfileAsync,  () => _profileStore != null && !IsBusy);
+        LoadProfileCommand    = new AsyncRelayCommand(LoadProfileAsync,  () => _profileStore != null && !IsBusy);
     }
+
+    // ── Public API for reconnect logic ───────────────────────────────────────
+
+    /// <summary>Re-establishes the connection using the current profile fields.</summary>
+    public async Task<bool> TryReconnectAsync(CancellationToken ct)
+    {
+        try
+        {
+            await _ssh.ConnectAsync(BuildProfile(), ct);
+            Status = ConnectionStatus.Connected;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // ── Connection commands ──────────────────────────────────────────────────
 
     private async Task ConnectAsync(CancellationToken ct)
     {
@@ -82,7 +108,7 @@ public sealed class ConnectionViewModel : ViewModelBase
         catch (Exception ex)
         {
             Status = ConnectionStatus.Error;
-            StatusMessage = $"Error: {ex.Message}";
+            StatusMessage = ClassifyError(ex);
         }
         finally { IsBusy = false; }
     }
@@ -109,11 +135,55 @@ public sealed class ConnectionViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Test failed: {ex.Message}";
+            StatusMessage = ClassifyError(ex);
             Status = ConnectionStatus.Error;
         }
         finally { IsBusy = false; }
     }
+
+    // ── Profile persistence ──────────────────────────────────────────────────
+
+    private async Task SaveProfileAsync(CancellationToken ct)
+    {
+        if (_profileStore is null) return;
+        IsBusy = true;
+        try
+        {
+            await _profileStore.SaveAsync(BuildProfile(), ct);
+            StatusMessage = "Profile saved (credentials encrypted).";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Save profile failed: {ex.Message}";
+        }
+        finally { IsBusy = false; }
+    }
+
+    private async Task LoadProfileAsync(CancellationToken ct)
+    {
+        if (_profileStore is null) return;
+        IsBusy = true;
+        try
+        {
+            var profile = await _profileStore.LoadAsync(ct);
+            if (profile is null) { StatusMessage = "No saved profile found."; return; }
+
+            Host                 = profile.Host;
+            Port                 = profile.Port;
+            Username             = profile.Username;
+            PrivateKeyPath       = profile.PrivateKeyPath ?? string.Empty;
+            Password             = profile.Password             ?? string.Empty;
+            PrivateKeyPassphrase = profile.PrivateKeyPassphrase ?? string.Empty;
+            StatusMessage = "Profile loaded.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Load profile failed: {ex.Message}";
+        }
+        finally { IsBusy = false; }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private void BrowseKey()
     {
@@ -126,7 +196,7 @@ public sealed class ConnectionViewModel : ViewModelBase
             PrivateKeyPath = dlg.FileName;
     }
 
-    private ConnectionProfile BuildProfile() => new()
+    internal ConnectionProfile BuildProfile() => new()
     {
         Host                 = Host,
         Port                 = Port,
@@ -135,4 +205,16 @@ public sealed class ConnectionViewModel : ViewModelBase
         PrivateKeyPath       = string.IsNullOrEmpty(PrivateKeyPath) ? null : PrivateKeyPath,
         PrivateKeyPassphrase = string.IsNullOrEmpty(PrivateKeyPassphrase) ? null : PrivateKeyPassphrase,
     };
+
+    /// <summary>Returns a user-friendly description based on the exception type.</summary>
+    internal static string ClassifyError(Exception ex)
+    {
+        if (ex is Renci.SshNet.Common.SshAuthenticationException)
+            return $"Authentication failed — check username/password or key. ({ex.Message})";
+        if (ex is System.Net.Sockets.SocketException)
+            return $"Network unreachable — check host/port and firewall. ({ex.Message})";
+        if (ex is TimeoutException || ex is OperationCanceledException)
+            return $"Connection timed out — server may be slow or unreachable.";
+        return $"Error: {ex.Message}";
+    }
 }

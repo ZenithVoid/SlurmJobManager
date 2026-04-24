@@ -96,15 +96,21 @@
             </Grid>
         </StackPanel>
 
-        <!-- Loading indicator -->
+        <!-- Loading indicator + Cancel -->
         <Border DockPanel.Dock="Top"
                 Background="{DynamicResource BgPanelBrush}"
                 Padding="6,3"
                 Margin="0,0,0,2"
                 Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
-            <TextBlock Text="⏳ Loading…"
-                       Foreground="{DynamicResource AccentYellowBrush}"
-                       FontSize="11" />
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="⏳ Loading…"
+                           Foreground="{DynamicResource AccentYellowBrush}"
+                           FontSize="11" VerticalAlignment="Center" />
+                <Button Content="✕ Cancel"
+                        Command="{Binding CancelLoadCommand}"
+                        Style="{StaticResource DangerButtonStyle}"
+                        Margin="8,0,0,0" Padding="6,2" FontSize="11" />
+            </StackPanel>
         </Border>
 
         <!-- Range + cache info + status -->

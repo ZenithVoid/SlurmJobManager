@@ -6,16 +6,19 @@ namespace SlurmJobManager.App.ViewModels;
 
 /// <summary>
 /// Embedded remote-command console with ↑/↓ history (max 50 entries),
-/// stderr/stdout visual distinction, execution time, and exit code display.
+/// stderr/stdout visual distinction, execution time, exit code display,
+/// and a cancel button for the currently running command.
 /// </summary>
 public sealed class ConsoleViewModel : ViewModelBase
 {
     private readonly ISshClientService _ssh;
+    private readonly IAppLogger?       _logger;
     private const int MaxHistory = 50;
 
     private string _commandInput = string.Empty;
     private bool _isBusy;
     private int _historyIndex = -1;
+    private CancellationTokenSource? _executeCts;
 
     public string CommandInput { get => _commandInput; set => SetField(ref _commandInput, value); }
     public bool IsBusy         { get => _isBusy;        private set => SetField(ref _isBusy, value); }
@@ -24,16 +27,19 @@ public sealed class ConsoleViewModel : ViewModelBase
     public List<string> CommandHistory { get; } = new();
 
     public ICommand ExecuteCommand     { get; }
+    public ICommand CancelCommand      { get; }
     public ICommand ClearCommand       { get; }
     public ICommand HistoryUpCommand   { get; }
     public ICommand HistoryDownCommand { get; }
     public ICommand CopyOutputCommand  { get; }
 
-    public ConsoleViewModel(ISshClientService ssh)
+    public ConsoleViewModel(ISshClientService ssh, IAppLogger? logger = null)
     {
-        _ssh = ssh ?? throw new ArgumentNullException(nameof(ssh));
+        _ssh    = ssh    ?? throw new ArgumentNullException(nameof(ssh));
+        _logger = logger;
 
         ExecuteCommand     = new AsyncRelayCommand(ExecuteAsync, () => !IsBusy);
+        CancelCommand      = new RelayCommand(CancelExecution,  () => IsBusy);
         ClearCommand       = new RelayCommand(() => OutputLines.Clear());
         HistoryUpCommand   = new RelayCommand(HistoryUp);
         HistoryDownCommand = new RelayCommand(HistoryDown);
@@ -57,10 +63,11 @@ public sealed class ConsoleViewModel : ViewModelBase
 
         OutputLines.Add(ConsoleLine.Command($"$ {cmd}"));
         IsBusy = true;
+        _executeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(cmd, ct);
+            var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(cmd, _executeCts.Token);
             sw.Stop();
 
             foreach (var line in stdout.Split('\n'))
@@ -72,13 +79,31 @@ public sealed class ConsoleViewModel : ViewModelBase
 
             var meta = $"[exit {exitCode} | {sw.ElapsedMilliseconds} ms]";
             OutputLines.Add(ConsoleLine.Meta(meta));
+            _logger?.Debug($"Console cmd '{cmd}': exit {exitCode}, {sw.ElapsedMilliseconds} ms");
+        }
+        catch (OperationCanceledException)
+        {
+            sw.Stop();
+            OutputLines.Add(ConsoleLine.Meta($"[cancelled after {sw.ElapsedMilliseconds} ms]"));
         }
         catch (Exception ex)
         {
             sw.Stop();
             OutputLines.Add(ConsoleLine.Error($"[error] {ex.Message}"));
+            _logger?.Error($"Console cmd '{cmd}' failed", ex);
         }
-        finally { IsBusy = false; }
+        finally
+        {
+            _executeCts.Dispose();
+            _executeCts = null;
+            IsBusy = false;
+        }
+    }
+
+    private void CancelExecution()
+    {
+        _executeCts?.Cancel();
+        OutputLines.Add(ConsoleLine.Meta("[cancelling…]"));
     }
 
     private void AddToHistory(string cmd)

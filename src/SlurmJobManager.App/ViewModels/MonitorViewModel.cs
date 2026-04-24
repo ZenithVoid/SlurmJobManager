@@ -4,17 +4,26 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
+using SlurmJobManager.Infrastructure.Resilience;
 
 namespace SlurmJobManager.App.ViewModels;
 
 /// <summary>
 /// Polls squeue for a given user and exposes the job list with
 /// status filtering, keyword search, and auto-poll toggle.
+/// Supports connection state tracking and automatic reconnect.
 /// </summary>
-public sealed class MonitorViewModel : ViewModelBase
+public sealed class MonitorViewModel : ViewModelBase, IDisposable
 {
-    private readonly ISlurmService _slurm;
+    private readonly ISlurmService      _slurm;
+    private readonly AppSettings        _settings;
+    private readonly IAppLogger?        _logger;
+    private readonly ConnectionViewModel? _connection;
+
+    // Polling infrastructure
     private DispatcherTimer? _timer;
+    private int  _consecutiveFailures;
+    private bool _isRefreshing;          // reentrancy guard
 
     // All jobs from the last refresh (unfiltered source of truth)
     private List<JobRow> _allJobs = new();
@@ -58,15 +67,24 @@ public sealed class MonitorViewModel : ViewModelBase
     public ICommand StopPollingCommand  { get; }
     public ICommand CancelJobCommand    { get; }
 
-    public MonitorViewModel(ISlurmService slurm)
+    public MonitorViewModel(
+        ISlurmService slurm,
+        AppSettings? settings = null,
+        IAppLogger? logger = null,
+        ConnectionViewModel? connection = null)
     {
-        _slurm = slurm ?? throw new ArgumentNullException(nameof(slurm));
+        _slurm      = slurm      ?? throw new ArgumentNullException(nameof(slurm));
+        _settings   = settings   ?? new AppSettings();
+        _logger     = logger;
+        _connection = connection;
 
         RefreshCommand      = new AsyncRelayCommand(RefreshAsync);
         StartPollingCommand = new RelayCommand(StartPolling, () => !IsPolling);
         StopPollingCommand  = new RelayCommand(StopPolling,  () => IsPolling);
         CancelJobCommand    = new AsyncRelayCommand(CancelSelectedJobAsync, () => SelectedJob != null);
     }
+
+    // ── Refresh ──────────────────────────────────────────────────────────────
 
     private async Task RefreshAsync(CancellationToken ct)
     {
@@ -94,9 +112,84 @@ public sealed class MonitorViewModel : ViewModelBase
                 }).ToList();
                 ApplyFilter();
             });
+            _consecutiveFailures = 0;
             StatusMessage = $"Updated: {DateTime.Now:HH:mm:ss}  ({jobs.Count} job(s))";
+            _logger?.Debug($"Monitor refreshed: {jobs.Count} job(s) for '{WatchedUser}'");
         }
-        catch (Exception ex) { StatusMessage = $"Refresh failed: {ex.Message}"; }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _consecutiveFailures++;
+            var msg = ConnectionViewModel.ClassifyError(ex);
+            StatusMessage = $"Refresh failed: {msg}";
+            _logger?.Warning($"Monitor refresh failed ({_consecutiveFailures}× consecutive): {ex.Message}");
+        }
+    }
+
+    // ── Polling (DispatcherTimer, reentrancy-safe) ───────────────────────────
+
+    private void StartPolling()
+    {
+        if (IsPolling) return;
+        _consecutiveFailures = 0;
+        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(_pollIntervalSeconds) };
+        _timer.Tick += OnPollTick;
+        _timer.Start();
+        IsPolling = true;
+        StatusMessage = $"Polling every {_pollIntervalSeconds}s…";
+        _logger?.Info($"Monitor polling started for user '{WatchedUser}'");
+    }
+
+    private void StopPolling()
+    {
+        _timer?.Stop();
+        _timer = null;
+        IsPolling = false;
+        StatusMessage = "Polling stopped.";
+        _logger?.Info("Monitor polling stopped.");
+    }
+
+    private async void OnPollTick(object? sender, EventArgs e)
+    {
+        // Reentrancy guard — skip if a refresh is already in flight
+        if (_isRefreshing) return;
+        _isRefreshing = true;
+        try
+        {
+            // Check for too many failures → enter Error state and stop polling
+            if (_consecutiveFailures >= _settings.MaxReconnectAttempts)
+            {
+                StopPolling();
+                StatusMessage = $"Polling stopped after {_consecutiveFailures} consecutive failures. "
+                              + "Check connection and restart polling manually.";
+                _logger?.Error($"Polling halted: {_consecutiveFailures} consecutive failures.");
+                if (_connection is not null)
+                    _connection.Status = ConnectionStatus.Error;
+                return;
+            }
+
+            // If SSH is known to be disconnected, attempt a reconnect first
+            if (_connection is not null && !_connection.IsConnected)
+            {
+                _connection.Status = ConnectionStatus.Reconnecting;
+                _logger?.Info("SSH disconnected — attempting reconnect…");
+                bool reconnected = await _connection.TryReconnectAsync(CancellationToken.None);
+                if (!reconnected)
+                {
+                    _consecutiveFailures++;
+                    StatusMessage = $"Reconnect failed ({_consecutiveFailures}/{_settings.MaxReconnectAttempts})…";
+                    _logger?.Warning($"Reconnect attempt failed ({_consecutiveFailures}).");
+                    return;
+                }
+                _logger?.Info("Reconnected successfully — resuming polling.");
+            }
+
+            await RefreshAsync(CancellationToken.None);
+        }
+        finally
+        {
+            _isRefreshing = false;
+        }
     }
 
     private void ApplyFilter()
@@ -127,24 +220,6 @@ public sealed class MonitorViewModel : ViewModelBase
         foreach (var row in filtered) Jobs.Add(row);
     }
 
-    private void StartPolling()
-    {
-        if (IsPolling) return;
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(_pollIntervalSeconds) };
-        _timer.Tick += async (_, _) => await RefreshAsync(CancellationToken.None);
-        _timer.Start();
-        IsPolling = true;
-        StatusMessage = $"Polling every {_pollIntervalSeconds}s…";
-    }
-
-    private void StopPolling()
-    {
-        _timer?.Stop();
-        _timer = null;
-        IsPolling = false;
-        StatusMessage = "Polling stopped.";
-    }
-
     private async Task CancelSelectedJobAsync(CancellationToken ct)
     {
         if (SelectedJob == null) return;
@@ -153,6 +228,7 @@ public sealed class MonitorViewModel : ViewModelBase
         {
             await _slurm.CancelJobAsync(SelectedJob.JobId, ct);
             StatusMessage = $"Job {SelectedJob.JobId} cancelled.";
+            _logger?.Info($"Job {SelectedJob.JobId} cancelled by user.");
             await RefreshAsync(ct);
         }
         catch (Exception ex) { StatusMessage = $"Cancel failed: {ex.Message}"; }
@@ -162,6 +238,12 @@ public sealed class MonitorViewModel : ViewModelBase
     {
         if (_timer != null)
             _timer.Interval = TimeSpan.FromSeconds(_pollIntervalSeconds);
+    }
+
+    public void Dispose()
+    {
+        _timer?.Stop();
+        _timer = null;
     }
 }
 

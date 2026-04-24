@@ -12,12 +12,16 @@ namespace SlurmJobManager.App.ViewModels;
 /// - Follow mode: polls for new lines every <see cref="FollowIntervalSeconds"/> seconds.
 /// - In-buffer search across currently loaded lines.
 /// - Range display showing current window and approximate total.
+/// - Cancel support for ongoing load operations.
+/// - Error preservation: UI content is NOT cleared when a fetch fails.
 /// </summary>
 public sealed class LogViewerViewModel : ViewModelBase, IDisposable
 {
     private readonly ILogChunkService _logChunks;
+    private readonly IAppLogger?      _logger;
     private readonly object _loadLock = new();
     private bool _loadInProgress;
+    private CancellationTokenSource? _loadCts;
 
     // Bounded cache: each entry is one loaded chunk.  List is oldest→newest.
     private const int MaxCachedChunks = 20;
@@ -83,58 +87,80 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
     public ICommand LoadOlderCommand   { get; }
     public ICommand LoadNewerCommand   { get; }
     public ICommand ClearCacheCommand  { get; }
+    public ICommand CancelLoadCommand  { get; }
 
-    public LogViewerViewModel(ILogChunkService logChunks)
+    public LogViewerViewModel(ILogChunkService logChunks, IAppLogger? logger = null)
     {
         _logChunks = logChunks ?? throw new ArgumentNullException(nameof(logChunks));
+        _logger    = logger;
 
         LoadLatestCommand = new AsyncRelayCommand(LoadLatestAsync, () => !IsBusy);
         LoadOlderCommand  = new AsyncRelayCommand(LoadOlderAsync,  () => !IsBusy && !IsAtStart);
         LoadNewerCommand  = new AsyncRelayCommand(LoadNewerAsync,  () => !IsBusy && !IsAtEnd);
         ClearCacheCommand = new RelayCommand(ClearCache);
+        CancelLoadCommand = new RelayCommand(CancelLoad, () => IsBusy);
     }
 
     // ── Load commands ────────────────────────────────────────────────────────
 
     private async Task LoadLatestAsync(CancellationToken ct)
     {
-        if (!AcquireLoad()) return;
+        if (!AcquireLoad(ct)) return;
         try
         {
             var req    = new LogChunkRequest { RemoteFilePath = RemoteFilePath, ChunkSize = ChunkSize };
-            var result = await _logChunks.GetLatestChunkAsync(req, ct);
+            var result = await _logChunks.GetLatestChunkAsync(req, _loadCts!.Token);
             AddChunkToCache(result);
             RenderFromCache();
         }
-        catch (Exception ex) { StatusMessage = $"Error: {ex.Message}"; }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Load cancelled.";
+        }
+        catch (Exception ex)
+        {
+            // Preserve existing UI content — only update status message
+            _logger?.Warning($"Log fetch failed: {ex.Message}");
+            StatusMessage = ClassifyLogError(ex);
+        }
         finally { ReleaseLoad(); }
     }
 
     private async Task LoadOlderAsync(CancellationToken ct)
     {
-        if (!AcquireLoad()) return;
+        if (!AcquireLoad(ct)) return;
         try
         {
             var req    = new LogChunkRequest { RemoteFilePath = RemoteFilePath, ChunkSize = ChunkSize, AnchorLine = StartLine };
-            var result = await _logChunks.GetOlderChunkAsync(req, ct);
+            var result = await _logChunks.GetOlderChunkAsync(req, _loadCts!.Token);
             AddChunkToCache(result, prepend: true);
             RenderFromCache();
         }
-        catch (Exception ex) { StatusMessage = $"Error: {ex.Message}"; }
+        catch (OperationCanceledException) { StatusMessage = "Load cancelled."; }
+        catch (Exception ex)
+        {
+            _logger?.Warning($"Log fetch (older) failed: {ex.Message}");
+            StatusMessage = ClassifyLogError(ex);
+        }
         finally { ReleaseLoad(); }
     }
 
     private async Task LoadNewerAsync(CancellationToken ct)
     {
-        if (!AcquireLoad()) return;
+        if (!AcquireLoad(ct)) return;
         try
         {
             var req    = new LogChunkRequest { RemoteFilePath = RemoteFilePath, ChunkSize = ChunkSize, AnchorLine = EndLine };
-            var result = await _logChunks.GetNewerChunkAsync(req, ct);
+            var result = await _logChunks.GetNewerChunkAsync(req, _loadCts!.Token);
             AddChunkToCache(result);
             RenderFromCache();
         }
-        catch (Exception ex) { StatusMessage = $"Error: {ex.Message}"; }
+        catch (OperationCanceledException) { StatusMessage = "Load cancelled."; }
+        catch (Exception ex)
+        {
+            _logger?.Warning($"Log fetch (newer) failed: {ex.Message}");
+            StatusMessage = ClassifyLogError(ex);
+        }
         finally { ReleaseLoad(); }
     }
 
@@ -162,11 +188,11 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
 
     private async Task FollowTickAsync()
     {
-        if (!AcquireLoad()) return;
+        if (!AcquireLoad(CancellationToken.None)) return;
         try
         {
             var req    = new LogChunkRequest { RemoteFilePath = RemoteFilePath, ChunkSize = ChunkSize, AnchorLine = EndLine };
-            var result = await _logChunks.GetNewerChunkAsync(req, CancellationToken.None);
+            var result = await _logChunks.GetNewerChunkAsync(req, _loadCts!.Token);
             if (result.Lines.Count > 0)
             {
                 AddChunkToCache(result);
@@ -177,11 +203,22 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
                 StatusMessage = $"Follow: up-to-date at {DateTime.Now:HH:mm:ss}";
             }
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            StatusMessage = $"Follow error: {ex.Message}";
+            _logger?.Warning($"Follow tick error: {ex.Message}");
+            // Preserve existing content; just update the status
+            StatusMessage = $"Follow error (content preserved): {ClassifyLogError(ex)}";
         }
         finally { ReleaseLoad(); }
+    }
+
+    // ── Cancel ───────────────────────────────────────────────────────────────
+
+    private void CancelLoad()
+    {
+        _loadCts?.Cancel();
+        StatusMessage = "Cancelling…";
     }
 
     // ── Chunk cache management ───────────────────────────────────────────────
@@ -258,13 +295,14 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
 
     // ── Locking helpers ──────────────────────────────────────────────────────
 
-    private bool AcquireLoad()
+    private bool AcquireLoad(CancellationToken externalCt)
     {
         lock (_loadLock)
         {
             if (_loadInProgress) return false;
             _loadInProgress = true;
         }
+        _loadCts = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
         IsBusy = true;
         StatusMessage = "Loading…";
         return true;
@@ -272,9 +310,30 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
 
     private void ReleaseLoad()
     {
+        _loadCts?.Dispose();
+        _loadCts = null;
         lock (_loadLock) { _loadInProgress = false; }
         IsBusy = false;
     }
 
-    public void Dispose() => StopFollowTimer();
+    // ── Error classification ─────────────────────────────────────────────────
+
+    private static string ClassifyLogError(Exception ex)
+    {
+        if (ex.Message.Contains("No such file", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("not found",    StringComparison.OrdinalIgnoreCase))
+            return "Remote file not found — check the file path.";
+        if (ex is TimeoutException)
+            return "Log fetch timed out.";
+        if (ex is InvalidOperationException && ex.Message.Contains("not connected"))
+            return "SSH not connected — reconnect and retry.";
+        return $"Fetch error: {ex.Message}";
+    }
+
+    public void Dispose()
+    {
+        StopFollowTimer();
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+    }
 }

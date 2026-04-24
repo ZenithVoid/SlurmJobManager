@@ -1,73 +1,82 @@
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
+using SlurmJobManager.Infrastructure.Resilience;
 
 namespace SlurmJobManager.Infrastructure.Logs;
 
 /// <summary>
 /// Implements <see cref="ILogChunkService"/> by running <c>wc -l</c> and
 /// <c>sed -n</c> over SSH.  The full file is never transferred.
+/// Each fetch is wrapped in a per-operation timeout derived from
+/// <see cref="AppSettings.LogFetchTimeout"/>.
 /// </summary>
 public sealed class SshLogChunkService : ILogChunkService
 {
     private readonly ISshClientService _ssh;
+    private readonly AppSettings       _settings;
+    private readonly IAppLogger?       _logger;
 
-    public SshLogChunkService(ISshClientService ssh)
-        => _ssh = ssh ?? throw new ArgumentNullException(nameof(ssh));
+    public SshLogChunkService(ISshClientService ssh, AppSettings? settings = null, IAppLogger? logger = null)
+    {
+        _ssh      = ssh      ?? throw new ArgumentNullException(nameof(ssh));
+        _settings = settings ?? new AppSettings();
+        _logger   = logger;
+    }
 
     /// <inheritdoc/>
     public async Task<LogChunkResult> GetLatestChunkAsync(
         LogChunkRequest request, CancellationToken ct = default)
     {
-        var total = await GetTotalLinesAsync(request.RemoteFilePath, ct);
-        if (total == 0) return EmptyResult(0);
+        using var timed = BuildTimeoutLinked(ct, out var linked);
+        return await RetryHelper.ExecuteAsync(
+            async token =>
+            {
+                var total = await GetTotalLinesAsync(request.RemoteFilePath, token);
+                if (total == 0) return EmptyResult(0);
 
-        var start = Math.Max(1, total - request.ChunkSize + 1);
-        var lines = await ReadLinesAsync(request.RemoteFilePath, start, total, ct);
-        return new LogChunkResult
-        {
-            Lines = lines,
-            StartLine = start,
-            EndLine = total,
-            TotalLines = total,
-        };
+                var start = Math.Max(1, total - request.ChunkSize + 1);
+                var lines = await ReadLinesAsync(request.RemoteFilePath, start, total, token);
+                return new LogChunkResult { Lines = lines, StartLine = start, EndLine = total, TotalLines = total };
+            },
+            _settings, _logger, "GetLatestChunk", linked);
     }
 
     /// <inheritdoc/>
     public async Task<LogChunkResult> GetOlderChunkAsync(
         LogChunkRequest request, CancellationToken ct = default)
     {
-        if (request.AnchorLine <= 1) return EmptyResult(await GetTotalLinesAsync(request.RemoteFilePath, ct));
+        using var timed = BuildTimeoutLinked(ct, out var linked);
+        return await RetryHelper.ExecuteAsync(
+            async token =>
+            {
+                var total = await GetTotalLinesAsync(request.RemoteFilePath, token);
+                if (request.AnchorLine <= 1) return EmptyResult(total);
 
-        var total = await GetTotalLinesAsync(request.RemoteFilePath, ct);
-        var end   = Math.Max(1, request.AnchorLine - 1);
-        var start = Math.Max(1, end - request.ChunkSize + 1);
-        var lines = await ReadLinesAsync(request.RemoteFilePath, start, end, ct);
-        return new LogChunkResult
-        {
-            Lines = lines,
-            StartLine = start,
-            EndLine = end,
-            TotalLines = total,
-        };
+                var end   = Math.Max(1, request.AnchorLine - 1);
+                var start = Math.Max(1, end - request.ChunkSize + 1);
+                var lines = await ReadLinesAsync(request.RemoteFilePath, start, end, token);
+                return new LogChunkResult { Lines = lines, StartLine = start, EndLine = end, TotalLines = total };
+            },
+            _settings, _logger, "GetOlderChunk", linked);
     }
 
     /// <inheritdoc/>
     public async Task<LogChunkResult> GetNewerChunkAsync(
         LogChunkRequest request, CancellationToken ct = default)
     {
-        var total = await GetTotalLinesAsync(request.RemoteFilePath, ct);
-        var start = request.AnchorLine + 1;
-        if (start > total) return EmptyResult(total);
+        using var timed = BuildTimeoutLinked(ct, out var linked);
+        return await RetryHelper.ExecuteAsync(
+            async token =>
+            {
+                var total = await GetTotalLinesAsync(request.RemoteFilePath, token);
+                var start = request.AnchorLine + 1;
+                if (start > total) return EmptyResult(total);
 
-        var end   = Math.Min(total, start + request.ChunkSize - 1);
-        var lines = await ReadLinesAsync(request.RemoteFilePath, start, end, ct);
-        return new LogChunkResult
-        {
-            Lines = lines,
-            StartLine = start,
-            EndLine = end,
-            TotalLines = total,
-        };
+                var end   = Math.Min(total, start + request.ChunkSize - 1);
+                var lines = await ReadLinesAsync(request.RemoteFilePath, start, end, token);
+                return new LogChunkResult { Lines = lines, StartLine = start, EndLine = end, TotalLines = total };
+            },
+            _settings, _logger, "GetNewerChunk", linked);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -92,13 +101,25 @@ public sealed class SshLogChunkService : ILogChunkService
 
     private static LogChunkResult EmptyResult(long total) => new()
     {
-        Lines = Array.Empty<string>(),
-        StartLine = 0,
-        EndLine = 0,
+        Lines      = Array.Empty<string>(),
+        StartLine  = 0,
+        EndLine    = 0,
         TotalLines = total,
     };
 
     /// <summary>Single-quote shell escaping for remote paths.</summary>
     private static string ShellEscape(string path)
         => "'" + path.Replace("'", "'\\''") + "'";
+
+    /// <summary>
+    /// Creates a <see cref="CancellationTokenSource"/> that combines the caller's token with
+    /// <see cref="AppSettings.LogFetchTimeout"/>, returning the linked token as an out parameter.
+    /// </summary>
+    private CancellationTokenSource BuildTimeoutLinked(CancellationToken ct, out CancellationToken linked)
+    {
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(_settings.LogFetchTimeout);
+        linked = cts.Token;
+        return cts;
+    }
 }
