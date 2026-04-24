@@ -1,117 +1,128 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using SlurmJobManager.Core.Interfaces;
+using SlurmJobManager.Core.Models;
 
 namespace SlurmJobManager.App.ViewModels;
 
 /// <summary>
-/// ViewModel for the chunked log viewer.
-/// Exposes three paging commands: load older, load newer, jump to latest.
+/// Chunked log viewer: loads at most <see cref="ChunkSize"/> lines at a time
+/// and prevents concurrent requests with a simple lock.
 /// </summary>
 public sealed class LogViewerViewModel : ViewModelBase
 {
+    private readonly ILogChunkService _logChunks;
+    private readonly object _loadLock = new();
+    private bool _loadInProgress;
+
     private string _remoteFilePath = string.Empty;
-    private int _chunkSize = 500;
+    private int _chunkSize = 200;
     private bool _isBusy;
     private bool _isAtStart;
     private bool _isAtEnd;
     private long _startLine;
     private long _endLine;
     private long _totalLines;
+    private string _statusMessage = string.Empty;
 
-    public string RemoteFilePath
-    {
-        get => _remoteFilePath;
-        set => SetField(ref _remoteFilePath, value);
-    }
+    public string RemoteFilePath { get => _remoteFilePath; set => SetField(ref _remoteFilePath, value); }
+    public int ChunkSize         { get => _chunkSize;       set => SetField(ref _chunkSize, value); }
+    public bool IsBusy           { get => _isBusy;          private set => SetField(ref _isBusy, value); }
+    public bool IsAtStart        { get => _isAtStart;       private set => SetField(ref _isAtStart, value); }
+    public bool IsAtEnd          { get => _isAtEnd;         private set => SetField(ref _isAtEnd, value); }
+    public long StartLine        { get => _startLine;       private set => SetField(ref _startLine, value); }
+    public long EndLine          { get => _endLine;         private set => SetField(ref _endLine, value); }
+    public long TotalLines       { get => _totalLines;      private set => SetField(ref _totalLines, value); }
+    public string StatusMessage  { get => _statusMessage;   set => SetField(ref _statusMessage, value); }
 
-    public int ChunkSize
-    {
-        get => _chunkSize;
-        set => SetField(ref _chunkSize, value);
-    }
+    public string RangeText =>
+        _totalLines > 0 ? $"Showing lines {_startLine}–{_endLine} / {_totalLines}" : "No data";
 
-    public bool IsBusy
-    {
-        get => _isBusy;
-        set => SetField(ref _isBusy, value);
-    }
-
-    public bool IsAtStart
-    {
-        get => _isAtStart;
-        private set => SetField(ref _isAtStart, value);
-    }
-
-    public bool IsAtEnd
-    {
-        get => _isAtEnd;
-        private set => SetField(ref _isAtEnd, value);
-    }
-
-    public long StartLine
-    {
-        get => _startLine;
-        private set => SetField(ref _startLine, value);
-    }
-
-    public long EndLine
-    {
-        get => _endLine;
-        private set => SetField(ref _endLine, value);
-    }
-
-    public long TotalLines
-    {
-        get => _totalLines;
-        private set => SetField(ref _totalLines, value);
-    }
-
-    /// <summary>Current page of log lines displayed in the view.</summary>
     public ObservableCollection<string> Lines { get; } = new();
 
     public ICommand LoadLatestCommand { get; }
-    public ICommand LoadOlderCommand { get; }
-    public ICommand LoadNewerCommand { get; }
-    public ICommand OpenFileCommand { get; }
+    public ICommand LoadOlderCommand  { get; }
+    public ICommand LoadNewerCommand  { get; }
 
-    public LogViewerViewModel()
+    public LogViewerViewModel(ILogChunkService logChunks)
     {
-        LoadLatestCommand = new RelayCommand(LoadLatest, () => !IsBusy);
-        LoadOlderCommand = new RelayCommand(LoadOlder, () => !IsBusy && !IsAtStart);
-        LoadNewerCommand = new RelayCommand(LoadNewer, () => !IsBusy && !IsAtEnd);
-        OpenFileCommand = new RelayCommand(OpenFile);
+        _logChunks = logChunks ?? throw new ArgumentNullException(nameof(logChunks));
+
+        LoadLatestCommand = new AsyncRelayCommand(LoadLatestAsync, () => !IsBusy);
+        LoadOlderCommand  = new AsyncRelayCommand(LoadOlderAsync,  () => !IsBusy && !IsAtStart);
+        LoadNewerCommand  = new AsyncRelayCommand(LoadNewerAsync,  () => !IsBusy && !IsAtEnd);
     }
 
-    private void LoadLatest()
+    private async Task LoadLatestAsync(CancellationToken ct)
     {
-        // TODO: call ILogChunkService.GetLatestChunkAsync and populate Lines
+        if (!AcquireLoad()) return;
+        try
+        {
+            var req    = new LogChunkRequest { RemoteFilePath = RemoteFilePath, ChunkSize = ChunkSize };
+            var result = await _logChunks.GetLatestChunkAsync(req, ct);
+            ApplyChunk(result);
+        }
+        catch (Exception ex) { StatusMessage = $"Error: {ex.Message}"; }
+        finally { ReleaseLoad(); }
     }
 
-    private void LoadOlder()
+    private async Task LoadOlderAsync(CancellationToken ct)
     {
-        // TODO: call ILogChunkService.GetOlderChunkAsync with AnchorLine = StartLine
+        if (!AcquireLoad()) return;
+        try
+        {
+            var req    = new LogChunkRequest { RemoteFilePath = RemoteFilePath, ChunkSize = ChunkSize, AnchorLine = StartLine };
+            var result = await _logChunks.GetOlderChunkAsync(req, ct);
+            ApplyChunk(result);
+        }
+        catch (Exception ex) { StatusMessage = $"Error: {ex.Message}"; }
+        finally { ReleaseLoad(); }
     }
 
-    private void LoadNewer()
+    private async Task LoadNewerAsync(CancellationToken ct)
     {
-        // TODO: call ILogChunkService.GetNewerChunkAsync with AnchorLine = EndLine
+        if (!AcquireLoad()) return;
+        try
+        {
+            var req    = new LogChunkRequest { RemoteFilePath = RemoteFilePath, ChunkSize = ChunkSize, AnchorLine = EndLine };
+            var result = await _logChunks.GetNewerChunkAsync(req, ct);
+            ApplyChunk(result);
+        }
+        catch (Exception ex) { StatusMessage = $"Error: {ex.Message}"; }
+        finally { ReleaseLoad(); }
     }
 
-    private void OpenFile()
+    private bool AcquireLoad()
     {
-        // TODO: open OpenFileDialog (remote path input) or browse SFTP tree
+        lock (_loadLock)
+        {
+            if (_loadInProgress) return false;
+            _loadInProgress = true;
+        }
+        IsBusy = true;
+        StatusMessage = "Loading…";
+        return true;
     }
 
-    private void ApplyChunk(Core.Models.LogChunkResult result)
+    private void ReleaseLoad()
     {
-        Lines.Clear();
-        foreach (var line in result.Lines)
-            Lines.Add(line);
+        lock (_loadLock) { _loadInProgress = false; }
+        IsBusy = false;
+    }
 
-        StartLine = result.StartLine;
-        EndLine = result.EndLine;
-        TotalLines = result.TotalLines;
-        IsAtStart = result.IsAtStart;
-        IsAtEnd = result.IsAtEnd;
+    private void ApplyChunk(LogChunkResult result)
+    {
+        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        {
+            Lines.Clear();
+            foreach (var line in result.Lines) Lines.Add(line);
+            StartLine  = result.StartLine;
+            EndLine    = result.EndLine;
+            TotalLines = result.TotalLines;
+            IsAtStart  = result.IsAtStart;
+            IsAtEnd    = result.IsAtEnd;
+            StatusMessage = string.Empty;
+            OnPropertyChanged(nameof(RangeText));
+        });
     }
 }

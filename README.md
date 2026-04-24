@@ -1,89 +1,143 @@
 # SlurmJobManager
 
-Windows WPF application for submitting and monitoring Slurm jobs on a remote CentOS7 cluster via SSH.
+A Windows WPF desktop application for submitting, monitoring, and debugging Slurm HPC jobs over SSH.
 
-## Overview
+---
 
-SlurmJobManager runs on Windows and connects to a CentOS 7 Slurm controller node (e.g. `mu`) via SSH.
-It lets you:
+## v2 — What's new
 
-- Define a **Task Root Directory** and per-task sub-directories (`Root/{TaskId}/`)
-- Select, edit and persist **sbatch parameter templates**
-- **Submit** sbatch scripts and track their Slurm Job ID
-- **Monitor** all jobs for a given user in real-time
-- Browse huge `.out`/`.err` log files with **chunked paging** (never loads the full file)
-- Execute arbitrary remote commands in an **embedded console panel**
+| Area | Capability |
+|------|-----------|
+| **SSH Connection** | Connect/disconnect/test via password or private key (PEM/PPK); status indicator in title bar |
+| **Task Editor** | Root dir browser, auto-generate Task ID, save/load `task.json`, full lifecycle directory scaffold |
+| **Parameter Templates** | Browse local template directory, edit template content, save to `params/` with timestamp |
+| **sbatch Submission** | Render `{{KEY}}` template variables, upload script, run `sbatch`, parse Job ID, persist to `task.json` |
+| **Job Monitor** | `squeue` polling with configurable interval (2–10 s), state-coloured rows, cancel selected job |
+| **Log Viewer** | Chunked `.out`/`.err` viewer via `wc -l` + `sed` — never loads the full file; configurable chunk size; paging controls |
+| **Console Panel** | Embedded remote command console with 20-entry ↑/↓ history, auto-scroll, stdin-less execution |
 
-## Implemented (skeleton v1)
+---
 
-| Area | What's in place |
-|------|----------------|
-| **Core** | Domain models: `ConnectionProfile`, `TaskRecord`, `SlurmJobStatus`, `LogChunkRequest/Result` |
-| **Core** | Interfaces: `ISshClientService`, `ISlurmService`, `ITaskStorageService`, `ILogChunkService` |
-| **Core** | `SbatchTemplateRenderer` – `{{KEY}}` token substitution + placeholder extraction |
-| **Infrastructure** | `SshClientService` – password & private-key auth via SSH.NET |
-| **Infrastructure** | `SlurmService` – `sbatch` submit (parses job ID), `squeue` polling, `scancel` |
-| **Infrastructure** | `TaskStorageService` – `Root/{TaskId}/task.json` save/load/list |
-| **Infrastructure** | `SshLogChunkService` – `wc -l` + `sed -n` chunked log reading |
-| **App (WPF)** | `MainWindow` with three resizable panels (Task Editor / Monitor / Log Viewer) |
-| **App (WPF)** | `TaskEditorViewModel` – root dir, task ID, template, parameter grid, submit |
-| **App (WPF)** | `MonitorViewModel` – user job list, refresh / start-stop polling, cancel |
-| **App (WPF)** | `LogViewerViewModel` – `LoadLatest`, `LoadOlder`, `LoadNewer` paging commands |
-
-## Tech stack
-
-- .NET 8 / C#
-- WPF (MVVM, no third-party MVVM framework)
-- [SSH.NET](https://github.com/sshnet/SSH.NET) (`Renci.SshNet`)
-
-## Directory structure
+## Architecture
 
 ```
-SlurmJobManager.sln
 src/
-  SlurmJobManager.Core/          # Domain models, interfaces, SbatchTemplateRenderer
-    Models/
-    Interfaces/
-    Services/
-  SlurmJobManager.Infrastructure/ # SSH.NET-backed implementations
-    Ssh/
-    Storage/
-    Logs/
-  SlurmJobManager.App/            # WPF + MVVM shell
-    ViewModels/
-    Views/
-SlurmJobManager/                  # (legacy WinUI scaffold – kept for reference)
+├── SlurmJobManager.Core/              # Domain models + interfaces + SbatchTemplateRenderer
+│   ├── Interfaces/
+│   │   ├── ILogChunkService.cs
+│   │   ├── ISlurmService.cs
+│   │   ├── ISshClientService.cs
+│   │   └── ITaskStorageService.cs
+│   ├── Models/
+│   │   ├── ConnectionProfile.cs
+│   │   ├── LogChunkRequest.cs
+│   │   ├── LogChunkResult.cs
+│   │   ├── SlurmJobStatus.cs
+│   │   └── TaskRecord.cs
+│   └── Services/
+│       └── SbatchTemplateRenderer.cs
+├── SlurmJobManager.Infrastructure/    # SSH.NET-backed implementations
+│   ├── Logs/
+│   │   └── SshLogChunkService.cs      # NEW: wc -l + sed chunked log access
+│   ├── Ssh/
+│   │   ├── SlurmService.cs
+│   │   └── SshClientService.cs
+│   └── Storage/
+│       └── TaskStorageService.cs
+└── SlurmJobManager.App/               # WPF (MVVM, .NET 8)
+    ├── ViewModels/
+    │   ├── ConnectionViewModel.cs     # NEW
+    │   ├── ConsoleViewModel.cs        # NEW
+    │   ├── LogViewerViewModel.cs      # wired
+    │   ├── MainViewModel.cs           # wired (DI constructor)
+    │   ├── MonitorViewModel.cs        # wired
+    │   ├── TaskEditorViewModel.cs     # wired
+    │   └── ViewModelBase.cs           # + AsyncRelayCommand, RelayCommand<T>
+    └── Views/
+        ├── ConnectionView.xaml        # NEW
+        ├── ConsoleView.xaml           # NEW
+        ├── LogViewerView.xaml
+        ├── MonitorView.xaml
+        └── TaskEditorView.xaml
 ```
 
-## Local build & run
+---
+
+## Requirements
+
+- **Windows** (WPF app, `net8.0-windows`)
+- **.NET 8 SDK**
+- SSH access to a Slurm cluster
+
+---
+
+## Build & run
 
 ```bash
-# Restore NuGet packages
 dotnet restore SlurmJobManager.sln
-
-# Build all projects
-dotnet build SlurmJobManager.sln
-
-# Run the WPF app (Windows only)
+dotnet build   SlurmJobManager.sln
 dotnet run --project src/SlurmJobManager.App
 ```
 
-> **Note:** The WPF app (`net8.0-windows`) must be built on Windows or with the Windows SDK available.
-> The Core and Infrastructure libraries build on any OS.
+---
 
-## Known limitations (v1 skeleton)
+## Minimal workflow
 
-- UI is placeholder-level; no real SSH connection wired up yet
-- Slurm `squeue` parser covers basic fields only
-- Log chunk paging works but has no UI "follow mode"
-- No credential storage / secret protection
-- No error/retry policies
+1. **Connect** — fill in Host / Port / Username / Password (or Private Key) → click **Connect**
+2. **Create task** — set Root Directory + click **New** for a Task ID → **Save Task**
+3. **Edit parameter file** — point to a template directory, pick a file, edit, **Save Param File**
+4. **Submit** — set Remote Work Directory + App Path → **Submit sbatch Job** → Job ID appears
+5. **Monitor** — type your cluster username → **▶ Poll** to start watching `squeue` output
+6. **View logs** — paste the remote `.out` / `.err` path → **⟳ Latest** to load the tail
 
-## Next steps (phase 2)
+---
 
-- Wire up real SSH connection dialog and `ISshClientService` into the App
-- Integrate sbatch template file browser and parameter editor
-- Improve `squeue`/`sacct` parser with richer job fields
-- Add log virtualization and auto-follow mode for running jobs
-- Add credential vault / secure storage
-- Add retry, timeout, and cancellation policies throughout
+## Local task directory layout
+
+```
+{RootDirectory}/{TaskId}/
+├── task.json          # task metadata, last job ID, parameter dict
+├── params/            # edited parameter files (saved from template editor)
+├── scripts/
+│   └── submit.sbatch  # rendered sbatch script
+├── logs/
+│   └── submit.log     # submission timestamp + job ID
+└── result-cache/      # reserved for future result downloads
+```
+
+---
+
+## sbatch template variables
+
+The built-in template supports these `{{KEY}}` placeholders:
+
+| Variable | Value |
+|----------|-------|
+| `JOB_NAME` | Task ID |
+| `WORK_DIR` | Remote work directory |
+| `APP_PATH` | Application path on remote |
+| `PARAM_FILE` | Full path to selected parameter file on remote |
+| `STDOUT_FILE` | `{WORK_DIR}/logs/job.out` |
+| `STDERR_FILE` | `{WORK_DIR}/logs/job.err` |
+
+Extra rows in the **Extra Parameters** grid are substituted too.
+
+---
+
+## Known limitations (v2)
+
+- `PasswordBox` contents are held in memory only — no credential vault
+- `squeue` parser covers basic fields; heterogeneous cluster output may need adjustment
+- No auto-follow mode for running job logs
+- SSH private key path is stored in plaintext app state (not encrypted)
+
+---
+
+## Phase 3 roadmap
+
+- DPAPI / Windows Credential Manager for secure credential storage
+- Log virtualization with auto-follow for running jobs
+- `sacct` integration for completed job history and accounting data
+- Rich sbatch preset library
+- Retry / timeout / cancellation policies throughout
+

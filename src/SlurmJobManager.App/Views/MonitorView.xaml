@@ -12,8 +12,8 @@
 
         <!-- Top controls -->
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-            <TextBlock Text="Watch User" Foreground="#CDD6F4" Margin="0,0,0,4" />
-            <Grid>
+            <TextBlock Text="Watch User" Foreground="#CDD6F4" Margin="0,0,0,2" />
+            <Grid Margin="0,0,0,6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -40,18 +40,35 @@
                         Background="#F38BA8" Foreground="#1E1E2E"
                         FontWeight="Bold" BorderThickness="0" />
             </Grid>
+
+            <!-- Poll interval slider -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <TextBlock Text="Poll interval (s): "
+                           Foreground="#6C7086" VerticalAlignment="Center" />
+                <Slider Minimum="2" Maximum="10"
+                        Value="{Binding PollIntervalSeconds}"
+                        Width="100" VerticalAlignment="Center" Margin="4,0,4,0" />
+                <TextBlock Text="{Binding PollIntervalSeconds}"
+                           Foreground="#CDD6F4" VerticalAlignment="Center" />
+            </StackPanel>
         </StackPanel>
 
-        <!-- Cancel button -->
-        <Button DockPanel.Dock="Bottom" Content="Cancel Selected Job"
-                Command="{Binding CancelJobCommand}"
-                Padding="8,4" Margin="0,8,0,0"
-                Background="#F38BA8" Foreground="#1E1E2E"
-                FontWeight="Bold" BorderThickness="0"
-                HorizontalAlignment="Left" />
+        <!-- Bottom: cancel button + status -->
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <Button Content="Cancel Selected Job"
+                    Command="{Binding CancelJobCommand}"
+                    Padding="8,4"
+                    Background="#F38BA8" Foreground="#1E1E2E"
+                    FontWeight="Bold" BorderThickness="0"
+                    HorizontalAlignment="Left" />
+            <TextBlock Text="{Binding StatusMessage}"
+                       Foreground="#F9E2AF" FontSize="11"
+                       Margin="0,4,0,0" TextWrapping="Wrap" />
+        </StackPanel>
 
-        <!-- Jobs list -->
+        <!-- Jobs DataGrid with state-colour rows -->
         <DataGrid ItemsSource="{Binding Jobs}"
+                  SelectedItem="{Binding SelectedJob}"
                   AutoGenerateColumns="False"
                   IsReadOnly="True"
                   Background="#313244" Foreground="#CDD6F4"
@@ -59,6 +76,31 @@
                   BorderBrush="#45475A" GridLinesVisibility="Horizontal"
                   HorizontalGridLinesBrush="#45475A"
                   SelectionMode="Single">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Setter Property="Foreground" Value="#CDD6F4" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding State}" Value="RUNNING">
+                            <Setter Property="Foreground" Value="#A6E3A1" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding State}" Value="PENDING">
+                            <Setter Property="Foreground" Value="#F9E2AF" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding State}" Value="FAILED">
+                            <Setter Property="Foreground" Value="#F38BA8" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding State}" Value="CANCELLED">
+                            <Setter Property="Foreground" Value="#FAB387" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding State}" Value="TIMEOUT">
+                            <Setter Property="Foreground" Value="#FAB387" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding State}" Value="COMPLETED">
+                            <Setter Property="Foreground" Value="#89B4FA" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Job ID"    Binding="{Binding JobId}"    Width="70" />
                 <DataGridTextColumn Header="Name"      Binding="{Binding JobName}"  Width="*" />
@@ -66,6 +108,7 @@
                 <DataGridTextColumn Header="State"     Binding="{Binding State}"    Width="90" />
                 <DataGridTextColumn Header="Partition" Binding="{Binding Partition}" Width="90" />
                 <DataGridTextColumn Header="Run Time"  Binding="{Binding RunTime}"  Width="80" />
+                <DataGridTextColumn Header="Nodes"     Binding="{Binding NodeList}" Width="80" />
             </DataGrid.Columns>
         </DataGrid>
 

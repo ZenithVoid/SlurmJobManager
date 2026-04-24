@@ -5,84 +5,129 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    d:DesignHeight="600" d:DesignWidth="320"
+    d:DesignHeight="800" d:DesignWidth="380"
     Background="#1E1E2E">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="12" >
+    <StackPanel Margin="12">
 
-            <!-- Root directory -->
-            <TextBlock Text="Root Directory" Foreground="#CDD6F4" Margin="0,0,0,4" />
-            <Grid Margin="0,0,0,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox Grid.Column="0"
-                         Text="{Binding RootDirectory, UpdateSourceTrigger=PropertyChanged}"
-                         Background="#313244" Foreground="#CDD6F4"
-                         BorderBrush="#45475A" Padding="6,4" />
-                <Button Grid.Column="1" Content="…"
-                        Command="{Binding BrowseRootDirectoryCommand}"
-                        Margin="4,0,0,0" Padding="8,4"
-                        Background="#585B70" Foreground="White" BorderThickness="0" />
-            </Grid>
+        <TextBlock Text="Task Setup" Foreground="#89B4FA"
+                   FontWeight="Bold" Margin="0,0,0,8" />
 
-            <!-- Task ID -->
-            <TextBlock Text="Task ID" Foreground="#CDD6F4" Margin="0,0,0,4" />
-            <TextBox Text="{Binding TaskId, UpdateSourceTrigger=PropertyChanged}"
-                     Background="#313244" Foreground="#CDD6F4"
-                     BorderBrush="#45475A" Padding="6,4" Margin="0,0,0,12" />
+        <!-- Root directory -->
+        <TextBlock Text="Root Directory" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <Grid Margin="0,0,0,6">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0"
+                     Text="{Binding RootDirectory, UpdateSourceTrigger=PropertyChanged}"
+                     Background="#313244" Foreground="#CDD6F4" BorderBrush="#45475A" Padding="6,4" />
+            <Button Grid.Column="1" Content="…" Command="{Binding BrowseRootDirectoryCommand}"
+                    Margin="4,0,0,0" Padding="8,4" Background="#585B70" Foreground="White" BorderThickness="0" />
+        </Grid>
 
-            <!-- Template -->
-            <TextBlock Text="Parameter Template" Foreground="#CDD6F4" Margin="0,0,0,4" />
-            <Grid Margin="0,0,0,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox Grid.Column="0"
-                         Text="{Binding TemplateFileName}"
-                         Background="#313244" Foreground="#CDD6F4"
-                         BorderBrush="#45475A" Padding="6,4"
-                         IsReadOnly="True" />
-                <Button Grid.Column="1" Content="Browse"
-                        Command="{Binding LoadTemplateCommand}"
-                        Margin="4,0,0,0" Padding="8,4"
-                        Background="#585B70" Foreground="White" BorderThickness="0" />
-            </Grid>
+        <!-- Task ID -->
+        <TextBlock Text="Task ID" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <Grid Margin="0,0,0,6">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0"
+                     Text="{Binding TaskId, UpdateSourceTrigger=PropertyChanged}"
+                     Background="#313244" Foreground="#CDD6F4" BorderBrush="#45475A" Padding="6,4" />
+            <Button Grid.Column="1" Content="New" Command="{Binding NewTaskIdCommand}"
+                    Margin="4,0,0,0" Padding="8,4" Background="#585B70" Foreground="White" BorderThickness="0" />
+        </Grid>
 
-            <!-- Parameters -->
-            <TextBlock Text="Parameters" Foreground="#CDD6F4" Margin="0,0,0,4" />
-            <DataGrid ItemsSource="{Binding Parameters}"
-                      AutoGenerateColumns="False"
-                      CanUserAddRows="True"
-                      Background="#313244" Foreground="#CDD6F4"
-                      RowBackground="#313244" AlternatingRowBackground="#2A2A3E"
-                      BorderBrush="#45475A" GridLinesVisibility="Horizontal"
-                      HorizontalGridLinesBrush="#45475A"
-                      Height="200"
-                      Margin="0,0,0,12">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="*" />
-                    <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="*" />
-                </DataGrid.Columns>
-            </DataGrid>
+        <!-- Remote work dir -->
+        <TextBlock Text="Remote Work Directory" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBox Text="{Binding RemoteWorkDir, UpdateSourceTrigger=PropertyChanged}"
+                 Background="#313244" Foreground="#CDD6F4" BorderBrush="#45475A"
+                 Padding="6,4" Margin="0,0,0,6" />
 
-            <!-- Buttons -->
-            <Button Content="Save Task"
-                    Command="{Binding SaveTaskCommand}"
-                    Margin="0,0,0,8" Padding="10,6"
-                    Background="#89B4FA" Foreground="#1E1E2E"
-                    FontWeight="Bold" BorderThickness="0"
-                    HorizontalAlignment="Stretch" />
-            <Button Content="Submit sbatch"
-                    Command="{Binding SubmitJobCommand}"
-                    Padding="10,6"
-                    Background="#A6E3A1" Foreground="#1E1E2E"
-                    FontWeight="Bold" BorderThickness="0"
-                    HorizontalAlignment="Stretch" />
+        <!-- App path -->
+        <TextBlock Text="App Path (on remote)" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBox Text="{Binding AppPath, UpdateSourceTrigger=PropertyChanged}"
+                 Background="#313244" Foreground="#CDD6F4" BorderBrush="#45475A"
+                 Padding="6,4" Margin="0,0,0,6" />
 
-        </StackPanel>
-    </ScrollViewer>
+        <!-- Save / Load task -->
+        <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Content="Save Task" Command="{Binding SaveTaskCommand}"
+                    Margin="0,0,4,0" Padding="8,4"
+                    Background="#89B4FA" Foreground="#1E1E2E" FontWeight="Bold" BorderThickness="0" />
+            <Button Grid.Column="1" Content="Load Task" Command="{Binding LoadTaskCommand}"
+                    Padding="8,4"
+                    Background="#585B70" Foreground="White" FontWeight="Bold" BorderThickness="0" />
+        </Grid>
+
+        <Separator Background="#3A3A5C" Margin="0,2,0,8" />
+        <TextBlock Text="Parameter Templates" Foreground="#89B4FA" FontWeight="Bold" Margin="0,0,0,6" />
+
+        <!-- Template directory -->
+        <TextBlock Text="Template Directory" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <Grid Margin="0,0,0,6">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0"
+                     Text="{Binding TemplateDirectory, UpdateSourceTrigger=PropertyChanged}"
+                     Background="#313244" Foreground="#CDD6F4" BorderBrush="#45475A" Padding="6,4" />
+            <Button Grid.Column="1" Content="…" Command="{Binding BrowseTemplateDirectoryCommand}"
+                    Margin="4,0,0,0" Padding="8,4" Background="#585B70" Foreground="White" BorderThickness="0" />
+        </Grid>
+
+        <!-- Template file selector -->
+        <TextBlock Text="Select Template" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <ComboBox ItemsSource="{Binding TemplateFiles}"
+                  SelectedItem="{Binding SelectedTemplate}"
+                  Background="#313244" Foreground="#CDD6F4"
+                  BorderBrush="#45475A" Padding="6,4" Margin="0,0,0,6" />
+
+        <!-- Template content editor -->
+        <TextBlock Text="Template Content" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBox Text="{Binding TemplateContent, UpdateSourceTrigger=PropertyChanged}"
+                 Background="#181825" Foreground="#CDD6F4" BorderBrush="#45475A"
+                 Padding="6,4" Margin="0,0,0,2"
+                 FontFamily="Consolas" FontSize="11"
+                 AcceptsReturn="True" TextWrapping="Wrap"
+                 Height="100" VerticalScrollBarVisibility="Auto" />
+        <TextBlock Text="{Binding LastSavedTime}"
+                   Foreground="#6C7086" FontSize="11" Margin="0,0,0,6" />
+
+        <Button Content="Save Param File" Command="{Binding SaveParamFileCommand}"
+                Padding="8,4" Margin="0,0,0,8"
+                Background="#CBA6F7" Foreground="#1E1E2E"
+                FontWeight="Bold" BorderThickness="0"
+                HorizontalAlignment="Stretch" />
+
+        <Separator Background="#3A3A5C" Margin="0,2,0,8" />
+        <TextBlock Text="Extra Parameters" Foreground="#89B4FA" FontWeight="Bold" Margin="0,0,0,6" />
+
+        <DataGrid ItemsSource="{Binding Parameters}"
+                  AutoGenerateColumns="False" CanUserAddRows="False"
+                  Background="#313244" Foreground="#CDD6F4"
+                  RowBackground="#313244" AlternatingRowBackground="#2A2A3E"
+                  BorderBrush="#45475A" GridLinesVisibility="Horizontal"
+                  HorizontalGridLinesBrush="#45475A" Height="120" Margin="0,0,0,4">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Key"   Binding="{Binding Key}"   Width="*" />
+                <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="*" />
+            </DataGrid.Columns>
+        </DataGrid>
+        <Button Content="+ Add Row" Command="{Binding AddParamCommand}"
+                Padding="8,4" Margin="0,0,0,8"
+                Background="#585B70" Foreground="White" BorderThickness="0"
+                HorizontalAlignment="Left" />
+
+        <Separator Background="#3A3A5C" Margin="0,2,0,8" />
+        <TextBlock Text="Submit" Foreground="#89B4FA" FontWeight="Bold" Margin="0,0,0,6" />
+
+        <Button Content="Submit sbatch Job" Command="{Binding SubmitJobCommand}"
+                Padding="10,8"
+                Background="#A6E3A1" Foreground="#1E1E2E"
+                FontWeight="Bold" BorderThickness="0"
+                HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+
+        <TextBlock Text="{Binding LastJobIdText}"
+                   Foreground="#A6E3A1" FontSize="12" Margin="0,0,0,4" />
+        <TextBlock Text="{Binding StatusMessage}"
+                   Foreground="#F9E2AF" FontSize="11" TextWrapping="Wrap" />
+
+    </StackPanel>
 </UserControl>
