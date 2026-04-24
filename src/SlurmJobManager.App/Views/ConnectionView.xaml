@@ -6,12 +6,12 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     d:DesignHeight="260" d:DesignWidth="380"
-    Background="#1E1E2E">
+    Background="{DynamicResource BgBaseBrush}">
 
     <StackPanel Margin="12">
 
         <TextBlock Text="SSH Connection"
-                   Foreground="#89B4FA" FontWeight="Bold" Margin="0,0,0,8" />
+                   Style="{StaticResource SectionHeaderStyle}" />
 
         <!-- Host + Port -->
         <Grid Margin="0,0,0,6">
@@ -20,53 +20,44 @@
                 <ColumnDefinition Width="70" />
             </Grid.ColumnDefinitions>
             <DockPanel Grid.Column="0">
-                <TextBlock DockPanel.Dock="Top" Text="Host" Foreground="#CDD6F4" Margin="0,0,0,2" />
-                <TextBox Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}"
-                         Background="#313244" Foreground="#CDD6F4"
-                         BorderBrush="#45475A" Padding="6,4" />
+                <TextBlock DockPanel.Dock="Top" Text="Host"
+                           Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" />
             </DockPanel>
             <DockPanel Grid.Column="1" Margin="6,0,0,0">
-                <TextBlock DockPanel.Dock="Top" Text="Port" Foreground="#CDD6F4" Margin="0,0,0,2" />
-                <TextBox Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}"
-                         Background="#313244" Foreground="#CDD6F4"
-                         BorderBrush="#45475A" Padding="6,4" />
+                <TextBlock DockPanel.Dock="Top" Text="Port"
+                           Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
             </DockPanel>
         </Grid>
 
         <!-- Username -->
-        <TextBlock Text="Username" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" />
         <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
-                 Background="#313244" Foreground="#CDD6F4"
-                 BorderBrush="#45475A" Padding="6,4" Margin="0,0,0,6" />
+                 Margin="0,0,0,6" />
 
-        <!-- Password (wired in code-behind) -->
-        <TextBlock Text="Password" Foreground="#CDD6F4" Margin="0,0,0,2" />
-        <PasswordBox x:Name="PwdBox"
-                     Background="#313244" Foreground="#CDD6F4"
-                     BorderBrush="#45475A" Padding="6,4" Margin="0,0,0,6" />
+        <!-- Password -->
+        <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" />
+        <PasswordBox x:Name="PwdBox" Margin="0,0,0,6" />
 
         <!-- Private key -->
-        <TextBlock Text="Private Key (optional)" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBlock Text="Private Key (optional)" Style="{StaticResource FieldLabelStyle}" />
         <Grid Margin="0,0,0,6">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBox Grid.Column="0"
-                     Text="{Binding PrivateKeyPath, UpdateSourceTrigger=PropertyChanged}"
-                     Background="#313244" Foreground="#CDD6F4"
-                     BorderBrush="#45475A" Padding="6,4" />
+                     Text="{Binding PrivateKeyPath, UpdateSourceTrigger=PropertyChanged}" />
             <Button Grid.Column="1" Content="…"
                     Command="{Binding BrowseKeyCommand}"
-                    Margin="4,0,0,0" Padding="8,4"
-                    Background="#585B70" Foreground="White" BorderThickness="0" />
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Margin="4,0,0,0" Padding="8,4" />
         </Grid>
 
-        <!-- Passphrase (wired in code-behind) -->
-        <TextBlock Text="Key Passphrase (optional)" Foreground="#CDD6F4" Margin="0,0,0,2" />
-        <PasswordBox x:Name="PassphraseBox"
-                     Background="#313244" Foreground="#CDD6F4"
-                     BorderBrush="#45475A" Padding="6,4" Margin="0,0,0,8" />
+        <!-- Passphrase -->
+        <TextBlock Text="Key Passphrase (optional)" Style="{StaticResource FieldLabelStyle}" />
+        <PasswordBox x:Name="PassphraseBox" Margin="0,0,0,8" />
 
         <!-- Action buttons -->
         <Grid>
@@ -77,25 +68,21 @@
             </Grid.ColumnDefinitions>
             <Button Grid.Column="0" Content="Connect"
                     Command="{Binding ConnectCommand}"
-                    Padding="6,4" Margin="0,0,4,0"
-                    Background="#A6E3A1" Foreground="#1E1E2E"
-                    FontWeight="Bold" BorderThickness="0" />
+                    Style="{StaticResource SuccessButtonStyle}"
+                    Padding="6,4" Margin="0,0,4,0" />
             <Button Grid.Column="1" Content="Disconnect"
                     Command="{Binding DisconnectCommand}"
-                    Padding="6,4" Margin="0,0,4,0"
-                    Background="#F38BA8" Foreground="#1E1E2E"
-                    FontWeight="Bold" BorderThickness="0" />
+                    Style="{StaticResource DangerButtonStyle}"
+                    Padding="6,4" Margin="0,0,4,0" />
             <Button Grid.Column="2" Content="Test"
                     Command="{Binding TestConnectionCommand}"
-                    Padding="6,4"
-                    Background="#89B4FA" Foreground="#1E1E2E"
-                    FontWeight="Bold" BorderThickness="0" />
+                    Style="{StaticResource AccentButtonStyle}"
+                    Padding="6,4" />
         </Grid>
 
         <!-- Status message -->
         <TextBlock Text="{Binding StatusMessage}"
-                   Foreground="#F9E2AF" FontSize="11"
-                   TextWrapping="Wrap" Margin="0,6,0,0" />
+                   Style="{StaticResource StatusTextStyle}" />
 
     </StackPanel>
 </UserControl>

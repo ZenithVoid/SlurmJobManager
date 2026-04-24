@@ -4,7 +4,27 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 
 ---
 
-## v2 — What's new
+## v3 — What's new
+
+| Area | Capability |
+|------|-----------|
+| **Theme switching** | Runtime light/dark toggle (Catppuccin-inspired palettes); all controls update instantly |
+| **Unified styles** | Shared ResourceDictionary for Button, TextBox, DataGrid, TabItem — no more inline hex colours |
+| **Smooth animations** | 180 ms fade-in on panel load; RUNNING jobs pulse softly in the monitor |
+| **Log viewer — Follow mode** | Tail-like auto-poll that appends new lines; configurable interval |
+| **Log viewer — Search** | Instant in-buffer keyword filter across all cached chunks |
+| **Log viewer — Chunk cache** | Bounded 20-chunk sliding window; oldest chunks evicted automatically; cache info shown |
+| **Log viewer — Range display** | `Showing 2201–2400 / ~1,200,000 lines` — always visible |
+| **Monitor — Filter** | Dropdown: All / PENDING / RUNNING / COMPLETED / FAILED / CANCELLED |
+| **Monitor — Keyword search** | Real-time filter by Job ID or job name |
+| **Console — History ×50** | Up/Down through last 50 commands |
+| **Console — Rich output** | Stdout (neutral), stderr (red), command prompt (green), meta/exit (yellow) |
+| **Console — Exec info** | Each command shows `[exit 0 | 123 ms]` after completion |
+| **Console — Copy** | One-click copy all output to clipboard |
+
+---
+
+## v2 — Previously
 
 | Area | Capability |
 |------|-----------|
@@ -13,8 +33,94 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 | **Parameter Templates** | Browse local template directory, edit template content, save to `params/` with timestamp |
 | **sbatch Submission** | Render `{{KEY}}` template variables, upload script, run `sbatch`, parse Job ID, persist to `task.json` |
 | **Job Monitor** | `squeue` polling with configurable interval (2–10 s), state-coloured rows, cancel selected job |
-| **Log Viewer** | Chunked `.out`/`.err` viewer via `wc -l` + `sed` — never loads the full file; configurable chunk size; paging controls |
-| **Console Panel** | Embedded remote command console with 20-entry ↑/↓ history, auto-scroll, stdin-less execution |
+| **Log Viewer** | Chunked `.out`/`.err` viewer via `wc -l` + `sed`; configurable chunk size; paging controls |
+| **Console Panel** | Embedded remote command console with ↑/↓ history, auto-scroll, stdin-less execution |
+
+---
+
+## UI/UX Features
+
+### Theme switching
+Click **☀ Light** / **🌙 Dark** in the title bar to swap the application colour palette instantly.
+The two themes are defined in:
+- `src/SlurmJobManager.App/Themes/Dark.xaml`  — Catppuccin Mocha-inspired dark palette
+- `src/SlurmJobManager.App/Themes/Light.xaml` — Catppuccin Latte-inspired light palette
+
+All brushes are dynamic resources — adding a third theme requires only a new XAML file and a URI change.
+
+### Animations
+- **Panel fade-in**: Left, Centre, and Right panels each fade in on load (180 ms, opacity 0→1).
+- **Running job pulse**: Rows with state `RUNNING` subtly pulse between 100 % and 70 % opacity (1.5 s, auto-reverse).  Both animations run entirely on the WPF compositor and do not touch the UI thread.
+
+### Virtualised log list
+The log `ListBox` uses `VirtualizingStackPanel` with `VirtualizationMode=Recycling` and `ScrollUnit=Item`.  Only the visible rows are materialised, so even a 1 M-line buffer scrolls smoothly.
+
+---
+
+## Large-Log Mode
+
+### How chunked loading works
+The log viewer never downloads a whole file.  Instead it uses `wc -l` + `sed` to slice the file by line number on the remote side and streams only the requested window.
+
+### Follow mode (tail-like)
+Enable the **Follow mode** checkbox.  Every N seconds (configurable via the interval slider) the viewer polls for lines *after* the current `EndLine`.  If new lines arrive they are appended and the list auto-scrolls to the bottom.
+
+### Chunk cache
+| Parameter | Default | Notes |
+|-----------|---------|-------|
+| Lines/chunk | 200 | Adjustable via slider (50–1000) |
+| Max cached chunks | 20 | Oldest chunk evicted automatically when limit is exceeded |
+| Effective memory window | 200 × 20 = 4 000 lines | ≈ 400 KB for typical log lines |
+
+The status bar shows e.g. `Cache: 12/20 chunk(s)` and `Showing 2201–2400 / ~1,200,000 lines`.
+
+### In-buffer search
+Type in the **🔍** search box to filter the currently cached lines.  The status shows `Search: 47/4000 match(es)`.  This is scoped to loaded chunks only — full remote grep is a planned feature.
+
+---
+
+## Performance Recommendations
+
+| Setting | Recommended | Notes |
+|---------|-------------|-------|
+| Poll interval | 3–5 s | Lower values increase SSH load |
+| Lines/chunk | 100–200 | 200 is a good default for log files with long lines |
+| Max cache chunks | 20 (fixed) | Keeps memory bounded; decrease for very long log lines |
+| Follow interval | 3–5 s | Match your job's stdout flush rate |
+
+---
+
+## Screenshots
+
+> _(Screenshots below are representative placeholders — capture from a live run for exact visuals.)_
+
+### Task editor & connection panel
+```
+[Connection fields] [Task setup] [Parameter templates] [Submit]
+```
+
+### Job monitor with filter and search
+```
+Filter: [RUNNING ▾]   🔍 [mysim]
+┌──────┬───────────┬──────┬─────────┬───────────┬──────────┬────────┐
+│ Job  │ Name      │ User │ State   │ Partition │ Run Time │ Nodes  │
+│ 1234 │ mysim_001 │ bob  │ RUNNING │ gpu       │ 00:04:12 │ node01 │
+└──────┴───────────┴──────┴─────────┴───────────┴──────────┴────────┘
+```
+
+### Log viewer with follow mode and search
+```
+Remote File Path: /home/bob/jobs/1234/job.out
+Lines/chunk: [200]   [▲ Older] [⟳ Latest] [▼ Newer] [🗑 Cache]
+☑ Follow mode (tail)   Interval: 3s
+🔍 [error]
+──────────────────────────────────────────────────────────────────────
+line 2198: Iteration 99/100 complete
+line 2199: [error] convergence warning at step 99
+...
+Showing 2001–2400 / ~1,200,000 lines   Cache: 2/20 chunk(s)
+Search: 1/400 match(es)
+```
 
 ---
 
@@ -22,43 +128,36 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 
 ```
 src/
-├── SlurmJobManager.Core/              # Domain models + interfaces + SbatchTemplateRenderer
+├── SlurmJobManager.Core/
 │   ├── Interfaces/
-│   │   ├── ILogChunkService.cs
-│   │   ├── ISlurmService.cs
-│   │   ├── ISshClientService.cs
-│   │   └── ITaskStorageService.cs
 │   ├── Models/
-│   │   ├── ConnectionProfile.cs
-│   │   ├── LogChunkRequest.cs
-│   │   ├── LogChunkResult.cs
-│   │   ├── SlurmJobStatus.cs
-│   │   └── TaskRecord.cs
 │   └── Services/
-│       └── SbatchTemplateRenderer.cs
-├── SlurmJobManager.Infrastructure/    # SSH.NET-backed implementations
+├── SlurmJobManager.Infrastructure/
 │   ├── Logs/
-│   │   └── SshLogChunkService.cs      # NEW: wc -l + sed chunked log access
 │   ├── Ssh/
-│   │   ├── SlurmService.cs
-│   │   └── SshClientService.cs
 │   └── Storage/
-│       └── TaskStorageService.cs
-└── SlurmJobManager.App/               # WPF (MVVM, .NET 8)
+└── SlurmJobManager.App/
+    ├── Themes/
+    │   ├── Dark.xaml             # NEW: dark colour palette
+    │   └── Light.xaml            # NEW: light colour palette
+    ├── Styles/
+    │   └── Controls.xaml         # NEW: unified control styles
+    ├── Converters/
+    │   └── Converters.cs         # NEW: JobStateToBrush, BoolToVisibility, ConsoleLineKindToBrush
     ├── ViewModels/
-    │   ├── ConnectionViewModel.cs     # NEW
-    │   ├── ConsoleViewModel.cs        # NEW
-    │   ├── LogViewerViewModel.cs      # wired
-    │   ├── MainViewModel.cs           # wired (DI constructor)
-    │   ├── MonitorViewModel.cs        # wired
-    │   ├── TaskEditorViewModel.cs     # wired
-    │   └── ViewModelBase.cs           # + AsyncRelayCommand, RelayCommand<T>
+    │   ├── ConsoleLine.cs        # NEW: typed console output line
+    │   ├── ConsoleViewModel.cs   # UPDATED: 50-entry history, exec-time, stderr colouring, copy
+    │   ├── LogViewerViewModel.cs # UPDATED: follow mode, search, chunk cache pruning
+    │   ├── MainViewModel.cs      # UPDATED: theme toggle
+    │   ├── MonitorViewModel.cs   # UPDATED: status filter, keyword search
+    │   └── ...
     └── Views/
-        ├── ConnectionView.xaml        # NEW
-        ├── ConsoleView.xaml           # NEW
-        ├── LogViewerView.xaml
-        ├── MonitorView.xaml
-        └── TaskEditorView.xaml
+        ├── ConnectionView.xaml   # UPDATED: themed styles
+        ├── ConsoleView.xaml      # UPDATED: rich output template, copy button
+        ├── LogViewerView.xaml    # UPDATED: follow toggle, search bar, cache info
+        ├── MonitorView.xaml      # UPDATED: filter/search controls, state converter
+        ├── TaskEditorView.xaml   # UPDATED: themed styles
+        └── MainWindow.xaml       # UPDATED: theme toggle button, fade-in animations
 ```
 
 ---
@@ -88,7 +187,7 @@ dotnet run --project src/SlurmJobManager.App
 3. **Edit parameter file** — point to a template directory, pick a file, edit, **Save Param File**
 4. **Submit** — set Remote Work Directory + App Path → **Submit sbatch Job** → Job ID appears
 5. **Monitor** — type your cluster username → **▶ Poll** to start watching `squeue` output
-6. **View logs** — paste the remote `.out` / `.err` path → **⟳ Latest** to load the tail
+6. **View logs** — paste the remote `.out` / `.err` path → **⟳ Latest** → enable **Follow mode**
 
 ---
 
@@ -96,20 +195,18 @@ dotnet run --project src/SlurmJobManager.App
 
 ```
 {RootDirectory}/{TaskId}/
-├── task.json          # task metadata, last job ID, parameter dict
-├── params/            # edited parameter files (saved from template editor)
+├── task.json
+├── params/
 ├── scripts/
-│   └── submit.sbatch  # rendered sbatch script
+│   └── submit.sbatch
 ├── logs/
-│   └── submit.log     # submission timestamp + job ID
-└── result-cache/      # reserved for future result downloads
+│   └── submit.log
+└── result-cache/
 ```
 
 ---
 
 ## sbatch template variables
-
-The built-in template supports these `{{KEY}}` placeholders:
 
 | Variable | Value |
 |----------|-------|
@@ -124,20 +221,20 @@ Extra rows in the **Extra Parameters** grid are substituted too.
 
 ---
 
-## Known limitations (v2)
+## Known limitations
 
 - `PasswordBox` contents are held in memory only — no credential vault
+- Log search is scoped to loaded chunks only; full remote grep is planned
 - `squeue` parser covers basic fields; heterogeneous cluster output may need adjustment
-- No auto-follow mode for running job logs
 - SSH private key path is stored in plaintext app state (not encrypted)
 
 ---
 
-## Phase 3 roadmap
+## Phase 4 roadmap
 
 - DPAPI / Windows Credential Manager for secure credential storage
-- Log virtualization with auto-follow for running jobs
+- Remote full-text grep (server-side `grep` piped through SSH)
 - `sacct` integration for completed job history and accounting data
-- Rich sbatch preset library
-- Retry / timeout / cancellation policies throughout
+- Per-cluster profile theming/presets
+- Telemetry hooks for performance diagnostics
 

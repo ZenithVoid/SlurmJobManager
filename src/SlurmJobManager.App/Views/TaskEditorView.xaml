@@ -6,128 +6,124 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     d:DesignHeight="800" d:DesignWidth="380"
-    Background="#1E1E2E">
+    Background="{DynamicResource BgBaseBrush}">
 
     <StackPanel Margin="12">
 
-        <TextBlock Text="Task Setup" Foreground="#89B4FA"
-                   FontWeight="Bold" Margin="0,0,0,8" />
+        <TextBlock Text="Task Setup"
+                   Style="{StaticResource SectionHeaderStyle}" />
 
         <!-- Root directory -->
-        <TextBlock Text="Root Directory" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBlock Text="Root Directory" Style="{StaticResource FieldLabelStyle}" />
         <Grid Margin="0,0,0,6">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <TextBox Grid.Column="0"
-                     Text="{Binding RootDirectory, UpdateSourceTrigger=PropertyChanged}"
-                     Background="#313244" Foreground="#CDD6F4" BorderBrush="#45475A" Padding="6,4" />
+                     Text="{Binding RootDirectory, UpdateSourceTrigger=PropertyChanged}" />
             <Button Grid.Column="1" Content="…" Command="{Binding BrowseRootDirectoryCommand}"
-                    Margin="4,0,0,0" Padding="8,4" Background="#585B70" Foreground="White" BorderThickness="0" />
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Margin="4,0,0,0" Padding="8,4" />
         </Grid>
 
         <!-- Task ID -->
-        <TextBlock Text="Task ID" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBlock Text="Task ID" Style="{StaticResource FieldLabelStyle}" />
         <Grid Margin="0,0,0,6">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <TextBox Grid.Column="0"
-                     Text="{Binding TaskId, UpdateSourceTrigger=PropertyChanged}"
-                     Background="#313244" Foreground="#CDD6F4" BorderBrush="#45475A" Padding="6,4" />
+                     Text="{Binding TaskId, UpdateSourceTrigger=PropertyChanged}" />
             <Button Grid.Column="1" Content="New" Command="{Binding NewTaskIdCommand}"
-                    Margin="4,0,0,0" Padding="8,4" Background="#585B70" Foreground="White" BorderThickness="0" />
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Margin="4,0,0,0" Padding="8,4" />
         </Grid>
 
         <!-- Remote work dir -->
-        <TextBlock Text="Remote Work Directory" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBlock Text="Remote Work Directory" Style="{StaticResource FieldLabelStyle}" />
         <TextBox Text="{Binding RemoteWorkDir, UpdateSourceTrigger=PropertyChanged}"
-                 Background="#313244" Foreground="#CDD6F4" BorderBrush="#45475A"
-                 Padding="6,4" Margin="0,0,0,6" />
+                 Margin="0,0,0,6" />
 
         <!-- App path -->
-        <TextBlock Text="App Path (on remote)" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBlock Text="App Path (on remote)" Style="{StaticResource FieldLabelStyle}" />
         <TextBox Text="{Binding AppPath, UpdateSourceTrigger=PropertyChanged}"
-                 Background="#313244" Foreground="#CDD6F4" BorderBrush="#45475A"
-                 Padding="6,4" Margin="0,0,0,6" />
+                 Margin="0,0,0,6" />
 
         <!-- Save / Load task -->
         <Grid Margin="0,0,0,8">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
             <Button Grid.Column="0" Content="Save Task" Command="{Binding SaveTaskCommand}"
-                    Margin="0,0,4,0" Padding="8,4"
-                    Background="#89B4FA" Foreground="#1E1E2E" FontWeight="Bold" BorderThickness="0" />
+                    Style="{StaticResource AccentButtonStyle}"
+                    Margin="0,0,4,0" Padding="8,4" />
             <Button Grid.Column="1" Content="Load Task" Command="{Binding LoadTaskCommand}"
-                    Padding="8,4"
-                    Background="#585B70" Foreground="White" FontWeight="Bold" BorderThickness="0" />
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Padding="8,4" />
         </Grid>
 
-        <Separator Background="#3A3A5C" Margin="0,2,0,8" />
-        <TextBlock Text="Parameter Templates" Foreground="#89B4FA" FontWeight="Bold" Margin="0,0,0,6" />
+        <Separator />
+        <TextBlock Text="Parameter Templates"
+                   Style="{StaticResource SectionHeaderStyle}" />
 
         <!-- Template directory -->
-        <TextBlock Text="Template Directory" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBlock Text="Template Directory" Style="{StaticResource FieldLabelStyle}" />
         <Grid Margin="0,0,0,6">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <TextBox Grid.Column="0"
-                     Text="{Binding TemplateDirectory, UpdateSourceTrigger=PropertyChanged}"
-                     Background="#313244" Foreground="#CDD6F4" BorderBrush="#45475A" Padding="6,4" />
+                     Text="{Binding TemplateDirectory, UpdateSourceTrigger=PropertyChanged}" />
             <Button Grid.Column="1" Content="…" Command="{Binding BrowseTemplateDirectoryCommand}"
-                    Margin="4,0,0,0" Padding="8,4" Background="#585B70" Foreground="White" BorderThickness="0" />
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Margin="4,0,0,0" Padding="8,4" />
         </Grid>
 
         <!-- Template file selector -->
-        <TextBlock Text="Select Template" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBlock Text="Select Template" Style="{StaticResource FieldLabelStyle}" />
         <ComboBox ItemsSource="{Binding TemplateFiles}"
                   SelectedItem="{Binding SelectedTemplate}"
-                  Background="#313244" Foreground="#CDD6F4"
-                  BorderBrush="#45475A" Padding="6,4" Margin="0,0,0,6" />
+                  Margin="0,0,0,6" />
 
         <!-- Template content editor -->
-        <TextBlock Text="Template Content" Foreground="#CDD6F4" Margin="0,0,0,2" />
+        <TextBlock Text="Template Content" Style="{StaticResource FieldLabelStyle}" />
         <TextBox Text="{Binding TemplateContent, UpdateSourceTrigger=PropertyChanged}"
-                 Background="#181825" Foreground="#CDD6F4" BorderBrush="#45475A"
+                 Background="{DynamicResource BgCrustBrush}"
                  Padding="6,4" Margin="0,0,0,2"
                  FontFamily="Consolas" FontSize="11"
                  AcceptsReturn="True" TextWrapping="Wrap"
                  Height="100" VerticalScrollBarVisibility="Auto" />
         <TextBlock Text="{Binding LastSavedTime}"
-                   Foreground="#6C7086" FontSize="11" Margin="0,0,0,6" />
+                   Style="{StaticResource MutedTextStyle}" Margin="0,0,0,6" />
 
         <Button Content="Save Param File" Command="{Binding SaveParamFileCommand}"
+                Style="{StaticResource PurpleButtonStyle}"
                 Padding="8,4" Margin="0,0,0,8"
-                Background="#CBA6F7" Foreground="#1E1E2E"
-                FontWeight="Bold" BorderThickness="0"
                 HorizontalAlignment="Stretch" />
 
-        <Separator Background="#3A3A5C" Margin="0,2,0,8" />
-        <TextBlock Text="Extra Parameters" Foreground="#89B4FA" FontWeight="Bold" Margin="0,0,0,6" />
+        <Separator />
+        <TextBlock Text="Extra Parameters"
+                   Style="{StaticResource SectionHeaderStyle}" />
 
         <DataGrid ItemsSource="{Binding Parameters}"
                   AutoGenerateColumns="False" CanUserAddRows="False"
-                  Background="#313244" Foreground="#CDD6F4"
-                  RowBackground="#313244" AlternatingRowBackground="#2A2A3E"
-                  BorderBrush="#45475A" GridLinesVisibility="Horizontal"
-                  HorizontalGridLinesBrush="#45475A" Height="120" Margin="0,0,0,4">
+                  Height="120" Margin="0,0,0,4">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Key"   Binding="{Binding Key}"   Width="*" />
                 <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="*" />
             </DataGrid.Columns>
         </DataGrid>
         <Button Content="+ Add Row" Command="{Binding AddParamCommand}"
+                Style="{StaticResource NeutralButtonStyle}"
                 Padding="8,4" Margin="0,0,0,8"
-                Background="#585B70" Foreground="White" BorderThickness="0"
                 HorizontalAlignment="Left" />
 
-        <Separator Background="#3A3A5C" Margin="0,2,0,8" />
-        <TextBlock Text="Submit" Foreground="#89B4FA" FontWeight="Bold" Margin="0,0,0,6" />
+        <Separator />
+        <TextBlock Text="Submit"
+                   Style="{StaticResource SectionHeaderStyle}" />
 
         <Button Content="Submit sbatch Job" Command="{Binding SubmitJobCommand}"
+                Style="{StaticResource SuccessButtonStyle}"
                 Padding="10,8"
-                Background="#A6E3A1" Foreground="#1E1E2E"
-                FontWeight="Bold" BorderThickness="0"
                 HorizontalAlignment="Stretch" Margin="0,0,0,6" />
 
         <TextBlock Text="{Binding LastJobIdText}"
-                   Foreground="#A6E3A1" FontSize="12" Margin="0,0,0,4" />
+                   Foreground="{DynamicResource AccentGreenBrush}"
+                   FontSize="12" Margin="0,0,0,4" />
         <TextBlock Text="{Binding StatusMessage}"
-                   Foreground="#F9E2AF" FontSize="11" TextWrapping="Wrap" />
+                   Style="{StaticResource StatusTextStyle}" />
 
     </StackPanel>
 </UserControl>

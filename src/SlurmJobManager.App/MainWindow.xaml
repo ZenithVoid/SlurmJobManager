@@ -8,7 +8,18 @@
     mc:Ignorable="d"
     Title="Slurm Job Manager"
     Height="800" Width="1280"
-    MinHeight="600" MinWidth="960">
+    MinHeight="600" MinWidth="960"
+    Background="{DynamicResource BgBaseBrush}">
+
+    <Window.Resources>
+        <!-- Fade-in storyboard for content panels -->
+        <Storyboard x:Key="FadeIn">
+            <DoubleAnimation
+                Storyboard.TargetProperty="Opacity"
+                From="0" To="1"
+                Duration="0:0:0.18" />
+        </Storyboard>
+    </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -17,22 +28,30 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Title bar with connection status -->
-        <Border Grid.Row="0" Background="#1E1E2E" Padding="12,8">
+        <!-- Title bar -->
+        <Border Grid.Row="0" Background="{DynamicResource BgPanelBrush}" Padding="12,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0"
                            Text="Slurm Job Manager"
-                           Foreground="White"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
                            FontSize="18" FontWeight="SemiBold"
                            VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1"
                            Text="{Binding Connection.StatusText}"
-                           Foreground="#A6E3A1"
-                           FontSize="13" VerticalAlignment="Center" />
+                           Foreground="{DynamicResource AccentGreenBrush}"
+                           FontSize="13" VerticalAlignment="Center"
+                           Margin="0,0,12,0" />
+                <!-- Theme toggle -->
+                <Button Grid.Column="2"
+                        Content="{Binding ThemeToggleLabel}"
+                        Command="{Binding ToggleThemeCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        Padding="8,4" />
             </Grid>
         </Border>
 
@@ -46,49 +65,80 @@
                 <ColumnDefinition Width="420" MinWidth="280" />
             </Grid.ColumnDefinitions>
 
-            <!-- Left: Connection + Task Editor (scrollable) -->
-            <Border Grid.Column="0" BorderBrush="#3A3A5C" BorderThickness="0,0,1,0">
+            <!-- Left panel: Connection + Task Editor -->
+            <Border Grid.Column="0"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,1,0"
+                    x:Name="LeftPanel">
+                <Border.Triggers>
+                    <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
+                    </EventTrigger>
+                </Border.Triggers>
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Background="#2A2A3E" Padding="8,6">
+                    <Border DockPanel.Dock="Top"
+                            Background="{DynamicResource BgPanelBrush}"
+                            Padding="8,6">
                         <TextBlock Text="Connection &amp; Task Editor"
-                                   Foreground="#CDD6F4" FontWeight="Bold" />
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   FontWeight="Bold" />
                     </Border>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  Background="{DynamicResource BgBaseBrush}">
                         <StackPanel>
                             <views:ConnectionView DataContext="{Binding Connection}" />
-                            <Separator Background="#3A3A5C" Margin="0,4" />
+                            <Separator />
                             <views:TaskEditorView DataContext="{Binding TaskEditor}" />
                         </StackPanel>
                     </ScrollViewer>
                 </DockPanel>
             </Border>
 
-            <GridSplitter Grid.Column="1" Width="5"
-                          HorizontalAlignment="Stretch" Background="#3A3A5C" />
+            <GridSplitter Grid.Column="1" Width="5" />
 
-            <!-- Centre: Monitor -->
-            <Border Grid.Column="2" BorderBrush="#3A3A5C" BorderThickness="0,0,1,0">
+            <!-- Centre panel: Monitor -->
+            <Border Grid.Column="2"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,1,0"
+                    x:Name="CentrePanel">
+                <Border.Triggers>
+                    <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
+                    </EventTrigger>
+                </Border.Triggers>
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Background="#2A2A3E" Padding="8,6">
-                        <TextBlock Text="Job Monitor" Foreground="#CDD6F4" FontWeight="Bold" />
+                    <Border DockPanel.Dock="Top"
+                            Background="{DynamicResource BgPanelBrush}"
+                            Padding="8,6">
+                        <TextBlock Text="Job Monitor"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   FontWeight="Bold" />
                     </Border>
                     <views:MonitorView DataContext="{Binding Monitor}" />
                 </DockPanel>
             </Border>
 
-            <GridSplitter Grid.Column="3" Width="5"
-                          HorizontalAlignment="Stretch" Background="#3A3A5C" />
+            <GridSplitter Grid.Column="3" Width="5" />
 
-            <!-- Right: Log Viewer + Console tabs -->
-            <DockPanel Grid.Column="4">
-                <Border DockPanel.Dock="Top" Background="#2A2A3E" Padding="8,6">
-                    <TextBlock Text="Logs &amp; Console" Foreground="#CDD6F4" FontWeight="Bold" />
+            <!-- Right panel: Log Viewer + Console tabs -->
+            <DockPanel Grid.Column="4" x:Name="RightPanel">
+                <DockPanel.Triggers>
+                    <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
+                    </EventTrigger>
+                </DockPanel.Triggers>
+                <Border DockPanel.Dock="Top"
+                        Background="{DynamicResource BgPanelBrush}"
+                        Padding="8,6">
+                    <TextBlock Text="Logs &amp; Console"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               FontWeight="Bold" />
                 </Border>
-                <TabControl Background="#1E1E2E" BorderBrush="#3A3A5C">
-                    <TabItem Header="Log Viewer" Foreground="#CDD6F4">
+                <TabControl>
+                    <TabItem Header="Log Viewer">
                         <views:LogViewerView DataContext="{Binding LogViewer}" />
                     </TabItem>
-                    <TabItem Header="Console" Foreground="#CDD6F4">
+                    <TabItem Header="Console">
                         <views:ConsoleView DataContext="{Binding Console}" />
                     </TabItem>
                 </TabControl>
@@ -96,9 +146,12 @@
         </Grid>
 
         <!-- Status bar -->
-        <Border Grid.Row="2" Background="#181825" Padding="8,4">
+        <Border Grid.Row="2"
+                Background="{DynamicResource BgCrustBrush}"
+                Padding="8,4">
             <TextBlock Text="{Binding StatusMessage}"
-                       Foreground="#A6ADC8" FontSize="12" />
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       FontSize="12" />
         </Border>
     </Grid>
 </Window>
