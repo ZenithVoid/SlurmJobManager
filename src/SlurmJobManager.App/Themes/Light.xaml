@@ -2,67 +2,10 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- ── Light palette ───────────────────────────────────────────────────── -->
-    <Color x:Key="BgBaseColor">#EFF1F5</Color>
-    <Color x:Key="BgMantle">#E6E9EF</Color>
-    <Color x:Key="BgCrust">#DCE0E8</Color>
-    <Color x:Key="BgSurface0">#CCD0DA</Color>
-    <Color x:Key="BgSurface1">#BCC0CC</Color>
-    <Color x:Key="BgSurface2">#ACB0BE</Color>
-    <Color x:Key="BgOverlay0">#9CA0B0</Color>
-    <Color x:Key="BgPanel">#E2E5EE</Color>
-    <Color x:Key="BgCard">#E8EAF2</Color>
-    <Color x:Key="BorderColor">#C5C8D8</Color>
-
-    <Color x:Key="TextPrimary">#4C4F69</Color>
-    <Color x:Key="TextSecondary">#5C5F77</Color>
-    <Color x:Key="TextMuted">#8C8FA1</Color>
-    <Color x:Key="TextOnAccent">#FFFFFF</Color>
-
-    <Color x:Key="AccentBlue">#1E66F5</Color>
-    <Color x:Key="AccentGreen">#40A02B</Color>
-    <Color x:Key="AccentRed">#D20F39</Color>
-    <Color x:Key="AccentYellow">#DF8E1D</Color>
-    <Color x:Key="AccentPurple">#8839EF</Color>
-    <Color x:Key="AccentPeach">#FE640B</Color>
-
-    <!-- Job state colours -->
-    <Color x:Key="StateRunning">#40A02B</Color>
-    <Color x:Key="StatePending">#DF8E1D</Color>
-    <Color x:Key="StateFailed">#D20F39</Color>
-    <Color x:Key="StateCancelled">#FE640B</Color>
-    <Color x:Key="StateCompleted">#1E66F5</Color>
-    <Color x:Key="StateDefault">#4C4F69</Color>
-
-    <!-- SolidColorBrushes -->
-    <SolidColorBrush x:Key="BgBaseBrush"      Color="{StaticResource BgBaseColor}" />
-    <SolidColorBrush x:Key="BgMantleBrush"    Color="{StaticResource BgMantle}" />
-    <SolidColorBrush x:Key="BgCrustBrush"     Color="{StaticResource BgCrust}" />
-    <SolidColorBrush x:Key="BgSurface0Brush"  Color="{StaticResource BgSurface0}" />
-    <SolidColorBrush x:Key="BgSurface1Brush"  Color="{StaticResource BgSurface1}" />
-    <SolidColorBrush x:Key="BgSurface2Brush"  Color="{StaticResource BgSurface2}" />
-    <SolidColorBrush x:Key="BgOverlay0Brush"  Color="{StaticResource BgOverlay0}" />
-    <SolidColorBrush x:Key="BgPanelBrush"     Color="{StaticResource BgPanel}" />
-    <SolidColorBrush x:Key="BgCardBrush"      Color="{StaticResource BgCard}" />
-    <SolidColorBrush x:Key="BorderBrush"      Color="{StaticResource BorderColor}" />
-
-    <SolidColorBrush x:Key="TextPrimaryBrush"   Color="{StaticResource TextPrimary}" />
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}" />
-    <SolidColorBrush x:Key="TextMutedBrush"     Color="{StaticResource TextMuted}" />
-    <SolidColorBrush x:Key="TextOnAccentBrush"  Color="{StaticResource TextOnAccent}" />
-
-    <SolidColorBrush x:Key="AccentBlueBrush"   Color="{StaticResource AccentBlue}" />
-    <SolidColorBrush x:Key="AccentGreenBrush"  Color="{StaticResource AccentGreen}" />
-    <SolidColorBrush x:Key="AccentRedBrush"    Color="{StaticResource AccentRed}" />
-    <SolidColorBrush x:Key="AccentYellowBrush" Color="{StaticResource AccentYellow}" />
-    <SolidColorBrush x:Key="AccentPurpleBrush" Color="{StaticResource AccentPurple}" />
-    <SolidColorBrush x:Key="AccentPeachBrush"  Color="{StaticResource AccentPeach}" />
-
-    <SolidColorBrush x:Key="StateRunningBrush"   Color="{StaticResource StateRunning}" />
-    <SolidColorBrush x:Key="StatePendingBrush"   Color="{StaticResource StatePending}" />
-    <SolidColorBrush x:Key="StateFailedBrush"    Color="{StaticResource StateFailed}" />
-    <SolidColorBrush x:Key="StateCancelledBrush" Color="{StaticResource StateCancelled}" />
-    <SolidColorBrush x:Key="StateCompletedBrush" Color="{StaticResource StateCompleted}" />
-    <SolidColorBrush x:Key="StateDefaultBrush"   Color="{StaticResource StateDefault}" />
+    <!-- Delegate to layered colour token file -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/SlurmJobManager.App;component/Themes/Colors.Light.xaml" />
+    </ResourceDictionary.MergedDictionaries>
 
 </ResourceDictionary>
+
