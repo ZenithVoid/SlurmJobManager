@@ -302,6 +302,8 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
             if (_loadInProgress) return false;
             _loadInProgress = true;
         }
+        // Defensively dispose any stale CTS before creating a new one
+        _loadCts?.Dispose();
         _loadCts = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
         IsBusy = true;
         StatusMessage = "Loading…";

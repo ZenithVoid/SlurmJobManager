@@ -33,8 +33,11 @@ public static class RetryHelper
                 await operation(ct);
                 return;
             }
-            catch (Exception ex) when (!ct.IsCancellationRequested && IsRetryable(ex) && attempts < settings.MaxRetryAttempts)
+            catch (Exception ex) when (!ct.IsCancellationRequested && IsRetryable(ex))
             {
+                if (attempts >= settings.MaxRetryAttempts)
+                    throw;   // last attempt exhausted — propagate
+
                 attempts++;
                 var delay = TimeSpan.FromSeconds(
                     settings.RetryBaseDelay.TotalSeconds * Math.Pow(2, attempts - 1));
@@ -64,8 +67,11 @@ public static class RetryHelper
             {
                 return await operation(ct);
             }
-            catch (Exception ex) when (!ct.IsCancellationRequested && IsRetryable(ex) && attempts < settings.MaxRetryAttempts)
+            catch (Exception ex) when (!ct.IsCancellationRequested && IsRetryable(ex))
             {
+                if (attempts >= settings.MaxRetryAttempts)
+                    throw;   // last attempt exhausted — propagate
+
                 attempts++;
                 var delay = TimeSpan.FromSeconds(
                     settings.RetryBaseDelay.TotalSeconds * Math.Pow(2, attempts - 1));

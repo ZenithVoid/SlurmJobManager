@@ -173,7 +173,9 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             {
                 _connection.Status = ConnectionStatus.Reconnecting;
                 _logger?.Info("SSH disconnected — attempting reconnect…");
-                bool reconnected = await _connection.TryReconnectAsync(CancellationToken.None);
+                // Use a bounded timeout so reconnect doesn't block indefinitely
+                using var reconnectCts = new CancellationTokenSource(_settings.ConnectionTimeout);
+                bool reconnected = await _connection.TryReconnectAsync(reconnectCts.Token);
                 if (!reconnected)
                 {
                     _consecutiveFailures++;

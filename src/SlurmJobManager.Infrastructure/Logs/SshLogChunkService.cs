@@ -117,6 +117,8 @@ public sealed class SshLogChunkService : ILogChunkService
     /// </summary>
     private CancellationTokenSource BuildTimeoutLinked(CancellationToken ct, out CancellationToken linked)
     {
+        // If the caller's token is already cancelled, propagate that immediately.
+        ct.ThrowIfCancellationRequested();
         var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(_settings.LogFetchTimeout);
         linked = cts.Token;
