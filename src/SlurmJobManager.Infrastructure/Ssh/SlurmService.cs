@@ -23,8 +23,9 @@ public sealed class SlurmService : ISlurmService
         string? remoteWorkDir = null,
         CancellationToken ct = default)
     {
-        // Upload the script to a temp remote location
-        var remoteScript = $"/tmp/sjm_{Guid.NewGuid():N}.sh";
+        // Upload the script to a user-private temp location to avoid world-readable /tmp
+        var remoteScript = $"$HOME/.sjm_tmp/sjm_{Guid.NewGuid():N}.sh";
+        await _ssh.ExecuteAsync("mkdir -p $HOME/.sjm_tmp && chmod 700 $HOME/.sjm_tmp", ct);
         await _ssh.UploadFileAsync(localScriptPath, remoteScript, ct);
 
         var cdPart = string.IsNullOrEmpty(remoteWorkDir) ? string.Empty : $"cd {remoteWorkDir} && ";

@@ -65,8 +65,8 @@ public sealed class SshClientService : ISshClientService
 
     private void Disconnect()
     {
-        try { _sftpClient?.Disconnect(); } catch { /* ignore */ }
-        try { _sshClient?.Disconnect(); } catch { /* ignore */ }
+        try { _sftpClient?.Disconnect(); } catch (Exception) { /* best-effort cleanup */ }
+        try { _sshClient?.Disconnect(); } catch (Exception) { /* best-effort cleanup */ }
     }
 
     private void EnsureConnected()
