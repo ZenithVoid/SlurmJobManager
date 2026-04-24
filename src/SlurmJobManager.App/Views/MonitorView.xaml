@@ -104,7 +104,7 @@
                         <!-- Running pulse animation -->
                         <DataTrigger Binding="{Binding State}" Value="RUNNING">
                             <DataTrigger.EnterActions>
-                                <BeginStoryboard>
+                                <BeginStoryboard x:Name="RunningPulse">
                                     <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                                         <DoubleAnimation
                                             Storyboard.TargetProperty="Opacity"
@@ -114,7 +114,7 @@
                                 </BeginStoryboard>
                             </DataTrigger.EnterActions>
                             <DataTrigger.ExitActions>
-                                <StopStoryboard />
+                                <StopStoryboard BeginStoryboardName="RunningPulse" />
                             </DataTrigger.ExitActions>
                         </DataTrigger>
                     </Style.Triggers>

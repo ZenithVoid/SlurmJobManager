@@ -23,7 +23,7 @@ public sealed class JobStateToBrushConverter : IValueConverter
             "COMPLETED"  => "StateCompletedBrush",
             _            => "StateDefaultBrush",
         };
-        return Application.Current.FindResource(key) as Brush
+        return Application.Current?.TryFindResource(key) as Brush
                ?? Brushes.Gray;
     }
 
@@ -68,7 +68,7 @@ public sealed class ConsoleLineKindToBrushConverter : IValueConverter
             ConsoleLineKind.Meta    => "AccentYellowBrush",
             _                      => "TextPrimaryBrush",
         };
-        return Application.Current.FindResource(key) as Brush ?? Brushes.Gray;
+        return Application.Current?.TryFindResource(key) as Brush ?? Brushes.Gray;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

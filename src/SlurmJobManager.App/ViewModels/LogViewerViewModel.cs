@@ -177,7 +177,10 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
                 StatusMessage = $"Follow: up-to-date at {DateTime.Now:HH:mm:ss}";
             }
         }
-        catch { /* silently ignore follow errors */ }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Follow error: {ex.Message}";
+        }
         finally { ReleaseLoad(); }
     }
 

@@ -109,9 +109,18 @@ public sealed class MonitorViewModel : ViewModelBase
         if (!string.IsNullOrWhiteSpace(SearchText))
         {
             var q = SearchText.Trim();
-            filtered = filtered.Where(j =>
-                j.JobId.ToString().Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                j.JobName.Contains(q, StringComparison.OrdinalIgnoreCase));
+            // If the query parses as a number, compare against JobId directly; otherwise name-search only.
+            if (long.TryParse(q, out var jobIdQuery))
+            {
+                filtered = filtered.Where(j =>
+                    j.JobId == jobIdQuery ||
+                    j.JobName.Contains(q, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                filtered = filtered.Where(j =>
+                    j.JobName.Contains(q, StringComparison.OrdinalIgnoreCase));
+            }
         }
 
         Jobs.Clear();
