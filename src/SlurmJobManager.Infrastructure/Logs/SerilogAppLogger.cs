@@ -1,6 +1,7 @@
 using SlurmJobManager.Core.Interfaces;
 using Serilog;
 using Serilog.Core;
+using Serilog.Events;
 
 namespace SlurmJobManager.Infrastructure.Logs;
 
@@ -21,7 +22,11 @@ public sealed class SerilogAppLogger : IAppLogger, IDisposable
     /// Optional override for the directory that receives log files.
     /// Defaults to <c>%AppData%\SlurmJobManager\logs</c>.
     /// </param>
-    public SerilogAppLogger(string? logDirectory = null)
+    /// <param name="minimumLevel">
+    /// Minimum log event level to capture.
+    /// Defaults to <see cref="LogEventLevel.Information"/>.
+    /// </param>
+    public SerilogAppLogger(string? logDirectory = null, LogEventLevel minimumLevel = LogEventLevel.Information)
     {
         var dir = logDirectory
             ?? Path.Combine(
@@ -29,12 +34,22 @@ public sealed class SerilogAppLogger : IAppLogger, IDisposable
                 "SlurmJobManager",
                 "logs");
 
-        Directory.CreateDirectory(dir);
+        try
+        {
+            Directory.CreateDirectory(dir);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Failed to create log directory '{dir}'. " +
+                "Ensure the application has write permission to %AppData%\\SlurmJobManager\\logs " +
+                "or supply an accessible path via the logDirectory parameter.", ex);
+        }
 
         var logFilePath = Path.Combine(dir, "app-.log");
 
         _logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
+            .MinimumLevel.Is(minimumLevel)
             .WriteTo.File(
                 logFilePath,
                 rollingInterval: RollingInterval.Day,
