@@ -9,19 +9,24 @@ namespace SlurmJobManager.App.ViewModels;
 /// stderr/stdout visual distinction, execution time, exit code display,
 /// and a cancel button for the currently running command.
 /// </summary>
-public sealed class ConsoleViewModel : ViewModelBase
+public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 {
     private readonly ISshClientService _ssh;
     private readonly IAppLogger?       _logger;
+    private readonly ConnectionViewModel? _connection;
     private const int MaxHistory = 50;
 
     private string _commandInput = string.Empty;
     private bool _isBusy;
+    private bool _isConnected;
     private int _historyIndex = -1;
     private CancellationTokenSource? _executeCts;
 
     public string CommandInput { get => _commandInput; set => SetField(ref _commandInput, value); }
     public bool IsBusy         { get => _isBusy;        private set => SetField(ref _isBusy, value); }
+
+    /// <summary>True when the SSH connection is active — used to drive the connection-hint banner.</summary>
+    public bool IsConnected    { get => _isConnected;   private set => SetField(ref _isConnected, value); }
 
     public ObservableCollection<ConsoleLine> OutputLines { get; } = new();
     public List<string> CommandHistory { get; } = new();
@@ -33,10 +38,23 @@ public sealed class ConsoleViewModel : ViewModelBase
     public ICommand HistoryDownCommand { get; }
     public ICommand CopyOutputCommand  { get; }
 
-    public ConsoleViewModel(ISshClientService ssh, IAppLogger? logger = null)
+    public ConsoleViewModel(ISshClientService ssh, IAppLogger? logger = null, ConnectionViewModel? connection = null)
     {
-        _ssh    = ssh    ?? throw new ArgumentNullException(nameof(ssh));
-        _logger = logger;
+        _ssh        = ssh    ?? throw new ArgumentNullException(nameof(ssh));
+        _logger     = logger;
+        _connection = connection;
+
+        // Subscribe before reading the initial value to avoid a race between
+        // subscribing and querying, then seed from the connection view-model.
+        if (_connection != null)
+        {
+            _connection.PropertyChanged += OnConnectionPropertyChanged;
+            _isConnected = _connection.IsConnected;
+        }
+        else
+        {
+            _isConnected = _ssh.IsConnected;
+        }
 
         ExecuteCommand     = new AsyncRelayCommand(ExecuteAsync, () => !IsBusy);
         CancelCommand      = new RelayCommand(CancelExecution,  () => IsBusy);
@@ -53,7 +71,7 @@ public sealed class ConsoleViewModel : ViewModelBase
 
         if (!_ssh.IsConnected)
         {
-            OutputLines.Add(ConsoleLine.Error("Not connected. Please connect first."));
+            OutputLines.Add(ConsoleLine.Error("未建立 SSH 连接，请先在连接页面建立连接。"));
             return;
         }
 
@@ -132,5 +150,19 @@ public sealed class ConsoleViewModel : ViewModelBase
     {
         var text = string.Join(Environment.NewLine, OutputLines.Select(l => l.Text));
         System.Windows.Clipboard.SetText(text);
+    }
+
+    private void OnConnectionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ConnectionViewModel.IsConnected) && _connection != null)
+            IsConnected = _connection.IsConnected;
+    }
+
+    public void Dispose()
+    {
+        if (_connection != null)
+            _connection.PropertyChanged -= OnConnectionPropertyChanged;
+        _executeCts?.Cancel();
+        _executeCts?.Dispose();
     }
 }

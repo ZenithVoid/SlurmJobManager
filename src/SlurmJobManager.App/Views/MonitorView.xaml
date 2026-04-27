@@ -12,6 +12,8 @@
 
     <UserControl.Resources>
         <conv:JobStateToBrushConverter x:Key="StateToBrush" />
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
     </UserControl.Resources>
 
     <DockPanel Margin="12">
@@ -92,10 +94,22 @@
                        Margin="0,4,0,0" />
         </StackPanel>
 
+        <!-- Empty-state hint: shown when no watched user is configured -->
+        <Border DockPanel.Dock="Top"
+                Padding="0,32"
+                Visibility="{Binding IsEmptyState, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{DynamicResource Monitor.EmptyState}"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
+                       Foreground="{DynamicResource TextMutedBrush}"
+                       FontSize="14" />
+        </Border>
+
         <!-- Jobs DataGrid with smooth scrolling ScrollViewer -->
         <ScrollViewer VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Auto"
                       CanContentScroll="False"
+                      Visibility="{Binding IsEmptyState, Converter={StaticResource InvBoolToVis}}"
                       b:SmoothScrollBehavior.IsEnabled="True"
                       b:SmoothScrollBehavior.ScrollAmount="60">
             <DataGrid ItemsSource="{Binding Jobs}"

@@ -36,11 +36,14 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private string _statusFilter = "All";
     private string _searchText = string.Empty;
 
-    public string WatchedUser      { get => _watchedUser;         set => SetField(ref _watchedUser, value); }
+    public string WatchedUser      { get => _watchedUser;         set { if (SetField(ref _watchedUser, value)) OnPropertyChanged(nameof(IsEmptyState)); } }
     public int PollIntervalSeconds { get => _pollIntervalSeconds; set { SetField(ref _pollIntervalSeconds, value); UpdateTimerInterval(); } }
     public bool IsPolling          { get => _isPolling;           private set => SetField(ref _isPolling, value); }
     public string StatusMessage    { get => _statusMessage;       set => SetField(ref _statusMessage, value); }
     public JobRow? SelectedJob     { get => _selectedJob;         set => SetField(ref _selectedJob, value); }
+
+    /// <summary>True when no watched user has been configured yet — used to drive the empty-state overlay.</summary>
+    public bool IsEmptyState => string.IsNullOrWhiteSpace(WatchedUser);
 
     public string StatusFilter
     {
@@ -82,6 +85,9 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         StartPollingCommand = new RelayCommand(StartPolling, () => !IsPolling);
         StopPollingCommand  = new RelayCommand(StopPolling,  () => IsPolling);
         CancelJobCommand    = new AsyncRelayCommand(CancelSelectedJobAsync, () => SelectedJob != null);
+
+        // Show a friendly empty-state hint until the user configures a watched user
+        StatusMessage = "请先输入监控用户名以开始监控";
     }
 
     // ── Refresh ──────────────────────────────────────────────────────────────
@@ -90,7 +96,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     {
         if (string.IsNullOrWhiteSpace(WatchedUser))
         {
-            StatusMessage = "Enter a username to watch.";
+            StatusMessage = "请先输入监控用户名以开始监控";
             return;
         }
 
