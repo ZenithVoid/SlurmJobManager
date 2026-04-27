@@ -147,6 +147,5 @@
     <sys:String x:Key="Task.Submit">Submit</sys:String>
 
     <!-- ── Console view ─────────────────────────────────────────────────── -->
-    <sys:String x:Key="Console.Title">Console</sys:String>
 
 </ResourceDictionary>

@@ -147,6 +147,5 @@
     <sys:String x:Key="Task.Submit">提交</sys:String>
 
     <!-- ── 终端视图 ──────────────────────────────────────────────────────── -->
-    <sys:String x:Key="Console.Title">命令终端</sys:String>
 
 </ResourceDictionary>
