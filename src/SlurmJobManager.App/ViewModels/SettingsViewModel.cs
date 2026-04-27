@@ -44,4 +44,13 @@ public sealed class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsDarkTheme));
         OnPropertyChanged(nameof(ThemeLabel));
     }
+
+    // ── Locale ────────────────────────────────────────────────────────────
+
+    public string CurrentLocale => _main.CurrentLocale;
+
+    public ICommand SwitchLocaleCommand => _main.SwitchLocaleCommand;
+
+    internal void NotifyLocaleChanged()
+        => OnPropertyChanged(nameof(CurrentLocale));
 }

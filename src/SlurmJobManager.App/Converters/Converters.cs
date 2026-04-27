@@ -75,7 +75,25 @@ public sealed class ConsoleLineKindToBrushConverter : IValueConverter
         => DependencyProperty.UnsetValue;
 }
 
-/// <summary>Identifies the semantic kind of a console output line.</summary>
+/// <summary>Looks up a resource dictionary string by key.</summary>
+[ValueConversion(typeof(string), typeof(string))]
+public sealed class LocalizationKeyConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is string key)
+        {
+            var res = Application.Current?.TryFindResource(key);
+            if (res is string s) return s;
+        }
+        return value?.ToString() ?? string.Empty;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => DependencyProperty.UnsetValue;
+}
+
+
 public enum ConsoleLineKind
 {
     Command,

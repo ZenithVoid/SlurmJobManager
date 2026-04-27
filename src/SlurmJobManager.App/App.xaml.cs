@@ -48,6 +48,9 @@ public partial class App : Application
 
         _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm);
 
+        // Default locale: zh-CN (loaded regardless of system language)
+        _mainVm.ApplyLocale("zh-CN");
+
         var mainWindow = new MainWindow { DataContext = _mainVm };
         mainWindow.Closing += OnMainWindowClosing;
         mainWindow.Show();
