@@ -46,9 +46,12 @@ public static class SmoothScrollBehavior
     private static readonly Duration AnimationDuration =
         new(TimeSpan.FromMilliseconds(180));
 
-    // ── Tracking per-ScrollViewer target offset ───────────────────────────
+    // ── Tracking per-ScrollViewer target offset (weak refs prevent memory leaks) ─
 
-    private static readonly Dictionary<ScrollViewer, double> TargetOffsets = new();
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ScrollViewer, OffsetHolder>
+        TargetOffsets = new();
+
+    private sealed class OffsetHolder { public double Value; }
 
     // ── Attachment ────────────────────────────────────────────────────────
 
@@ -89,11 +92,12 @@ public static class SmoothScrollBehavior
         var step   = GetScrollAmount(sv);
         var delta  = e.Delta < 0 ? step : -step;
 
-        if (!TargetOffsets.TryGetValue(sv, out var target))
-            target = sv.VerticalOffset;
+        var holder = TargetOffsets.GetOrCreateValue(sv);
+        if (holder.Value == 0 && sv.VerticalOffset != 0)
+            holder.Value = sv.VerticalOffset;
 
-        target = Math.Max(0, Math.Min(sv.ScrollableHeight, target + delta));
-        TargetOffsets[sv] = target;
+        holder.Value = Math.Max(0, Math.Min(sv.ScrollableHeight, holder.Value + delta));
+        var target = holder.Value;
 
         var anim = new DoubleAnimation(
             sv.VerticalOffset,
@@ -106,11 +110,11 @@ public static class SmoothScrollBehavior
 
         anim.Completed += (_, _) =>
         {
-            // After animation, keep target in sync to avoid jump on next wheel tick
-            if (TargetOffsets.TryGetValue(sv, out var finalTarget) &&
-                Math.Abs(sv.VerticalOffset - finalTarget) < 1.0)
+            // Reset holder so the next wheel event starts from the current position
+            if (TargetOffsets.TryGetValue(sv, out var h) &&
+                Math.Abs(sv.VerticalOffset - h.Value) < 1.0)
             {
-                TargetOffsets.Remove(sv);
+                h.Value = 0;
             }
         };
 

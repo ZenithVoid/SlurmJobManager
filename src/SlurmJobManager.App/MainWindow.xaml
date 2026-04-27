@@ -125,7 +125,7 @@
                     <!-- Minimize -->
                     <Button x:Name="BtnMinimize"
                             Style="{StaticResource TitleBarButtonStyle}"
-                            ToolTip="最小化"
+                            ToolTip="{DynamicResource TitleBar.Minimize}"
                             Click="BtnMinimize_Click">
                         <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
                     </Button>
@@ -133,7 +133,7 @@
                     <!-- Maximize / Restore -->
                     <Button x:Name="BtnMaximize"
                             Style="{StaticResource TitleBarButtonStyle}"
-                            ToolTip="最大化"
+                            ToolTip="{DynamicResource TitleBar.Maximize}"
                             Click="BtnMaximize_Click">
                         <TextBlock x:Name="MaximizeIcon"
                                    Text="&#xE922;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
@@ -142,7 +142,7 @@
                     <!-- Close -->
                     <Button x:Name="BtnClose"
                             Style="{StaticResource TitleBarCloseButtonStyle}"
-                            ToolTip="关闭"
+                            ToolTip="{DynamicResource TitleBar.Close}"
                             Click="BtnClose_Click">
                         <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
                     </Button>

@@ -64,7 +64,11 @@ public partial class MainWindow : Window
 
         if (BtnMaximize != null)
         {
-            BtnMaximize.ToolTip = WindowState == WindowState.Maximized ? "还原" : "最大化";
+            var tooltipKey = WindowState == WindowState.Maximized
+                ? "TitleBar.Restore"
+                : "TitleBar.Maximize";
+            BtnMaximize.ToolTip = Application.Current?.TryFindResource(tooltipKey) as string
+                                  ?? (WindowState == WindowState.Maximized ? "Restore" : "Maximize");
         }
     }
 }
