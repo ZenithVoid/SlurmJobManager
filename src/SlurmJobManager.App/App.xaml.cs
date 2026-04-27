@@ -44,7 +44,7 @@ public partial class App : Application
         var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage);
         var monitorVm    = new MonitorViewModel(slurm, settings, _logger, connectionVm);
         var logViewerVm  = new LogViewerViewModel(logChunk, _logger);
-        var consoleVm    = new ConsoleViewModel(ssh, _logger);
+        var consoleVm    = new ConsoleViewModel(ssh, _logger, connectionVm);
 
         _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm);
 
@@ -72,6 +72,11 @@ public partial class App : Application
         if (_mainVm?.LogViewer is LogViewerViewModel logViewer)
         {
             logViewer.Dispose();
+        }
+
+        if (_mainVm?.Console is ConsoleViewModel console)
+        {
+            console.Dispose();
         }
 
         _logger?.Info("SlurmJobManager shut down.");

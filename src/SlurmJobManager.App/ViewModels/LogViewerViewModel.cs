@@ -44,7 +44,7 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
 
     public string RemoteFilePath { get => _remoteFilePath; set => SetField(ref _remoteFilePath, value); }
     public int ChunkSize         { get => _chunkSize;       set => SetField(ref _chunkSize, value); }
-    public bool IsBusy           { get => _isBusy;          private set => SetField(ref _isBusy, value); }
+    public bool IsBusy           { get => _isBusy;          private set { if (SetField(ref _isBusy, value)) OnPropertyChanged(nameof(IsEmpty)); } }
     public bool IsAtStart        { get => _isAtStart;       private set => SetField(ref _isAtStart, value); }
     public bool IsAtEnd          { get => _isAtEnd;         private set => SetField(ref _isAtEnd, value); }
     public long StartLine        { get => _startLine;       private set => SetField(ref _startLine, value); }
@@ -74,6 +74,9 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
         _totalLines > 0
             ? $"Showing {_startLine}–{_endLine} / ~{_totalLines:N0} lines"
             : "No data loaded";
+
+    /// <summary>True when no log lines are loaded and the viewer is idle — drives the empty-state overlay.</summary>
+    public bool IsEmpty => Lines.Count == 0 && !IsBusy;
 
     public string CacheText =>
         _chunkCache.Count > 0
@@ -254,6 +257,7 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
             StatusMessage = "Cache cleared.";
             OnPropertyChanged(nameof(RangeText));
             OnPropertyChanged(nameof(CacheText));
+            OnPropertyChanged(nameof(IsEmpty));
         });
     }
 
@@ -288,6 +292,7 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
 
             OnPropertyChanged(nameof(RangeText));
             OnPropertyChanged(nameof(CacheText));
+            OnPropertyChanged(nameof(IsEmpty));
         });
     }
 

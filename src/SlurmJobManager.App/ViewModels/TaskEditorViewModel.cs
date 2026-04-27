@@ -29,14 +29,29 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private string _statusMessage = string.Empty;
     private long? _lastJobId;
 
-    public string RootDirectory     { get => _rootDirectory;     set => SetField(ref _rootDirectory, value); }
-    public string TaskId            { get => _taskId;            set => SetField(ref _taskId, value); }
+    public string RootDirectory
+    {
+        get => _rootDirectory;
+        set { if (SetField(ref _rootDirectory, value)) CommandManager.InvalidateRequerySuggested(); }
+    }
+
+    public string TaskId
+    {
+        get => _taskId;
+        set { if (SetField(ref _taskId, value)) CommandManager.InvalidateRequerySuggested(); }
+    }
+
     public string TemplateDirectory { get => _templateDirectory; set { if (SetField(ref _templateDirectory, value)) RefreshTemplateList(); } }
     public string? SelectedTemplate { get => _selectedTemplate;  set { if (SetField(ref _selectedTemplate, value)) LoadSelectedTemplate(); } }
     public string TemplateContent   { get => _templateContent;   set => SetField(ref _templateContent, value); }
     public string LastSavedTime     { get => _lastSavedTime;     set => SetField(ref _lastSavedTime, value); }
     public string RemoteWorkDir     { get => _remoteWorkDir;     set => SetField(ref _remoteWorkDir, value); }
-    public string AppPath           { get => _appPath;           set => SetField(ref _appPath, value); }
+
+    public string AppPath
+    {
+        get => _appPath;
+        set { if (SetField(ref _appPath, value)) CommandManager.InvalidateRequerySuggested(); }
+    }
     public string SbatchTemplate    { get => _sbatchTemplate;    set => SetField(ref _sbatchTemplate, value); }
     public bool IsBusy              { get => _isBusy;            set => SetField(ref _isBusy, value); }
     public string StatusMessage     { get => _statusMessage;     set => SetField(ref _statusMessage, value); }
@@ -68,7 +83,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
         SaveTaskCommand                = new AsyncRelayCommand(SaveTaskAsync,     () => !IsBusy);
         LoadTaskCommand                = new AsyncRelayCommand(LoadTaskAsync,     () => !IsBusy);
         SaveParamFileCommand           = new AsyncRelayCommand(SaveParamFileAsync, () => !IsBusy);
-        SubmitJobCommand               = new AsyncRelayCommand(SubmitJobAsync,    () => !IsBusy && _ssh.IsConnected);
+        SubmitJobCommand               = new AsyncRelayCommand(SubmitJobAsync,    CanSubmit);
         AddParamCommand                = new RelayCommand(() => Parameters.Add(new ParameterEntry()));
         RemoveParamCommand             = new RelayCommand<ParameterEntry>(p => { if (p != null) Parameters.Remove(p); });
     }
@@ -159,7 +174,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         if (!ValidateRootAndId() || string.IsNullOrWhiteSpace(SelectedTemplate))
         {
-            StatusMessage = "Root dir, Task ID and a selected template are required.";
+            StatusMessage = "请先完成必填项后再保存参数文件（根目录、TaskId 和模板不可为空）。";
             return;
         }
 
@@ -181,7 +196,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
     private async Task SubmitJobAsync(CancellationToken ct)
     {
-        if (!ValidateRootAndId()) return;
+        if (!ValidateSubmitRequirements()) return;
         IsBusy = true;
         StatusMessage = "Preparing sbatch script…";
         try
@@ -238,12 +253,37 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
+    private bool CanSubmit() =>
+        !IsBusy
+        && _ssh.IsConnected
+        && !string.IsNullOrWhiteSpace(RootDirectory)
+        && !string.IsNullOrWhiteSpace(TaskId)
+        && !string.IsNullOrWhiteSpace(AppPath);
+
     private bool ValidateRootAndId()
     {
-        if (!string.IsNullOrWhiteSpace(RootDirectory) && !string.IsNullOrWhiteSpace(TaskId))
-            return true;
-        StatusMessage = "Root directory and Task ID are required.";
-        return false;
+        if (string.IsNullOrWhiteSpace(RootDirectory))
+        {
+            StatusMessage = "请先配置任务根目录";
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(TaskId))
+        {
+            StatusMessage = "请先填写 TaskId";
+            return false;
+        }
+        return true;
+    }
+
+    private bool ValidateSubmitRequirements()
+    {
+        if (!ValidateRootAndId()) return false;
+        if (string.IsNullOrWhiteSpace(AppPath))
+        {
+            StatusMessage = "请先选择应用程序路径";
+            return false;
+        }
+        return true;
     }
 
     private void EnsureTaskDirectories()

@@ -12,9 +12,22 @@
 
     <UserControl.Resources>
         <conv:ConsoleLineKindToBrushConverter x:Key="KindToBrush" />
+        <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
     </UserControl.Resources>
 
     <DockPanel Margin="8">
+
+        <!-- Connection hint: shown when SSH is not connected -->
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource BgPanelBrush}"
+                BorderBrush="{DynamicResource AccentYellowBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="10,6"
+                Visibility="{Binding IsConnected, Converter={StaticResource InvBoolToVis}}">
+            <TextBlock Text="{DynamicResource Console.NotConnected}"
+                       Foreground="{DynamicResource AccentYellowBrush}"
+                       FontSize="12" />
+        </Border>
 
         <!-- Command input row -->
         <Grid DockPanel.Dock="Bottom" Margin="0,6,0,0">
