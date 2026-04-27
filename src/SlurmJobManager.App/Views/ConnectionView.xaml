@@ -10,7 +10,7 @@
 
     <StackPanel Margin="12">
 
-        <TextBlock Text="SSH Connection"
+        <TextBlock Text="{DynamicResource Conn.SshConnection}"
                    Style="{StaticResource SectionHeaderStyle}" />
 
         <!-- Host + Port -->
@@ -20,28 +20,28 @@
                 <ColumnDefinition Width="70" />
             </Grid.ColumnDefinitions>
             <DockPanel Grid.Column="0">
-                <TextBlock DockPanel.Dock="Top" Text="Host"
+                <TextBlock DockPanel.Dock="Top" Text="{DynamicResource Conn.Host}"
                            Style="{StaticResource FieldLabelStyle}" />
                 <TextBox Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" />
             </DockPanel>
             <DockPanel Grid.Column="1" Margin="6,0,0,0">
-                <TextBlock DockPanel.Dock="Top" Text="Port"
+                <TextBlock DockPanel.Dock="Top" Text="{DynamicResource Conn.Port}"
                            Style="{StaticResource FieldLabelStyle}" />
                 <TextBox Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
             </DockPanel>
         </Grid>
 
         <!-- Username -->
-        <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" />
+        <TextBlock Text="{DynamicResource Conn.Username}" Style="{StaticResource FieldLabelStyle}" />
         <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
                  Margin="0,0,0,6" />
 
         <!-- Password -->
-        <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" />
+        <TextBlock Text="{DynamicResource Conn.Password}" Style="{StaticResource FieldLabelStyle}" />
         <PasswordBox x:Name="PwdBox" Margin="0,0,0,6" />
 
         <!-- Private key -->
-        <TextBlock Text="Private Key (optional)" Style="{StaticResource FieldLabelStyle}" />
+        <TextBlock Text="{DynamicResource Conn.PrivateKey}" Style="{StaticResource FieldLabelStyle}" />
         <Grid Margin="0,0,0,6">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -56,7 +56,7 @@
         </Grid>
 
         <!-- Passphrase -->
-        <TextBlock Text="Key Passphrase (optional)" Style="{StaticResource FieldLabelStyle}" />
+        <TextBlock Text="{DynamicResource Conn.Passphrase}" Style="{StaticResource FieldLabelStyle}" />
         <PasswordBox x:Name="PassphraseBox" Margin="0,0,0,8" />
 
         <!-- Action buttons -->
@@ -66,15 +66,15 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="Connect"
+            <Button Grid.Column="0" Content="{DynamicResource Btn.Connect}"
                     Command="{Binding ConnectCommand}"
                     Style="{StaticResource SuccessButtonStyle}"
                     Padding="6,4" Margin="0,0,4,0" />
-            <Button Grid.Column="1" Content="Disconnect"
+            <Button Grid.Column="1" Content="{DynamicResource Btn.Disconnect}"
                     Command="{Binding DisconnectCommand}"
                     Style="{StaticResource DangerButtonStyle}"
                     Padding="6,4" Margin="0,0,4,0" />
-            <Button Grid.Column="2" Content="Test"
+            <Button Grid.Column="2" Content="{DynamicResource Btn.Test}"
                     Command="{Binding TestConnectionCommand}"
                     Style="{StaticResource AccentButtonStyle}"
                     Padding="6,4" />
@@ -86,16 +86,16 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="💾 Save Profile"
+            <Button Grid.Column="0" Content="{DynamicResource Btn.SaveProfile}"
                     Command="{Binding SaveProfileCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Padding="6,4" Margin="0,0,4,0"
-                    ToolTip="Save connection settings (password encrypted with DPAPI)" />
-            <Button Grid.Column="1" Content="📂 Load Profile"
+                    ToolTip="{DynamicResource Tooltip.SaveProfile}" />
+            <Button Grid.Column="1" Content="{DynamicResource Btn.LoadProfile}"
                     Command="{Binding LoadProfileCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Padding="6,4"
-                    ToolTip="Load previously saved connection settings" />
+                    ToolTip="{DynamicResource Tooltip.LoadProfile}" />
         </Grid>
 
         <!-- Status message -->

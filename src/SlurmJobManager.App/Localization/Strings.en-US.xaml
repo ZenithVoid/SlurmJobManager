@@ -42,6 +42,19 @@
     <sys:String x:Key="Btn.GoToTasks">⚡ Go to Tasks</sys:String>
     <sys:String x:Key="Btn.OpenMonitor">→ Open Monitor</sys:String>
     <sys:String x:Key="Btn.SubmitJob">Submit Job</sys:String>
+    <sys:String x:Key="Btn.Test">Test</sys:String>
+    <sys:String x:Key="Btn.SaveProfile">💾 Save Profile</sys:String>
+    <sys:String x:Key="Btn.LoadProfile">📂 Load Profile</sys:String>
+    <sys:String x:Key="Btn.New">New</sys:String>
+    <sys:String x:Key="Btn.SaveTask">Save Task</sys:String>
+    <sys:String x:Key="Btn.LoadTask">Load Task</sys:String>
+    <sys:String x:Key="Btn.SaveParamFile">Save Param File</sys:String>
+    <sys:String x:Key="Btn.AddRow">+ Add Row</sys:String>
+    <sys:String x:Key="Btn.SubmitSbatch">Submit sbatch Job</sys:String>
+    <sys:String x:Key="Btn.Run">Run</sys:String>
+    <sys:String x:Key="Btn.CancelCmd">✕ Cancel</sys:String>
+    <sys:String x:Key="Btn.Copy">Copy</sys:String>
+    <sys:String x:Key="Btn.Clear">Clear</sys:String>
 
     <!-- ── Status text ──────────────────────────────────────────────────── -->
     <sys:String x:Key="Status.Ready">Ready</sys:String>
@@ -107,5 +120,33 @@
     <sys:String x:Key="Err.AuthFailed">Authentication failed. Please check username and password.</sys:String>
     <sys:String x:Key="Err.Timeout">Operation timed out. Please try again.</sys:String>
     <sys:String x:Key="Err.NoJobSelected">No job selected.</sys:String>
+    <!-- ── Connection view ──────────────────────────────────────────────── -->
+    <sys:String x:Key="Conn.SshConnection">SSH Connection</sys:String>
+    <sys:String x:Key="Conn.Host">Host</sys:String>
+    <sys:String x:Key="Conn.Port">Port</sys:String>
+    <sys:String x:Key="Conn.Username">Username</sys:String>
+    <sys:String x:Key="Conn.Password">Password</sys:String>
+    <sys:String x:Key="Conn.PrivateKey">Private Key (optional)</sys:String>
+    <sys:String x:Key="Conn.Passphrase">Key Passphrase (optional)</sys:String>
+    <sys:String x:Key="Tooltip.SaveProfile">Save connection settings (password encrypted with DPAPI)</sys:String>
+    <sys:String x:Key="Tooltip.LoadProfile">Load previously saved connection settings</sys:String>
+
+    <!-- ── Task editor ──────────────────────────────────────────────────── -->
+    <sys:String x:Key="Task.Setup">Task Setup</sys:String>
+    <sys:String x:Key="Task.RootDirectory">Root Directory</sys:String>
+    <sys:String x:Key="Task.TaskId">Task ID</sys:String>
+    <sys:String x:Key="Task.RemoteWorkDir">Remote Work Directory</sys:String>
+    <sys:String x:Key="Task.AppPath">App Path (on remote)</sys:String>
+    <sys:String x:Key="Task.ParameterTemplates">Parameter Templates</sys:String>
+    <sys:String x:Key="Task.TemplateDirectory">Template Directory</sys:String>
+    <sys:String x:Key="Task.SelectTemplate">Select Template</sys:String>
+    <sys:String x:Key="Task.TemplateContent">Template Content</sys:String>
+    <sys:String x:Key="Task.ExtraParameters">Extra Parameters</sys:String>
+    <sys:String x:Key="Task.ParamKey">Key</sys:String>
+    <sys:String x:Key="Task.ParamValue">Value</sys:String>
+    <sys:String x:Key="Task.Submit">Submit</sys:String>
+
+    <!-- ── Console view ─────────────────────────────────────────────────── -->
+    <sys:String x:Key="Console.Title">Console</sys:String>
 
 </ResourceDictionary>
