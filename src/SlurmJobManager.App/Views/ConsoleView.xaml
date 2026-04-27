@@ -2,6 +2,7 @@
     x:Class="SlurmJobManager.App.Views.ConsoleView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:b="clr-namespace:SlurmJobManager.App.Behaviors"
     xmlns:conv="clr-namespace:SlurmJobManager.App.Converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -30,46 +31,54 @@
                      Foreground="{DynamicResource AccentGreenBrush}"
                      FontFamily="Consolas"
                      KeyDown="CmdInput_KeyDown" />
-            <Button Grid.Column="1" Content="Run"
+            <Button Grid.Column="1" Content="{DynamicResource Btn.Run}"
                     Command="{Binding ExecuteCommand}"
                     Style="{StaticResource SuccessButtonStyle}"
                     Margin="4,0,0,0" Padding="10,4" />
-            <Button Grid.Column="2" Content="✕ Cancel"
+            <Button Grid.Column="2" Content="{DynamicResource Btn.CancelCmd}"
                     Command="{Binding CancelCommand}"
                     Style="{StaticResource DangerButtonStyle}"
                     Margin="4,0,0,0" Padding="8,4" />
-            <Button Grid.Column="3" Content="Copy"
+            <Button Grid.Column="3" Content="{DynamicResource Btn.Copy}"
                     Command="{Binding CopyOutputCommand}"
                     Style="{StaticResource AccentButtonStyle}"
                     Margin="4,0,0,0" Padding="8,4" />
-            <Button Grid.Column="4" Content="Clear"
+            <Button Grid.Column="4" Content="{DynamicResource Btn.Clear}"
                     Command="{Binding ClearCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Margin="4,0,0,0" Padding="8,4" />
         </Grid>
 
-        <!-- Output area with per-line colour -->
-        <ListBox x:Name="OutputList"
-                 ItemsSource="{Binding OutputLines}"
-                 Style="{StaticResource LogListBoxStyle}">
-            <ListBox.ItemContainerStyle>
-                <Style TargetType="ListBoxItem">
-                    <Setter Property="Padding"    Value="2,1" />
-                    <Setter Property="Background" Value="Transparent" />
-                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-                    <Setter Property="Foreground"
-                            Value="{Binding Kind, Converter={StaticResource KindToBrush}}" />
-                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                </Style>
-            </ListBox.ItemContainerStyle>
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding Text}"
-                               Foreground="{Binding Kind, Converter={StaticResource KindToBrush}}"
-                               TextWrapping="NoWrap" />
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+        <!-- Output area with smooth scrolling and per-line colour -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Auto"
+                      CanContentScroll="False"
+                      b:SmoothScrollBehavior.IsEnabled="True"
+                      b:SmoothScrollBehavior.ScrollAmount="60">
+            <ListBox x:Name="OutputList"
+                     ItemsSource="{Binding OutputLines}"
+                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     Style="{StaticResource LogListBoxStyle}">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding"    Value="2,1" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Setter Property="Foreground"
+                                Value="{Binding Kind, Converter={StaticResource KindToBrush}}" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Text}"
+                                   Foreground="{Binding Kind, Converter={StaticResource KindToBrush}}"
+                                   TextWrapping="NoWrap" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </ScrollViewer>
 
     </DockPanel>
 </UserControl>

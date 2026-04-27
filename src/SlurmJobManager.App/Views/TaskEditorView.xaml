@@ -10,11 +10,11 @@
 
     <StackPanel Margin="12">
 
-        <TextBlock Text="Task Setup"
+        <TextBlock Text="{DynamicResource Task.Setup}"
                    Style="{StaticResource SectionHeaderStyle}" />
 
         <!-- Root directory -->
-        <TextBlock Text="Root Directory" Style="{StaticResource FieldLabelStyle}" />
+        <TextBlock Text="{DynamicResource Task.RootDirectory}" Style="{StaticResource FieldLabelStyle}" />
         <Grid Margin="0,0,0,6">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <TextBox Grid.Column="0"
@@ -25,43 +25,43 @@
         </Grid>
 
         <!-- Task ID -->
-        <TextBlock Text="Task ID" Style="{StaticResource FieldLabelStyle}" />
+        <TextBlock Text="{DynamicResource Task.TaskId}" Style="{StaticResource FieldLabelStyle}" />
         <Grid Margin="0,0,0,6">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <TextBox Grid.Column="0"
                      Text="{Binding TaskId, UpdateSourceTrigger=PropertyChanged}" />
-            <Button Grid.Column="1" Content="New" Command="{Binding NewTaskIdCommand}"
+            <Button Grid.Column="1" Content="{DynamicResource Btn.New}" Command="{Binding NewTaskIdCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Margin="4,0,0,0" Padding="8,4" />
         </Grid>
 
         <!-- Remote work dir -->
-        <TextBlock Text="Remote Work Directory" Style="{StaticResource FieldLabelStyle}" />
+        <TextBlock Text="{DynamicResource Task.RemoteWorkDir}" Style="{StaticResource FieldLabelStyle}" />
         <TextBox Text="{Binding RemoteWorkDir, UpdateSourceTrigger=PropertyChanged}"
                  Margin="0,0,0,6" />
 
         <!-- App path -->
-        <TextBlock Text="App Path (on remote)" Style="{StaticResource FieldLabelStyle}" />
+        <TextBlock Text="{DynamicResource Task.AppPath}" Style="{StaticResource FieldLabelStyle}" />
         <TextBox Text="{Binding AppPath, UpdateSourceTrigger=PropertyChanged}"
                  Margin="0,0,0,6" />
 
         <!-- Save / Load task -->
         <Grid Margin="0,0,0,8">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="Save Task" Command="{Binding SaveTaskCommand}"
+            <Button Grid.Column="0" Content="{DynamicResource Btn.SaveTask}" Command="{Binding SaveTaskCommand}"
                     Style="{StaticResource AccentButtonStyle}"
                     Margin="0,0,4,0" Padding="8,4" />
-            <Button Grid.Column="1" Content="Load Task" Command="{Binding LoadTaskCommand}"
+            <Button Grid.Column="1" Content="{DynamicResource Btn.LoadTask}" Command="{Binding LoadTaskCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Padding="8,4" />
         </Grid>
 
         <Separator />
-        <TextBlock Text="Parameter Templates"
+        <TextBlock Text="{DynamicResource Task.ParameterTemplates}"
                    Style="{StaticResource SectionHeaderStyle}" />
 
         <!-- Template directory -->
-        <TextBlock Text="Template Directory" Style="{StaticResource FieldLabelStyle}" />
+        <TextBlock Text="{DynamicResource Task.TemplateDirectory}" Style="{StaticResource FieldLabelStyle}" />
         <Grid Margin="0,0,0,6">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <TextBox Grid.Column="0"
@@ -72,13 +72,13 @@
         </Grid>
 
         <!-- Template file selector -->
-        <TextBlock Text="Select Template" Style="{StaticResource FieldLabelStyle}" />
+        <TextBlock Text="{DynamicResource Task.SelectTemplate}" Style="{StaticResource FieldLabelStyle}" />
         <ComboBox ItemsSource="{Binding TemplateFiles}"
                   SelectedItem="{Binding SelectedTemplate}"
                   Margin="0,0,0,6" />
 
         <!-- Template content editor -->
-        <TextBlock Text="Template Content" Style="{StaticResource FieldLabelStyle}" />
+        <TextBlock Text="{DynamicResource Task.TemplateContent}" Style="{StaticResource FieldLabelStyle}" />
         <TextBox Text="{Binding TemplateContent, UpdateSourceTrigger=PropertyChanged}"
                  Background="{DynamicResource BgCrustBrush}"
                  Padding="6,4" Margin="0,0,0,2"
@@ -88,33 +88,33 @@
         <TextBlock Text="{Binding LastSavedTime}"
                    Style="{StaticResource MutedTextStyle}" Margin="0,0,0,6" />
 
-        <Button Content="Save Param File" Command="{Binding SaveParamFileCommand}"
+        <Button Content="{DynamicResource Btn.SaveParamFile}" Command="{Binding SaveParamFileCommand}"
                 Style="{StaticResource PurpleButtonStyle}"
                 Padding="8,4" Margin="0,0,0,8"
                 HorizontalAlignment="Stretch" />
 
         <Separator />
-        <TextBlock Text="Extra Parameters"
+        <TextBlock Text="{DynamicResource Task.ExtraParameters}"
                    Style="{StaticResource SectionHeaderStyle}" />
 
         <DataGrid ItemsSource="{Binding Parameters}"
                   AutoGenerateColumns="False" CanUserAddRows="False"
                   Height="120" Margin="0,0,0,4">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Key"   Binding="{Binding Key}"   Width="*" />
-                <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="*" />
+                <DataGridTextColumn Header="{DynamicResource Task.ParamKey}"   Binding="{Binding Key}"   Width="*" />
+                <DataGridTextColumn Header="{DynamicResource Task.ParamValue}" Binding="{Binding Value}" Width="*" />
             </DataGrid.Columns>
         </DataGrid>
-        <Button Content="+ Add Row" Command="{Binding AddParamCommand}"
+        <Button Content="{DynamicResource Btn.AddRow}" Command="{Binding AddParamCommand}"
                 Style="{StaticResource NeutralButtonStyle}"
                 Padding="8,4" Margin="0,0,0,8"
                 HorizontalAlignment="Left" />
 
         <Separator />
-        <TextBlock Text="Submit"
+        <TextBlock Text="{DynamicResource Task.Submit}"
                    Style="{StaticResource SectionHeaderStyle}" />
 
-        <Button Content="Submit sbatch Job" Command="{Binding SubmitJobCommand}"
+        <Button Content="{DynamicResource Btn.SubmitSbatch}" Command="{Binding SubmitJobCommand}"
                 Style="{StaticResource SuccessButtonStyle}"
                 Padding="10,8"
                 HorizontalAlignment="Stretch" Margin="0,0,0,6" />

@@ -42,6 +42,19 @@
     <sys:String x:Key="Btn.GoToTasks">⚡ 前往任务</sys:String>
     <sys:String x:Key="Btn.OpenMonitor">→ 打开监控</sys:String>
     <sys:String x:Key="Btn.SubmitJob">提交作业</sys:String>
+    <sys:String x:Key="Btn.Test">测试</sys:String>
+    <sys:String x:Key="Btn.SaveProfile">💾 保存配置</sys:String>
+    <sys:String x:Key="Btn.LoadProfile">📂 加载配置</sys:String>
+    <sys:String x:Key="Btn.New">新建</sys:String>
+    <sys:String x:Key="Btn.SaveTask">保存任务</sys:String>
+    <sys:String x:Key="Btn.LoadTask">加载任务</sys:String>
+    <sys:String x:Key="Btn.SaveParamFile">保存参数文件</sys:String>
+    <sys:String x:Key="Btn.AddRow">+ 添加行</sys:String>
+    <sys:String x:Key="Btn.SubmitSbatch">提交 sbatch 作业</sys:String>
+    <sys:String x:Key="Btn.Run">运行</sys:String>
+    <sys:String x:Key="Btn.CancelCmd">✕ 取消</sys:String>
+    <sys:String x:Key="Btn.Copy">复制</sys:String>
+    <sys:String x:Key="Btn.Clear">清除</sys:String>
 
     <!-- ── 状态文本 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Status.Ready">就绪</sys:String>
@@ -107,5 +120,32 @@
     <sys:String x:Key="Err.AuthFailed">身份验证失败，请检查用户名和密码。</sys:String>
     <sys:String x:Key="Err.Timeout">操作超时，请重试。</sys:String>
     <sys:String x:Key="Err.NoJobSelected">未选择作业。</sys:String>
+    <!-- ── 连接视图 ─────────────────────────────────────────────────────── -->
+    <sys:String x:Key="Conn.SshConnection">SSH 连接</sys:String>
+    <sys:String x:Key="Conn.Host">主机</sys:String>
+    <sys:String x:Key="Conn.Port">端口</sys:String>
+    <sys:String x:Key="Conn.Username">用户名</sys:String>
+    <sys:String x:Key="Conn.Password">密码</sys:String>
+    <sys:String x:Key="Conn.PrivateKey">私钥（可选）</sys:String>
+    <sys:String x:Key="Conn.Passphrase">密钥口令（可选）</sys:String>
+    <sys:String x:Key="Tooltip.SaveProfile">保存连接配置（密码经 DPAPI 加密）</sys:String>
+    <sys:String x:Key="Tooltip.LoadProfile">加载已保存的连接配置</sys:String>
+
+    <!-- ── 任务编辑器 ────────────────────────────────────────────────────── -->
+    <sys:String x:Key="Task.Setup">任务配置</sys:String>
+    <sys:String x:Key="Task.RootDirectory">根目录</sys:String>
+    <sys:String x:Key="Task.TaskId">任务 ID</sys:String>
+    <sys:String x:Key="Task.RemoteWorkDir">远程工作目录</sys:String>
+    <sys:String x:Key="Task.AppPath">应用路径（远程）</sys:String>
+    <sys:String x:Key="Task.ParameterTemplates">参数模板</sys:String>
+    <sys:String x:Key="Task.TemplateDirectory">模板目录</sys:String>
+    <sys:String x:Key="Task.SelectTemplate">选择模板</sys:String>
+    <sys:String x:Key="Task.TemplateContent">模板内容</sys:String>
+    <sys:String x:Key="Task.ExtraParameters">额外参数</sys:String>
+    <sys:String x:Key="Task.ParamKey">键</sys:String>
+    <sys:String x:Key="Task.ParamValue">值</sys:String>
+    <sys:String x:Key="Task.Submit">提交</sys:String>
+
+    <!-- ── 终端视图 ──────────────────────────────────────────────────────── -->
 
 </ResourceDictionary>
