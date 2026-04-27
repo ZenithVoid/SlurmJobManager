@@ -10,6 +10,7 @@
         <ResourceDictionary Source="pack://application:,,,/SlurmJobManager.App;component/Styles/DataGrid.xaml" />
         <ResourceDictionary Source="pack://application:,,,/SlurmJobManager.App;component/Styles/ScrollBars.xaml" />
         <ResourceDictionary Source="pack://application:,,,/SlurmJobManager.App;component/Styles/TabsAndSidebar.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/SlurmJobManager.App;component/Styles/Toasts.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
     <!-- ── Shared TextBlock / misc styles ─────────────────────────────────── -->

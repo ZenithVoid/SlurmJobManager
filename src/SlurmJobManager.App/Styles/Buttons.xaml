@@ -4,7 +4,7 @@
 
     <!-- ── Button styles ──────────────────────────────────────────────────── -->
 
-    <!-- Base Button: rounded corners, hover/press opacity feedback -->
+    <!-- Base Button: rounded corners, animated hover/press opacity feedback -->
     <Style x:Key="BaseButtonStyle" TargetType="Button">
         <Setter Property="BorderThickness"     Value="0" />
         <Setter Property="Padding"             Value="10,5" />
@@ -25,11 +25,29 @@
                                           VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Opacity" Value="0.82" />
-                        </Trigger>
+                        <!-- Animated hover: smooth opacity transition in 150ms -->
+                        <EventTrigger RoutedEvent="MouseEnter">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="Bd"
+                                                     Storyboard.TargetProperty="Opacity"
+                                                     To="0.80" Duration="0:0:0.15"
+                                                     FillBehavior="HoldEnd" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="MouseLeave">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="Bd"
+                                                     Storyboard.TargetProperty="Opacity"
+                                                     To="1.0" Duration="0:0:0.15"
+                                                     FillBehavior="HoldEnd" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bd" Property="Opacity" Value="0.65" />
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.62" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Bd" Property="Opacity" Value="0.38" />

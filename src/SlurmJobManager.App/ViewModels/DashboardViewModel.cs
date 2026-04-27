@@ -19,9 +19,10 @@ public sealed class DashboardViewModel : ViewModelBase
         _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         _monitor    = monitor    ?? throw new ArgumentNullException(nameof(monitor));
 
-        NavigateToTasksCommand   = new RelayCommand(() => navigate("Tasks"));
-        NavigateToMonitorCommand = new RelayCommand(() => navigate("Monitor"));
-        NavigateToLogsCommand    = new RelayCommand(() => navigate("Logs"));
+        NavigateToTasksCommand    = new RelayCommand(() => navigate("Tasks"));
+        NavigateToMonitorCommand  = new RelayCommand(() => navigate("Monitor"));
+        NavigateToLogsCommand     = new RelayCommand(() => navigate("Logs"));
+        NavigateToSettingsCommand = new RelayCommand(() => navigate("Settings"));
         QuickTestCommand         = _connection.TestConnectionCommand;
         QuickRefreshCommand      = _monitor.RefreshCommand;
 
@@ -30,6 +31,7 @@ public sealed class DashboardViewModel : ViewModelBase
             OnPropertyChanged(nameof(ConnectionStatusText));
             OnPropertyChanged(nameof(ConnectionStatusMessage));
             OnPropertyChanged(nameof(IsConnected));
+            OnPropertyChanged(nameof(IsEmpty));
         };
 
         _monitor.Jobs.CollectionChanged += OnJobsChanged;
@@ -46,6 +48,9 @@ public sealed class DashboardViewModel : ViewModelBase
     public string ConnectionStatusMessage => _connection.StatusMessage;
     public bool   IsConnected             => _connection.IsConnected;
 
+    /// <summary>True when there is no active SSH connection (drives the empty-state overlay).</summary>
+    public bool IsEmpty => !IsConnected;
+
     // ── Job statistics ────────────────────────────────────────────────────
 
     public int TotalJobs     => _monitor.Jobs.Count;
@@ -58,9 +63,10 @@ public sealed class DashboardViewModel : ViewModelBase
 
     // ── Navigation commands ───────────────────────────────────────────────
 
-    public ICommand NavigateToTasksCommand   { get; }
-    public ICommand NavigateToMonitorCommand { get; }
-    public ICommand NavigateToLogsCommand    { get; }
+    public ICommand NavigateToTasksCommand    { get; }
+    public ICommand NavigateToMonitorCommand  { get; }
+    public ICommand NavigateToLogsCommand     { get; }
+    public ICommand NavigateToSettingsCommand { get; }
 
     // ── Quick-action commands ─────────────────────────────────────────────
 

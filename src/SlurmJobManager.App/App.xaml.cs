@@ -1,4 +1,5 @@
 using System.Windows;
+using SlurmJobManager.App.Services;
 using SlurmJobManager.App.ViewModels;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
@@ -17,6 +18,9 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Initialize toast service (must be first so VMs can use it)
+        ToastService.Initialize();
 
         // Shared application settings (timeouts / retry)
         var settings = new AppSettings();

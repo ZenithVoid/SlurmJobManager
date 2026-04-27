@@ -1,0 +1,100 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:SlurmJobManager.App.ViewModels">
+
+    <!-- ── Toast type → accent brush mapping ─────────────────────────────── -->
+    <Style x:Key="ToastIconStyle" TargetType="TextBlock">
+        <Setter Property="FontSize"          Value="14" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="Margin"            Value="0,1,8,0" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Type}" Value="{x:Static vm:ToastType.Success}">
+                <Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Type}" Value="{x:Static vm:ToastType.Warning}">
+                <Setter Property="Foreground" Value="{DynamicResource AccentYellowBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Type}" Value="{x:Static vm:ToastType.Error}">
+                <Setter Property="Foreground" Value="{DynamicResource AccentRedBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Type}" Value="{x:Static vm:ToastType.Info}">
+                <Setter Property="Foreground" Value="{DynamicResource AccentBlueBrush}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ── Individual toast card ─────────────────────────────────────────── -->
+    <DataTemplate x:Key="ToastItemTemplate" DataType="{x:Type vm:ToastViewModel}">
+        <Border x:Name="ToastBd"
+                Background="{DynamicResource BgPanelBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="14,10"
+                Margin="0,0,0,6"
+                MinWidth="260" MaxWidth="380"
+                Opacity="0"
+                RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="ToastTranslate" Y="-12" />
+            </Border.RenderTransform>
+            <Border.Triggers>
+                <!-- Slide+fade in when loaded -->
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetName="ToastBd"
+                                             Storyboard.TargetProperty="Opacity"
+                                             From="0" To="1"
+                                             Duration="0:0:0.22" />
+                            <DoubleAnimation Storyboard.TargetName="ToastTranslate"
+                                             Storyboard.TargetProperty="Y"
+                                             From="-12" To="0"
+                                             Duration="0:0:0.22">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut" />
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Border.Triggers>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Type icon -->
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Icon}"
+                           Style="{StaticResource ToastIconStyle}" />
+
+                <!-- Message text -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Message}"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontSize="13"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center" />
+
+                <!-- Close button -->
+                <Button Grid.Column="2"
+                        Command="{Binding CloseCommand}"
+                        Content="✕"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Foreground="{DynamicResource TextMutedBrush}"
+                        FontSize="11"
+                        Padding="6,2"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Top"
+                        Cursor="Hand"
+                        FocusVisualStyle="{x:Null}" />
+            </Grid>
+        </Border>
+    </DataTemplate>
+
+</ResourceDictionary>
