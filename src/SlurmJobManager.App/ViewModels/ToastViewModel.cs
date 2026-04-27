@@ -40,7 +40,7 @@ public sealed class ToastViewModel : ViewModelBase, IDisposable
         CloseCommand = new RelayCommand(Dismiss);
 
         _remainingMs = durationSeconds * 1000.0;
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
         _timer.Tick += OnTick;
         _timer.Start();
     }
@@ -53,7 +53,7 @@ public sealed class ToastViewModel : ViewModelBase, IDisposable
 
     private void OnTick(object? sender, EventArgs e)
     {
-        _remainingMs -= 50;
+        _remainingMs -= 100;
         if (_remainingMs <= 0) Dismiss();
     }
 

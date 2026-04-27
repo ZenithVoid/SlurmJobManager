@@ -89,7 +89,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private void TitleBar_MouseMove(object sender, MouseEventArgs e) { }
+    private void TitleBar_MouseMove(object sender, MouseEventArgs e)
+    {
+        // DragMove in MouseLeftButtonDown handles movement; no additional action needed.
+    }
 
     private void BtnMinimize_Click(object sender, RoutedEventArgs e)
         => WindowState = WindowState.Minimized;

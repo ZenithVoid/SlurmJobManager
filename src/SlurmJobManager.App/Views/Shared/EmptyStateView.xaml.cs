@@ -75,4 +75,3 @@ public partial class EmptyStateView : UserControl
         InitializeComponent();
     }
 }
-
