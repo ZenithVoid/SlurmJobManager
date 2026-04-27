@@ -1,0 +1,111 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- ── Title bar ────────────────────────────────────────────────────── -->
+    <sys:String x:Key="TitleBar.Minimize">Minimize</sys:String>
+    <sys:String x:Key="TitleBar.Maximize">Maximize</sys:String>
+    <sys:String x:Key="TitleBar.Restore">Restore</sys:String>
+    <sys:String x:Key="TitleBar.Close">Close</sys:String>
+
+    <!-- ── Sidebar navigation ───────────────────────────────────────────── -->
+    <sys:String x:Key="Nav.Dashboard">Dashboard</sys:String>
+    <sys:String x:Key="Nav.Tasks">Tasks</sys:String>
+    <sys:String x:Key="Nav.Monitor">Monitor</sys:String>
+    <sys:String x:Key="Nav.Logs">Logs</sys:String>
+    <sys:String x:Key="Nav.Console">Console</sys:String>
+    <sys:String x:Key="Nav.Settings">Settings</sys:String>
+
+    <!-- ── App title ──────────────────────────────────────────────────── -->
+    <sys:String x:Key="App.Title">Slurm Job Manager</sys:String>
+    <sys:String x:Key="App.TitleLine1">Slurm Job</sys:String>
+    <sys:String x:Key="App.TitleLine2">Manager</sys:String>
+
+    <!-- ── Common buttons ───────────────────────────────────────────────── -->
+    <sys:String x:Key="Btn.Refresh">Refresh</sys:String>
+    <sys:String x:Key="Btn.Cancel">Cancel</sys:String>
+    <sys:String x:Key="Btn.Connect">Connect</sys:String>
+    <sys:String x:Key="Btn.Disconnect">Disconnect</sys:String>
+    <sys:String x:Key="Btn.Save">Save</sys:String>
+    <sys:String x:Key="Btn.Close">Close</sys:String>
+    <sys:String x:Key="Btn.StartPoll">▶ Poll</sys:String>
+    <sys:String x:Key="Btn.StopPoll">■ Stop</sys:String>
+    <sys:String x:Key="Btn.CancelJob">Cancel Selected Job</sys:String>
+    <sys:String x:Key="Btn.ClearCache">🗑 Cache</sys:String>
+    <sys:String x:Key="Btn.LoadOlder">▲ Older</sys:String>
+    <sys:String x:Key="Btn.LoadLatest">⟳ Latest</sys:String>
+    <sys:String x:Key="Btn.LoadNewer">▼ Newer</sys:String>
+    <sys:String x:Key="Btn.CancelLoad">✕ Cancel</sys:String>
+    <sys:String x:Key="Btn.TestConnection">🔌 Test Connection</sys:String>
+    <sys:String x:Key="Btn.RefreshMonitor">🔄 Refresh Monitor</sys:String>
+    <sys:String x:Key="Btn.GoToTasks">⚡ Go to Tasks</sys:String>
+    <sys:String x:Key="Btn.OpenMonitor">→ Open Monitor</sys:String>
+    <sys:String x:Key="Btn.SubmitJob">Submit Job</sys:String>
+
+    <!-- ── Status text ──────────────────────────────────────────────────── -->
+    <sys:String x:Key="Status.Ready">Ready</sys:String>
+    <sys:String x:Key="Status.Connected">Connected</sys:String>
+    <sys:String x:Key="Status.Disconnected">Disconnected</sys:String>
+    <sys:String x:Key="Status.Connecting">Connecting…</sys:String>
+    <sys:String x:Key="Status.Loading">⏳ Loading…</sys:String>
+    <sys:String x:Key="Status.Error">Error</sys:String>
+
+    <!-- ── Dashboard ────────────────────────────────────────────────────── -->
+    <sys:String x:Key="Dashboard.Title">Dashboard</sys:String>
+    <sys:String x:Key="Dashboard.Connection">Connection</sys:String>
+    <sys:String x:Key="Dashboard.QuickActions">Quick Actions</sys:String>
+    <sys:String x:Key="Dashboard.JobSummary">Job Summary</sys:String>
+    <sys:String x:Key="Dashboard.Total">Total</sys:String>
+    <sys:String x:Key="Dashboard.Running">Running</sys:String>
+    <sys:String x:Key="Dashboard.Pending">Pending</sys:String>
+    <sys:String x:Key="Dashboard.Completed">Completed</sys:String>
+    <sys:String x:Key="Dashboard.Failed">Failed</sys:String>
+    <sys:String x:Key="Dashboard.Monitor">Monitor:</sys:String>
+
+    <!-- ── Monitor view ─────────────────────────────────────────────────── -->
+    <sys:String x:Key="Monitor.Title">Job Monitor</sys:String>
+    <sys:String x:Key="Monitor.WatchUser">Watch User</sys:String>
+    <sys:String x:Key="Monitor.PollInterval">Poll interval (s):</sys:String>
+    <sys:String x:Key="Monitor.Filter">Filter:</sys:String>
+    <sys:String x:Key="Monitor.ColJobId">Job ID</sys:String>
+    <sys:String x:Key="Monitor.ColName">Name</sys:String>
+    <sys:String x:Key="Monitor.ColUser">User</sys:String>
+    <sys:String x:Key="Monitor.ColState">State</sys:String>
+    <sys:String x:Key="Monitor.ColPartition">Partition</sys:String>
+    <sys:String x:Key="Monitor.ColRunTime">Run Time</sys:String>
+    <sys:String x:Key="Monitor.ColNodes">Nodes</sys:String>
+
+    <!-- ── Log viewer ───────────────────────────────────────────────────── -->
+    <sys:String x:Key="Log.Title">Log Viewer</sys:String>
+    <sys:String x:Key="Log.RemoteFilePath">Remote File Path</sys:String>
+    <sys:String x:Key="Log.LinesPerChunk">Lines/chunk:</sys:String>
+    <sys:String x:Key="Log.FollowMode">Follow mode (tail)</sys:String>
+    <sys:String x:Key="Log.Interval">Interval (s):</sys:String>
+
+    <!-- ── Settings view ────────────────────────────────────────────────── -->
+    <sys:String x:Key="Settings.Title">Settings</sys:String>
+    <sys:String x:Key="Settings.SshConnection">SSH Connection</sys:String>
+    <sys:String x:Key="Settings.Appearance">Appearance</sys:String>
+    <sys:String x:Key="Settings.Theme">Theme:</sys:String>
+    <sys:String x:Key="Settings.ThemeDesc">Switch between dark (Catppuccin Mocha) and light (Catppuccin Latte) themes.</sys:String>
+    <sys:String x:Key="Settings.ThemeDark">🌙 Switch to Dark</sys:String>
+    <sys:String x:Key="Settings.ThemeLight">☀ Switch to Light</sys:String>
+    <sys:String x:Key="Settings.PollingPerf">Polling &amp; Performance</sys:String>
+    <sys:String x:Key="Settings.PollIntervalLabel">Monitor poll interval (seconds)</sys:String>
+    <sys:String x:Key="Settings.PollIntervalDesc">How often the monitor polls squeue. Lower values give faster updates but increase SSH load.</sys:String>
+    <sys:String x:Key="Settings.Language">Language</sys:String>
+    <sys:String x:Key="Settings.LanguageLabel">Interface language:</sys:String>
+    <sys:String x:Key="Settings.LangZhCN">中文（简体）</sys:String>
+    <sys:String x:Key="Settings.LangEnUS">English (US)</sys:String>
+    <sys:String x:Key="Settings.About">About</sys:String>
+    <sys:String x:Key="Settings.AppName">Slurm Job Manager</sys:String>
+    <sys:String x:Key="Settings.AppDesc">A modern WPF application for submitting, monitoring, and debugging Slurm HPC jobs over SSH.</sys:String>
+
+    <!-- ── Errors / hints ───────────────────────────────────────────────── -->
+    <sys:String x:Key="Err.ConnectionFailed">Connection failed. Please check the server configuration.</sys:String>
+    <sys:String x:Key="Err.AuthFailed">Authentication failed. Please check username and password.</sys:String>
+    <sys:String x:Key="Err.Timeout">Operation timed out. Please try again.</sys:String>
+    <sys:String x:Key="Err.NoJobSelected">No job selected.</sys:String>
+
+</ResourceDictionary>

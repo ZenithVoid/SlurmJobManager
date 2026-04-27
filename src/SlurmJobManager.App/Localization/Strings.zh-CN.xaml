@@ -1,0 +1,111 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- ── 标题栏 ──────────────────────────────────────────────────────── -->
+    <sys:String x:Key="TitleBar.Minimize">最小化</sys:String>
+    <sys:String x:Key="TitleBar.Maximize">最大化</sys:String>
+    <sys:String x:Key="TitleBar.Restore">还原</sys:String>
+    <sys:String x:Key="TitleBar.Close">关闭</sys:String>
+
+    <!-- ── 侧边栏导航 ──────────────────────────────────────────────────── -->
+    <sys:String x:Key="Nav.Dashboard">仪表盘</sys:String>
+    <sys:String x:Key="Nav.Tasks">任务</sys:String>
+    <sys:String x:Key="Nav.Monitor">监控</sys:String>
+    <sys:String x:Key="Nav.Logs">日志</sys:String>
+    <sys:String x:Key="Nav.Console">终端</sys:String>
+    <sys:String x:Key="Nav.Settings">设置</sys:String>
+
+    <!-- ── 应用标题 ─────────────────────────────────────────────────────── -->
+    <sys:String x:Key="App.Title">Slurm 作业管理器</sys:String>
+    <sys:String x:Key="App.TitleLine1">Slurm 作业</sys:String>
+    <sys:String x:Key="App.TitleLine2">管理器</sys:String>
+
+    <!-- ── 通用按钮 ──────────────────────────────────────────────────────── -->
+    <sys:String x:Key="Btn.Refresh">刷新</sys:String>
+    <sys:String x:Key="Btn.Cancel">取消</sys:String>
+    <sys:String x:Key="Btn.Connect">连接</sys:String>
+    <sys:String x:Key="Btn.Disconnect">断开</sys:String>
+    <sys:String x:Key="Btn.Save">保存</sys:String>
+    <sys:String x:Key="Btn.Close">关闭</sys:String>
+    <sys:String x:Key="Btn.StartPoll">▶ 轮询</sys:String>
+    <sys:String x:Key="Btn.StopPoll">■ 停止</sys:String>
+    <sys:String x:Key="Btn.CancelJob">取消所选作业</sys:String>
+    <sys:String x:Key="Btn.ClearCache">🗑 清缓存</sys:String>
+    <sys:String x:Key="Btn.LoadOlder">▲ 较旧</sys:String>
+    <sys:String x:Key="Btn.LoadLatest">⟳ 最新</sys:String>
+    <sys:String x:Key="Btn.LoadNewer">▼ 较新</sys:String>
+    <sys:String x:Key="Btn.CancelLoad">✕ 取消</sys:String>
+    <sys:String x:Key="Btn.TestConnection">🔌 测试连接</sys:String>
+    <sys:String x:Key="Btn.RefreshMonitor">🔄 刷新监控</sys:String>
+    <sys:String x:Key="Btn.GoToTasks">⚡ 前往任务</sys:String>
+    <sys:String x:Key="Btn.OpenMonitor">→ 打开监控</sys:String>
+    <sys:String x:Key="Btn.SubmitJob">提交作业</sys:String>
+
+    <!-- ── 状态文本 ──────────────────────────────────────────────────────── -->
+    <sys:String x:Key="Status.Ready">就绪</sys:String>
+    <sys:String x:Key="Status.Connected">已连接</sys:String>
+    <sys:String x:Key="Status.Disconnected">未连接</sys:String>
+    <sys:String x:Key="Status.Connecting">连接中…</sys:String>
+    <sys:String x:Key="Status.Loading">⏳ 加载中…</sys:String>
+    <sys:String x:Key="Status.Error">错误</sys:String>
+
+    <!-- ── 仪表盘 ──────────────────────────────────────────────────────── -->
+    <sys:String x:Key="Dashboard.Title">仪表盘</sys:String>
+    <sys:String x:Key="Dashboard.Connection">连接</sys:String>
+    <sys:String x:Key="Dashboard.QuickActions">快捷操作</sys:String>
+    <sys:String x:Key="Dashboard.JobSummary">作业摘要</sys:String>
+    <sys:String x:Key="Dashboard.Total">总计</sys:String>
+    <sys:String x:Key="Dashboard.Running">运行中</sys:String>
+    <sys:String x:Key="Dashboard.Pending">等待中</sys:String>
+    <sys:String x:Key="Dashboard.Completed">已完成</sys:String>
+    <sys:String x:Key="Dashboard.Failed">已失败</sys:String>
+    <sys:String x:Key="Dashboard.Monitor">监控：</sys:String>
+
+    <!-- ── 监控视图 ─────────────────────────────────────────────────────── -->
+    <sys:String x:Key="Monitor.Title">作业监控</sys:String>
+    <sys:String x:Key="Monitor.WatchUser">监控用户</sys:String>
+    <sys:String x:Key="Monitor.PollInterval">轮询间隔 (秒)：</sys:String>
+    <sys:String x:Key="Monitor.Filter">筛选：</sys:String>
+    <sys:String x:Key="Monitor.ColJobId">作业 ID</sys:String>
+    <sys:String x:Key="Monitor.ColName">名称</sys:String>
+    <sys:String x:Key="Monitor.ColUser">用户</sys:String>
+    <sys:String x:Key="Monitor.ColState">状态</sys:String>
+    <sys:String x:Key="Monitor.ColPartition">分区</sys:String>
+    <sys:String x:Key="Monitor.ColRunTime">运行时长</sys:String>
+    <sys:String x:Key="Monitor.ColNodes">节点</sys:String>
+
+    <!-- ── 日志视图 ─────────────────────────────────────────────────────── -->
+    <sys:String x:Key="Log.Title">日志查看器</sys:String>
+    <sys:String x:Key="Log.RemoteFilePath">远程文件路径</sys:String>
+    <sys:String x:Key="Log.LinesPerChunk">每次加载行数：</sys:String>
+    <sys:String x:Key="Log.FollowMode">跟随模式（tail）</sys:String>
+    <sys:String x:Key="Log.Interval">间隔 (秒)：</sys:String>
+
+    <!-- ── 设置视图 ─────────────────────────────────────────────────────── -->
+    <sys:String x:Key="Settings.Title">设置</sys:String>
+    <sys:String x:Key="Settings.SshConnection">SSH 连接</sys:String>
+    <sys:String x:Key="Settings.Appearance">外观</sys:String>
+    <sys:String x:Key="Settings.Theme">主题：</sys:String>
+    <sys:String x:Key="Settings.ThemeDesc">在深色（Catppuccin Mocha）与浅色（Catppuccin Latte）主题间切换。</sys:String>
+    <sys:String x:Key="Settings.ThemeDark">🌙 切换深色</sys:String>
+    <sys:String x:Key="Settings.ThemeLight">☀ 切换浅色</sys:String>
+    <sys:String x:Key="Settings.PollingPerf">轮询 &amp; 性能</sys:String>
+    <sys:String x:Key="Settings.PollIntervalLabel">监控轮询间隔（秒）</sys:String>
+    <sys:String x:Key="Settings.PollIntervalDesc">越低的数值更新越快，但会增加 SSH 负载。</sys:String>
+    <sys:String x:Key="Settings.Language">语言</sys:String>
+    <sys:String x:Key="Settings.LanguageLabel">界面语言：</sys:String>
+    <sys:String x:Key="Settings.LangZhCN">中文（简体）</sys:String>
+    <sys:String x:Key="Settings.LangEnUS">English (US)</sys:String>
+    <sys:String x:Key="Settings.About">关于</sys:String>
+    <sys:String x:Key="Settings.AppName">Slurm 作业管理器</sys:String>
+    <sys:String x:Key="Settings.AppDesc">一款用于通过 SSH 提交、监控和调试 Slurm HPC 作业的现代 WPF 应用。</sys:String>
+
+    <!-- ── 错误/提示 ─────────────────────────────────────────────────────── -->
+    <sys:String x:Key="Err.ConnectionFailed">连接失败，请检查服务器配置。</sys:String>
+    <sys:String x:Key="Err.AuthFailed">身份验证失败，请检查用户名和密码。</sys:String>
+    <sys:String x:Key="Err.Timeout">操作超时，请重试。</sys:String>
+    <sys:String x:Key="Err.NoJobSelected">未选择作业。</sys:String>
+
+</ResourceDictionary>

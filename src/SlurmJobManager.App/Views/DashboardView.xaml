@@ -17,7 +17,7 @@
         <StackPanel Margin="24,20,24,20">
 
             <!-- Page title -->
-            <TextBlock Text="Dashboard"
+            <TextBlock Text="{DynamicResource Dashboard.Title}"
                        Style="{StaticResource PageTitleStyle}" />
 
             <!-- Row 1: Connection + Quick Actions -->
@@ -31,7 +31,7 @@
                 <!-- Connection Status card -->
                 <Border Grid.Column="0" Style="{StaticResource CardStyle}">
                     <StackPanel>
-                        <TextBlock Text="Connection"
+                        <TextBlock Text="{DynamicResource Dashboard.Connection}"
                                    Style="{StaticResource SectionHeaderStyle}" />
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -64,22 +64,22 @@
                 <!-- Quick Actions card -->
                 <Border Grid.Column="2" Style="{StaticResource CardStyle}">
                     <StackPanel>
-                        <TextBlock Text="Quick Actions"
+                        <TextBlock Text="{DynamicResource Dashboard.QuickActions}"
                                    Style="{StaticResource SectionHeaderStyle}" />
 
-                        <Button Content="🔌 Test Connection"
+                        <Button Content="{DynamicResource Btn.TestConnection}"
                                 Command="{Binding QuickTestCommand}"
                                 Style="{StaticResource AccentButtonStyle}"
                                 HorizontalAlignment="Stretch"
                                 Margin="0,0,0,8" Padding="10,7" />
 
-                        <Button Content="🔄 Refresh Monitor"
+                        <Button Content="{DynamicResource Btn.RefreshMonitor}"
                                 Command="{Binding QuickRefreshCommand}"
                                 Style="{StaticResource NeutralButtonStyle}"
                                 HorizontalAlignment="Stretch"
                                 Margin="0,0,0,8" Padding="10,7" />
 
-                        <Button Content="⚡ Go to Tasks"
+                        <Button Content="{DynamicResource Btn.GoToTasks}"
                                 Command="{Binding NavigateToTasksCommand}"
                                 Style="{StaticResource SuccessButtonStyle}"
                                 HorizontalAlignment="Stretch"
@@ -89,7 +89,7 @@
             </Grid>
 
             <!-- Row 2: Job Stats cards -->
-            <TextBlock Text="Job Summary"
+            <TextBlock Text="{DynamicResource Dashboard.JobSummary}"
                        Style="{StaticResource SectionHeaderStyle}"
                        Margin="0,0,0,8" />
 
@@ -113,7 +113,7 @@
                                    Foreground="{DynamicResource TextPrimaryBrush}"
                                    FontSize="28" FontWeight="Bold"
                                    HorizontalAlignment="Center" />
-                        <TextBlock Text="Total"
+                        <TextBlock Text="{DynamicResource Dashboard.Total}"
                                    Style="{StaticResource MutedTextStyle}"
                                    HorizontalAlignment="Center"
                                    Margin="0,4,0,0" />
@@ -127,7 +127,7 @@
                                    Foreground="{DynamicResource StateRunningBrush}"
                                    FontSize="28" FontWeight="Bold"
                                    HorizontalAlignment="Center" />
-                        <TextBlock Text="Running"
+                        <TextBlock Text="{DynamicResource Dashboard.Running}"
                                    Style="{StaticResource MutedTextStyle}"
                                    HorizontalAlignment="Center"
                                    Margin="0,4,0,0" />
@@ -141,7 +141,7 @@
                                    Foreground="{DynamicResource StatePendingBrush}"
                                    FontSize="28" FontWeight="Bold"
                                    HorizontalAlignment="Center" />
-                        <TextBlock Text="Pending"
+                        <TextBlock Text="{DynamicResource Dashboard.Pending}"
                                    Style="{StaticResource MutedTextStyle}"
                                    HorizontalAlignment="Center"
                                    Margin="0,4,0,0" />
@@ -155,7 +155,7 @@
                                    Foreground="{DynamicResource StateCompletedBrush}"
                                    FontSize="28" FontWeight="Bold"
                                    HorizontalAlignment="Center" />
-                        <TextBlock Text="Completed"
+                        <TextBlock Text="{DynamicResource Dashboard.Completed}"
                                    Style="{StaticResource MutedTextStyle}"
                                    HorizontalAlignment="Center"
                                    Margin="0,4,0,0" />
@@ -169,7 +169,7 @@
                                    Foreground="{DynamicResource StateFailedBrush}"
                                    FontSize="28" FontWeight="Bold"
                                    HorizontalAlignment="Center" />
-                        <TextBlock Text="Failed"
+                        <TextBlock Text="{DynamicResource Dashboard.Failed}"
                                    Style="{StaticResource MutedTextStyle}"
                                    HorizontalAlignment="Center"
                                    Margin="0,4,0,0" />
@@ -180,13 +180,13 @@
             <!-- Monitor status -->
             <Border Style="{StaticResource CardStyle}" Padding="12,10">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Monitor: "
+                    <TextBlock Text="{DynamicResource Dashboard.Monitor}"
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                FontSize="12" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding MonitorStatusMessage}"
                                Foreground="{DynamicResource TextMutedBrush}"
                                FontSize="12" VerticalAlignment="Center" />
-                    <Button Content="→ Open Monitor"
+                    <Button Content="{DynamicResource Btn.OpenMonitor}"
                             Command="{Binding NavigateToMonitorCommand}"
                             Style="{StaticResource GhostButtonStyle}"
                             Foreground="{DynamicResource AccentBlueBrush}"

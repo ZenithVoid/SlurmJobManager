@@ -13,13 +13,13 @@
         <StackPanel Margin="24,20,24,20">
 
             <!-- Page title -->
-            <TextBlock Text="Settings"
+            <TextBlock Text="{DynamicResource Settings.Title}"
                        Style="{StaticResource PageTitleStyle}" />
 
             <!-- ── Connection Configuration ─────────────────────────────── -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="SSH Connection"
+                    <TextBlock Text="{DynamicResource Settings.SshConnection}"
                                Style="{StaticResource SectionHeaderStyle}" />
                     <views:ConnectionView DataContext="{Binding Connection}" />
                 </StackPanel>
@@ -28,11 +28,11 @@
             <!-- ── Theme ────────────────────────────────────────────────── -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="Appearance"
+                    <TextBlock Text="{DynamicResource Settings.Appearance}"
                                Style="{StaticResource SectionHeaderStyle}" />
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <TextBlock Text="Theme:"
+                        <TextBlock Text="{DynamicResource Settings.Theme}"
                                    Style="{StaticResource FieldLabelStyle}"
                                    VerticalAlignment="Center"
                                    Margin="0,0,12,0" />
@@ -41,20 +41,45 @@
                                 Style="{StaticResource NeutralButtonStyle}"
                                 Padding="12,6" />
                     </StackPanel>
-                    <TextBlock Text="Switch between dark (Catppuccin Mocha) and light (Catppuccin Latte) themes."
+                    <TextBlock Text="{DynamicResource Settings.ThemeDesc}"
                                Style="{StaticResource MutedTextStyle}"
                                TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── Language ─────────────────────────────────────────────── -->
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.Language}"
+                               Style="{StaticResource SectionHeaderStyle}" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Text="{DynamicResource Settings.LanguageLabel}"
+                                   Style="{StaticResource FieldLabelStyle}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,12,0" />
+                        <Button Content="{DynamicResource Settings.LangZhCN}"
+                                Command="{Binding SwitchLocaleCommand}"
+                                CommandParameter="zh-CN"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Padding="10,5" Margin="0,0,6,0" />
+                        <Button Content="{DynamicResource Settings.LangEnUS}"
+                                Command="{Binding SwitchLocaleCommand}"
+                                CommandParameter="en-US"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="10,5" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
             <!-- ── Polling & Performance ────────────────────────────────── -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="Polling &amp; Performance"
+                    <TextBlock Text="{DynamicResource Settings.PollingPerf}"
                                Style="{StaticResource SectionHeaderStyle}" />
 
                     <!-- Poll interval -->
-                    <TextBlock Text="Monitor poll interval (seconds)"
+                    <TextBlock Text="{DynamicResource Settings.PollIntervalLabel}"
                                Style="{StaticResource FieldLabelStyle}" />
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <Slider Minimum="2" Maximum="60"
@@ -69,7 +94,7 @@
                                    Style="{StaticResource MutedTextStyle}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
-                    <TextBlock Text="How often the monitor polls squeue. Lower values give faster updates but increase SSH load."
+                    <TextBlock Text="{DynamicResource Settings.PollIntervalDesc}"
                                Style="{StaticResource MutedTextStyle}"
                                TextWrapping="Wrap" />
                 </StackPanel>
@@ -78,13 +103,13 @@
             <!-- ── About ─────────────────────────────────────────────────── -->
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel>
-                    <TextBlock Text="About"
+                    <TextBlock Text="{DynamicResource Settings.About}"
                                Style="{StaticResource SectionHeaderStyle}" />
-                    <TextBlock Text="Slurm Job Manager"
+                    <TextBlock Text="{DynamicResource Settings.AppName}"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                FontWeight="SemiBold" FontSize="14"
                                Margin="0,0,0,4" />
-                    <TextBlock Text="A modern WPF application for submitting, monitoring, and debugging Slurm HPC jobs over SSH."
+                    <TextBlock Text="{DynamicResource Settings.AppDesc}"
                                Style="{StaticResource MutedTextStyle}"
                                TextWrapping="Wrap" />
                 </StackPanel>

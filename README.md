@@ -4,6 +4,71 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 
 ---
 
+## 本次修复说明（UI可用性修复）
+
+### 1. 自定义应用内标题栏
+
+系统原生标题栏已完全移除（`WindowStyle="None"`），取而代之的是应用顶部的自定义标题栏，提供以下功能：
+
+- **右上角三个窗口控制按钮**：最小化（`⊟`）、最大化/还原（`⊡`/`❐`）、关闭（`✕`）
+- **拖拽移动窗口**：在标题栏空白区域按住鼠标左键拖动即可移动窗口
+- **双击最大化/还原**：双击标题栏空白区域切换最大化状态
+- **`WindowChrome`**：保留了 Windows 的窗口贴边 Snap、调整大小等系统行为
+- **关闭按钮 hover 红色**：鼠标悬停时关闭按钮变为红色，符合 Windows 11 风格
+
+图标使用 Segoe MDL2 Assets 字体（Windows 内置），无需外部 CDN。
+
+---
+
+### 2. 侧边栏导航修复
+
+原先使用 `SelectedValue` + `SelectedValuePath` 的绑定方式在 WPF 中存在初始化顺序问题，可能导致 Tab 切换失效。现已改为更可靠的 `SelectedItem` + `ActiveNavItem` 双向绑定：
+
+- 新增 `ActiveNavItem` 属性（`NavItem?` 类型），ListBox 的 `SelectedItem` 绑定到该属性
+- `ActiveNavItem` 变化时自动更新 `ActiveTab`，`ActiveTab` 变化时同步 `ActiveNavItem`
+- 默认首页为 **Dashboard（仪表盘）**
+- 全部 6 个 Tab（仪表盘、任务、监控、日志、终端、设置）均可正常切换
+
+---
+
+### 3. 默认中文与多语言结构
+
+采用 **ResourceDictionary 字符串资源**方案，支持多语言：
+
+| 文件 | 语言 |
+|------|------|
+| `Localization/Strings.zh-CN.xaml` | 中文（简体）— **默认** |
+| `Localization/Strings.en-US.xaml` | English (US) |
+
+- 应用启动时**无论系统语言如何**，自动加载中文资源（在 `App.xaml.cs` 的 `OnStartup` 中调用 `ApplyLocale("zh-CN")`）
+- UI 文本（导航名称、按钮、标题、状态提示、错误提示）均使用 `DynamicResource` 引用，随语言切换实时更新
+- **在"设置"页面**可点击按钮切换中文/英文界面
+- 扩展多语言：新增 `Localization/Strings.{locale}.xaml` 文件并在 Settings 页增加对应按钮即可
+
+---
+
+### 4. 平滑滚动设计与限制
+
+通过 `SmoothScrollBehavior`（附加行为，`Behaviors/SmoothScrollBehavior.cs`）实现丝滑滚动：
+
+**工作原理：**
+1. 附加到 `ScrollViewer`，拦截 `PreviewMouseWheel` 事件
+2. 计算目标偏移量（累积多次滚轮输入，避免"追赶"动画）
+3. 使用 `DoubleAnimation` + `CubicEase EaseOut`（180 ms）动画插值到目标位置
+4. 通过辅助附加属性 `ScrollViewerHelper.VerticalOffset` 驱动实际滚动（因为原生 `VerticalOffset` 不可动画化）
+
+**已应用范围：**
+- 📋 **日志视图**（最高优先级）：外层 ScrollViewer + `SmoothScrollBehavior`，ListBox 设置 `ScrollUnit=Pixel`
+- 📊 **监控视图**：DataGrid 外层 ScrollViewer + `SmoothScrollBehavior`
+- **全局**：`ScrollViewer` 默认样式中 `CanContentScroll=False`，避免按逻辑项跳动
+
+**已知限制：**
+- 日志视图保留了 WPF 虚拟化（`VirtualizingPanel.IsVirtualizing=True`，`ScrollUnit=Pixel`），不会因平滑滚动导致内存暴涨
+- `ScrollUnit=Pixel` 与虚拟化配合时，超大列表（百万行）的滚动性能与原始表现持平
+- 平滑动画动持续 180 ms，快速连续滚动时目标偏移会累积并追赶，不会产生排队卡顿
+
+---
+
 ## v5 — UI/UX Redesign (Sidebar Navigation)
 
 | Area | Capability |
