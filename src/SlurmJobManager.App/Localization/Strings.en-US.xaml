@@ -151,6 +151,13 @@
 
     <!-- ── Empty states ─────────────────────────────────────────────────── -->
     <sys:String x:Key="Monitor.EmptyState">Enter a username above to start monitoring jobs.</sys:String>
+    <sys:String x:Key="Monitor.EmptyTitle">No Monitor Data</sys:String>
+    <sys:String x:Key="Monitor.EmptyHint">Enter the username to monitor above, then click Refresh or Start Polling.</sys:String>
     <sys:String x:Key="Log.EmptyState">No log data loaded. Submit a job or enter a remote file path above to load logs.</sys:String>
+    <sys:String x:Key="Log.EmptyTitle">No Log Content</sys:String>
+    <sys:String x:Key="Log.EmptyHint">Enter a remote log file path above and click Load.</sys:String>
+    <sys:String x:Key="Dashboard.EmptyTitle">Not Connected</sys:String>
+    <sys:String x:Key="Dashboard.EmptyHint">Configure SSH connection settings to connect to your cluster and view job summaries.</sys:String>
+    <sys:String x:Key="Dashboard.EmptyAction">⚙ Go to Settings</sys:String>
 
 </ResourceDictionary>

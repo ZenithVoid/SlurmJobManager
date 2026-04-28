@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:b="clr-namespace:SlurmJobManager.App.Behaviors"
     xmlns:conv="clr-namespace:SlurmJobManager.App.Converters"
+    xmlns:shared="clr-namespace:SlurmJobManager.App.Views.Shared"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -129,18 +130,12 @@
         <!-- Log lines: smooth-scrolling ScrollViewer wrapping a pixel-scroll ListBox -->
         <Grid>
 
-            <!-- Empty-state hint: shown when no log lines are loaded -->
-            <Border Background="{DynamicResource BgCrustBrush}"
-                    BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="1"
-                    Padding="0,40"
-                    Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="{DynamicResource Log.EmptyState}"
-                           HorizontalAlignment="Center"
-                           TextAlignment="Center"
-                           Foreground="{DynamicResource TextMutedBrush}"
-                           FontSize="14" />
-            </Border>
+            <!-- Branded empty-state: shown when no log lines are loaded -->
+            <shared:EmptyStateView
+                Icon="📋"
+                EmptyTitle="{DynamicResource Log.EmptyTitle}"
+                EmptyHint="{DynamicResource Log.EmptyHint}"
+                Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVis}}" />
 
             <ScrollViewer x:Name="LogScrollViewer"
                           VerticalScrollBarVisibility="Auto"

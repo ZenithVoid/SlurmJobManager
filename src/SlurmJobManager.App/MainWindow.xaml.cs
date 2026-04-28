@@ -1,14 +1,76 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using SlurmJobManager.App.Services;
+using SlurmJobManager.App.ViewModels;
 
 namespace SlurmJobManager.App;
 
 public partial class MainWindow : Window
 {
+    // Map tab IDs to page grids and their ScaleTransforms
+    private IReadOnlyDictionary<string, (System.Windows.Controls.Grid Page, ScaleTransform Scale)>? _pages;
+
     public MainWindow()
     {
         InitializeComponent();
         StateChanged += MainWindow_StateChanged;
+        Loaded        += MainWindow_Loaded;
+    }
+
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        // Wire toast container to the service instance
+        ToastContainer.DataContext = ToastService.Instance.Toasts;
+
+        // Build the page lookup after InitializeComponent so named elements exist
+        _pages = new Dictionary<string, (System.Windows.Controls.Grid, ScaleTransform)>
+        {
+            { "Dashboard", (PageDashboard, ScaleDashboard) },
+            { "Tasks",     (PageTasks,     ScaleTasks) },
+            { "Monitor",   (PageMonitor,   ScaleMonitor) },
+            { "Logs",      (PageLogs,      ScaleLogs) },
+            { "Console",   (PageConsole,   ScaleConsole) },
+            { "Settings",  (PageSettings,  ScaleSettings) },
+        };
+
+        // Subscribe to navigation changes for page transitions
+        if (DataContext is MainViewModel vm)
+        {
+            vm.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(MainViewModel.ActiveTab))
+                    AnimatePageIn(vm.ActiveTab);
+            };
+
+            // Animate the initial page
+            AnimatePageIn(vm.ActiveTab);
+        }
+    }
+
+    // ── Page transition animation ─────────────────────────────────────────
+
+    private void AnimatePageIn(string tabId)
+    {
+        if (_pages is null || !_pages.TryGetValue(tabId, out var entry)) return;
+        var (page, scale) = entry;
+
+        // Reset to starting state (invisible, slightly shrunk)
+        page.Opacity = 0;
+        scale.ScaleX = 0.97;
+        scale.ScaleY = 0.97;
+
+        var duration = new Duration(TimeSpan.FromMilliseconds(200));
+        var ease     = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+        var fadeIn = new DoubleAnimation(0, 1, duration) { EasingFunction = ease };
+        var scaleX = new DoubleAnimation(0.97, 1.0, duration) { EasingFunction = ease };
+        var scaleY = new DoubleAnimation(0.97, 1.0, duration) { EasingFunction = ease };
+
+        page.BeginAnimation(OpacityProperty, fadeIn);
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleX);
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY);
     }
 
     // ── Custom title-bar interactions ─────────────────────────────────────
@@ -21,19 +83,15 @@ public partial class MainWindow : Window
         }
         else
         {
-            // Allow drag-move; only start if not maximized or let OS handle snapping
             if (WindowState == WindowState.Maximized)
-            {
-                // Restore to normal before dragging so position is sensible
                 WindowState = WindowState.Normal;
-            }
             DragMove();
         }
     }
 
     private void TitleBar_MouseMove(object sender, MouseEventArgs e)
     {
-        // No additional action needed; DragMove handles movement after press.
+        // DragMove in MouseLeftButtonDown handles movement; no additional action needed.
     }
 
     private void BtnMinimize_Click(object sender, RoutedEventArgs e)
@@ -54,12 +112,11 @@ public partial class MainWindow : Window
 
     private void MainWindow_StateChanged(object? sender, EventArgs e)
     {
-        // Swap the maximize/restore icon based on window state
         if (MaximizeIcon != null)
         {
             MaximizeIcon.Text = WindowState == WindowState.Maximized
-                ? "\uE923"   // Segoe MDL2 "Restore" icon
-                : "\uE922";  // Segoe MDL2 "Maximize" icon
+                ? "\uE923"
+                : "\uE922";
         }
 
         if (BtnMaximize != null)
@@ -72,3 +129,4 @@ public partial class MainWindow : Window
         }
     }
 }
+

@@ -151,6 +151,13 @@
 
     <!-- ── 空态提示 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Monitor.EmptyState">请先输入监控用户名以开始监控作业。</sys:String>
+    <sys:String x:Key="Monitor.EmptyTitle">暂无监控数据</sys:String>
+    <sys:String x:Key="Monitor.EmptyHint">请在上方输入要监控的用户名，然后点击刷新或启动轮询。</sys:String>
     <sys:String x:Key="Log.EmptyState">暂无日志，请先提交任务或在上方输入远程文件路径后加载。</sys:String>
+    <sys:String x:Key="Log.EmptyTitle">暂无日志内容</sys:String>
+    <sys:String x:Key="Log.EmptyHint">请在上方输入远程日志文件路径，然后点击加载按钮。</sys:String>
+    <sys:String x:Key="Dashboard.EmptyTitle">尚未建立连接</sys:String>
+    <sys:String x:Key="Dashboard.EmptyHint">请先配置 SSH 连接信息，连接到集群后即可查看作业概览。</sys:String>
+    <sys:String x:Key="Dashboard.EmptyAction">⚙ 前往设置</sys:String>
 
 </ResourceDictionary>

@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:views="clr-namespace:SlurmJobManager.App.Views"
+    xmlns:shared="clr-namespace:SlurmJobManager.App.Views.Shared"
     mc:Ignorable="d"
     Title="Slurm Job Manager"
     Height="800" Width="1280"
@@ -26,14 +27,7 @@
 
     <Window.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
-
-        <!-- Fade-in storyboard for content panels -->
-        <Storyboard x:Key="FadeIn">
-            <DoubleAnimation
-                Storyboard.TargetProperty="Opacity"
-                From="0" To="1"
-                Duration="0:0:0.18" />
-        </Storyboard>
+        <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
 
         <!-- Title-bar window control button style -->
         <Style x:Key="TitleBarButtonStyle" TargetType="Button">
@@ -56,6 +50,26 @@
                                               VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
+                            <EventTrigger RoutedEvent="MouseEnter">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Bd"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0.80" Duration="0:0:0.12"
+                                                         FillBehavior="HoldEnd" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                            <EventTrigger RoutedEvent="MouseLeave">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Bd"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1.0" Duration="0:0:0.12"
+                                                         FillBehavior="HoldEnd" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background"
                                         Value="{DynamicResource BgSurface0Brush}" />
@@ -102,7 +116,7 @@
                 BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,0,1">
             <Grid>
-                <!-- Draggable region (left+centre) – MouseDown handled in code-behind -->
+                <!-- Draggable region -->
                 <Border x:Name="TitleBarDragArea"
                         Background="Transparent"
                         HorizontalAlignment="Stretch"
@@ -121,16 +135,12 @@
                 <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Top">
-
-                    <!-- Minimize -->
                     <Button x:Name="BtnMinimize"
                             Style="{StaticResource TitleBarButtonStyle}"
                             ToolTip="{DynamicResource TitleBar.Minimize}"
                             Click="BtnMinimize_Click">
                         <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
                     </Button>
-
-                    <!-- Maximize / Restore -->
                     <Button x:Name="BtnMaximize"
                             Style="{StaticResource TitleBarButtonStyle}"
                             ToolTip="{DynamicResource TitleBar.Maximize}"
@@ -138,15 +148,12 @@
                         <TextBlock x:Name="MaximizeIcon"
                                    Text="&#xE922;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
                     </Button>
-
-                    <!-- Close -->
                     <Button x:Name="BtnClose"
                             Style="{StaticResource TitleBarCloseButtonStyle}"
                             ToolTip="{DynamicResource TitleBar.Close}"
                             Click="BtnClose_Click">
                         <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
                     </Button>
-
                 </StackPanel>
             </Grid>
         </Border>
@@ -154,21 +161,17 @@
         <!-- ── Body ──────────────────────────────────────────────────────── -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <!-- Sidebar -->
                 <ColumnDefinition Width="200" MinWidth="160" />
-                <!-- Resize handle -->
                 <ColumnDefinition Width="1" />
-                <!-- Main content -->
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- ── Sidebar ─────────────────────────────────────────────────── -->
+            <!-- ── Sidebar ────────────────────────────────────────────────── -->
             <Border Grid.Column="0"
                     Background="{DynamicResource BgPanelBrush}"
                     BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="0,0,1,0">
                 <DockPanel>
-
                     <!-- App branding block -->
                     <Border DockPanel.Dock="Top"
                             Padding="16,18,16,12"
@@ -211,12 +214,11 @@
                                    TextTrimming="CharacterEllipsis" />
                     </Border>
 
-                    <!-- Navigation list: SelectedItem bound to ActiveNavItem for reliable switching -->
+                    <!-- Navigation list -->
                     <ListBox ItemsSource="{Binding NavItems}"
                              SelectedItem="{Binding ActiveNavItem, Mode=TwoWay}"
                              Style="{StaticResource SidebarListBoxStyle}"
                              Margin="0,4,0,0" />
-
                 </DockPanel>
             </Border>
 
@@ -227,74 +229,85 @@
             <!-- ── Main content area ──────────────────────────────────────── -->
             <Grid Grid.Column="2">
 
-                <!-- Dashboard -->
-                <views:DashboardView
-                    DataContext="{Binding Dashboard}"
-                    Visibility="{Binding ShowDashboard, Converter={StaticResource BoolToVis}}">
-                    <views:DashboardView.Triggers>
-                        <EventTrigger RoutedEvent="Loaded">
-                            <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
-                        </EventTrigger>
-                    </views:DashboardView.Triggers>
-                </views:DashboardView>
+                <!-- Dashboard – wrap in Grid for RenderTransform -->
+                <Grid x:Name="PageDashboard"
+                      Visibility="{Binding ShowDashboard, Converter={StaticResource BoolToVis}}"
+                      RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <ScaleTransform x:Name="ScaleDashboard" ScaleX="1" ScaleY="1" />
+                    </Grid.RenderTransform>
+                    <views:DashboardView DataContext="{Binding Dashboard}" />
+                </Grid>
 
                 <!-- Tasks -->
-                <ScrollViewer
-                    VerticalScrollBarVisibility="Auto"
-                    Visibility="{Binding ShowTasks, Converter={StaticResource BoolToVis}}"
-                    Background="{DynamicResource BgBaseBrush}">
-                    <views:TaskEditorView DataContext="{Binding TaskEditor}"
-                                          Margin="24,20,24,20" />
-                </ScrollViewer>
+                <Grid x:Name="PageTasks"
+                      Visibility="{Binding ShowTasks, Converter={StaticResource BoolToVis}}"
+                      RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <ScaleTransform x:Name="ScaleTasks" ScaleX="1" ScaleY="1" />
+                    </Grid.RenderTransform>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  Background="{DynamicResource BgBaseBrush}">
+                        <views:TaskEditorView DataContext="{Binding TaskEditor}"
+                                              Margin="24,20,24,20" />
+                    </ScrollViewer>
+                </Grid>
 
                 <!-- Monitor -->
-                <views:MonitorView
-                    DataContext="{Binding Monitor}"
-                    Visibility="{Binding ShowMonitor, Converter={StaticResource BoolToVis}}"
-                    Margin="24,20,24,20">
-                    <views:MonitorView.Triggers>
-                        <EventTrigger RoutedEvent="Loaded">
-                            <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
-                        </EventTrigger>
-                    </views:MonitorView.Triggers>
-                </views:MonitorView>
+                <Grid x:Name="PageMonitor"
+                      Visibility="{Binding ShowMonitor, Converter={StaticResource BoolToVis}}"
+                      RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <ScaleTransform x:Name="ScaleMonitor" ScaleX="1" ScaleY="1" />
+                    </Grid.RenderTransform>
+                    <views:MonitorView DataContext="{Binding Monitor}"
+                                       Margin="24,20,24,20" />
+                </Grid>
 
                 <!-- Logs -->
-                <views:LogViewerView
-                    DataContext="{Binding LogViewer}"
-                    Visibility="{Binding ShowLogs, Converter={StaticResource BoolToVis}}"
-                    Margin="24,20,24,20">
-                    <views:LogViewerView.Triggers>
-                        <EventTrigger RoutedEvent="Loaded">
-                            <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
-                        </EventTrigger>
-                    </views:LogViewerView.Triggers>
-                </views:LogViewerView>
+                <Grid x:Name="PageLogs"
+                      Visibility="{Binding ShowLogs, Converter={StaticResource BoolToVis}}"
+                      RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <ScaleTransform x:Name="ScaleLogs" ScaleX="1" ScaleY="1" />
+                    </Grid.RenderTransform>
+                    <views:LogViewerView DataContext="{Binding LogViewer}"
+                                         Margin="24,20,24,20" />
+                </Grid>
 
                 <!-- Console -->
-                <views:ConsoleView
-                    DataContext="{Binding Console}"
-                    Visibility="{Binding ShowConsole, Converter={StaticResource BoolToVis}}"
-                    Margin="24,20,24,20">
-                    <views:ConsoleView.Triggers>
-                        <EventTrigger RoutedEvent="Loaded">
-                            <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
-                        </EventTrigger>
-                    </views:ConsoleView.Triggers>
-                </views:ConsoleView>
+                <Grid x:Name="PageConsole"
+                      Visibility="{Binding ShowConsole, Converter={StaticResource BoolToVis}}"
+                      RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <ScaleTransform x:Name="ScaleConsole" ScaleX="1" ScaleY="1" />
+                    </Grid.RenderTransform>
+                    <views:ConsoleView DataContext="{Binding Console}"
+                                       Margin="24,20,24,20" />
+                </Grid>
 
                 <!-- Settings -->
-                <views:SettingsView
-                    DataContext="{Binding Settings}"
-                    Visibility="{Binding ShowSettings, Converter={StaticResource BoolToVis}}">
-                    <views:SettingsView.Triggers>
-                        <EventTrigger RoutedEvent="Loaded">
-                            <BeginStoryboard Storyboard="{StaticResource FadeIn}" />
-                        </EventTrigger>
-                    </views:SettingsView.Triggers>
-                </views:SettingsView>
+                <Grid x:Name="PageSettings"
+                      Visibility="{Binding ShowSettings, Converter={StaticResource BoolToVis}}"
+                      RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <ScaleTransform x:Name="ScaleSettings" ScaleX="1" ScaleY="1" />
+                    </Grid.RenderTransform>
+                    <views:SettingsView DataContext="{Binding Settings}" />
+                </Grid>
 
             </Grid>
         </Grid>
+
+        <!-- ── Toast notification overlay (top-right, above all content) ── -->
+        <shared:ToastContainerView
+            x:Name="ToastContainer"
+            Grid.Row="0" Grid.RowSpan="2"
+            Panel.ZIndex="9999"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Margin="0,44,16,0"
+            IsHitTestVisible="True" />
+
     </Grid>
 </Window>
