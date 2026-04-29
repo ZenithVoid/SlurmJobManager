@@ -5,6 +5,7 @@
     xmlns:conv="clr-namespace:SlurmJobManager.App.Converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:b="clr-namespace:SlurmJobManager.App.Behaviors"
     xmlns:views="clr-namespace:SlurmJobManager.App.Views"
     xmlns:shared="clr-namespace:SlurmJobManager.App.Views.Shared"
     mc:Ignorable="d"
@@ -253,13 +254,10 @@
                         <ColumnDefinition Width="*" MinWidth="200" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- Left: task editor form -->
-                    <ScrollViewer Grid.Column="0"
-                                  VerticalScrollBarVisibility="Auto"
-                                  Background="{DynamicResource BgBaseBrush}">
-                        <views:TaskEditorView DataContext="{Binding TaskEditor}"
-                                              Margin="24,20,24,20" />
-                    </ScrollViewer>
+                    <!-- Left: task editor form (TaskEditorView owns its own ScrollViewer + behaviors) -->
+                    <views:TaskEditorView Grid.Column="0"
+                                          DataContext="{Binding TaskEditor}"
+                                          Margin="24,20,24,20" />
 
                     <!-- Splitter -->
                     <GridSplitter Grid.Column="1"
@@ -315,26 +313,33 @@
                                        Visibility="{Binding TaskEditor.TaskFiles.Count,
                                                             Converter={StaticResource ZeroCountToVis}}" />
 
-                            <!-- File list -->
-                            <ListBox x:Name="TaskFileListBox"
-                                     ItemsSource="{Binding TaskEditor.TaskFiles}"
-                                     SelectedItem="{Binding TaskEditor.SelectedTaskFile}"
-                                     Background="{DynamicResource BgCrustBrush}"
-                                     Foreground="{DynamicResource TextPrimaryBrush}"
-                                     BorderBrush="{DynamicResource BorderBrush}"
-                                     BorderThickness="1"
-                                     FontFamily="Consolas" FontSize="12"
-                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                     MouseDoubleClick="TaskFileListBox_MouseDoubleClick">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="📄 " FontSize="12" />
-                                            <TextBlock Text="{Binding}" FontSize="12" />
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+                            <!-- File list: outer ScrollViewer owns smooth + routing so hover-scroll works without focus -->
+                            <ScrollViewer b:SmoothScrollBehavior.IsEnabled="True"
+                                          b:SmoothScrollBehavior.ScrollAmount="60"
+                                          b:MouseWheelRoutingBehavior.IsEnabled="True"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
+                                <ListBox x:Name="TaskFileListBox"
+                                         ItemsSource="{Binding TaskEditor.TaskFiles}"
+                                         SelectedItem="{Binding TaskEditor.SelectedTaskFile}"
+                                         Background="{DynamicResource BgCrustBrush}"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"
+                                         BorderBrush="{DynamicResource BorderBrush}"
+                                         BorderThickness="1"
+                                         FontFamily="Consolas" FontSize="12"
+                                         ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         MouseDoubleClick="TaskFileListBox_MouseDoubleClick">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="📄 " FontSize="12" />
+                                                <TextBlock Text="{Binding}" FontSize="12" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </ScrollViewer>
                         </DockPanel>
                     </Border>
                 </Grid>
