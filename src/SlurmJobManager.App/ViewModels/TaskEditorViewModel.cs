@@ -47,6 +47,11 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private long? _lastJobId;
     private string? _selectedTaskFile;
 
+    // ── TaskId directory validation ──────────────────────────────────────────
+    private bool? _taskIdDirectoryExists;          // null=unknown, true=exists, false=not exists
+    private string _taskIdDirectoryStatus = string.Empty;
+    private CancellationTokenSource? _taskIdValidationCts;
+
     // ── Properties ───────────────────────────────────────────────────────────
 
     public string RootDirectory
@@ -71,6 +76,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             {
                 CommandManager.InvalidateRequerySuggested();
                 TryAutoFillRemoteWorkDir();
+                ScheduleTaskIdDirectoryCheck();
             }
         }
     }
@@ -82,9 +88,13 @@ public sealed class TaskEditorViewModel : ViewModelBase
         {
             if (SetField(ref _selectedTemplate, value))
             {
-                LoadSelectedRemoteTemplate();
-                if (!string.IsNullOrEmpty(value))
+                RebuildFilteredTemplateList();
+                // Only load template content and update save-as filename when an exact match is selected
+                if (!string.IsNullOrEmpty(value) && TemplateDisplayList.Contains(value))
+                {
+                    LoadSelectedRemoteTemplate();
                     SaveAsFileName = value;
+                }
             }
         }
     }
@@ -101,7 +111,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     public string AppPath
     {
         get => _appPath;
-        set { if (SetField(ref _appPath, value)) CommandManager.InvalidateRequerySuggested(); }
+        set { if (SetField(ref _appPath, value)) { RebuildFilteredAppList(); CommandManager.InvalidateRequerySuggested(); } }
     }
 
     /// <summary>Filename used for Save As; defaults to SelectedTemplate when a template is chosen.</summary>
@@ -117,6 +127,13 @@ public sealed class TaskEditorViewModel : ViewModelBase
     public long? LastJobId          { get => _lastJobId;         set { SetField(ref _lastJobId, value); OnPropertyChanged(nameof(LastJobIdText)); } }
     public string LastJobIdText     => _lastJobId.HasValue ? $"Last Job ID: {_lastJobId}" : string.Empty;
 
+    /// <summary>Validation message shown below the TaskId input (e.g. "目录已存在" or "目录不存在，可新建").</summary>
+    public string TaskIdDirectoryStatus
+    {
+        get => _taskIdDirectoryStatus;
+        set => SetField(ref _taskIdDirectoryStatus, value);
+    }
+
     public string? SelectedTaskFile
     {
         get => _selectedTaskFile;
@@ -130,10 +147,16 @@ public sealed class TaskEditorViewModel : ViewModelBase
     /// <summary>Pinned app paths.</summary>
     public ObservableCollection<string> PinnedApps         { get; } = new();
 
+    /// <summary>App path candidates filtered by the current <see cref="AppPath"/> text input.</summary>
+    public ObservableCollection<string> FilteredAppList    { get; } = new();
+
     /// <summary>Remote template file candidates (pinned first, then the rest).</summary>
     public ObservableCollection<string> TemplateDisplayList { get; } = new();
     /// <summary>Pinned template filenames.</summary>
     public ObservableCollection<string> PinnedTemplates    { get; } = new();
+
+    /// <summary>Template candidates filtered by the current <see cref="SelectedTemplate"/> text input.</summary>
+    public ObservableCollection<string> FilteredTemplateList { get; } = new();
 
     /// <summary>Key/value extra parameters for sbatch.</summary>
     public ObservableCollection<ParameterEntry> Parameters { get; } = new();
@@ -167,7 +190,8 @@ public sealed class TaskEditorViewModel : ViewModelBase
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
 
         BrowseRootDirectoryCommand       = new AsyncRelayCommand(BrowseRootDirectoryAsync, () => _ssh.IsConnected);
-        NewTaskIdCommand                 = new RelayCommand(GenerateNewTaskId);
+        // "新建" is disabled when the target directory already exists, preventing accidental overwrites
+        NewTaskIdCommand                 = new RelayCommand(GenerateNewTaskId, () => _taskIdDirectoryExists != true);
         SaveTaskCommand                  = new AsyncRelayCommand(SaveTaskAsync,     () => !IsBusy);
         LoadTaskCommand                  = new AsyncRelayCommand(LoadTaskAsync,     () => !IsBusy);
         SaveParamFileCommand             = new AsyncRelayCommand(SaveParamFileAsync, () => !IsBusy);
@@ -259,7 +283,67 @@ public sealed class TaskEditorViewModel : ViewModelBase
         TryAutoFillRemoteWorkDir();
     }
 
-    // ── B2: App path candidates + pinning ────────────────────────────────────
+    // ── TaskId directory existence validation ─────────────────────────────────
+
+    /// <summary>
+    /// Schedules a debounced remote directory existence check for <c>{Root}/{TaskId}/</c>.
+    /// Updates <see cref="TaskIdDirectoryStatus"/> and invalidates <see cref="NewTaskIdCommand"/>
+    /// CanExecute after a ~300 ms delay to avoid excess SSH round-trips while the user types.
+    /// </summary>
+    private void ScheduleTaskIdDirectoryCheck()
+    {
+        // Cancel any in-flight check
+        _taskIdValidationCts?.Cancel();
+        _taskIdValidationCts?.Dispose();
+        _taskIdValidationCts = null;
+
+        // Reset state immediately
+        _taskIdDirectoryExists = null;
+        TaskIdDirectoryStatus  = string.Empty;
+        CommandManager.InvalidateRequerySuggested();
+
+        if (!_ssh.IsConnected
+            || string.IsNullOrWhiteSpace(RootDirectory)
+            || string.IsNullOrWhiteSpace(TaskId))
+        {
+            return;
+        }
+
+        var cts    = new CancellationTokenSource();
+        _taskIdValidationCts = cts;
+
+        var capturedTaskId = TaskId;
+        var capturedRoot   = RootDirectory;
+
+        _ = Task.Delay(300, cts.Token).ContinueWith(async delayTask =>
+        {
+            if (delayTask.IsCanceled || cts.IsCancellationRequested) return;
+
+            var path = $"{capturedRoot.TrimEnd('/')}/{capturedTaskId}";
+            try
+            {
+                var exists = await _ssh.RemoteDirectoryExistsAsync(path, cts.Token);
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    if (cts.IsCancellationRequested) return;
+                    _taskIdDirectoryExists = exists;
+                    TaskIdDirectoryStatus  = exists ? "⚠ 目录已存在" : "✓ 目录不存在，可新建";
+                    CommandManager.InvalidateRequerySuggested();
+                });
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    if (cts.IsCancellationRequested) return;
+                    _taskIdDirectoryExists = null;
+                    TaskIdDirectoryStatus  = $"校验失败：{ex.Message}";
+                    CommandManager.InvalidateRequerySuggested();
+                });
+            }
+        }, TaskScheduler.Default);
+    }
 
     private async Task RefreshAppCandidatesAsync(CancellationToken ct)
     {
@@ -294,6 +378,55 @@ public sealed class TaskEditorViewModel : ViewModelBase
             AppDisplayList.Add(p);
         foreach (var c in existing.Where(c => !PinnedApps.Contains(c)))
             AppDisplayList.Add(c);
+        RebuildFilteredAppList();
+    }
+
+    // ── Autocomplete filtering ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Rebuilds <see cref="FilteredAppList"/> from <see cref="AppDisplayList"/> using the
+    /// current <see cref="AppPath"/> text as a case-insensitive contains filter.
+    /// Prefix matches are placed before contains-only matches.
+    /// When the text is empty or an exact item is already selected, all candidates are shown.
+    /// </summary>
+    private void RebuildFilteredAppList()
+    {
+        var filter = _appPath;
+        FilteredAppList.Clear();
+
+        if (string.IsNullOrEmpty(filter) || AppDisplayList.Contains(filter))
+        {
+            foreach (var item in AppDisplayList) FilteredAppList.Add(item);
+            return;
+        }
+
+        var lower    = filter.ToLowerInvariant();
+        var prefix   = AppDisplayList.Where(x => x.ToLowerInvariant().StartsWith(lower)).OrderBy(x => x);
+        var contains = AppDisplayList.Where(x =>  x.ToLowerInvariant().Contains(lower)
+                                               && !x.ToLowerInvariant().StartsWith(lower)).OrderBy(x => x);
+        foreach (var item in prefix.Concat(contains)) FilteredAppList.Add(item);
+    }
+
+    /// <summary>
+    /// Rebuilds <see cref="FilteredTemplateList"/> from <see cref="TemplateDisplayList"/> using the
+    /// current <see cref="SelectedTemplate"/> text as a case-insensitive contains filter.
+    /// </summary>
+    private void RebuildFilteredTemplateList()
+    {
+        var filter = _selectedTemplate;
+        FilteredTemplateList.Clear();
+
+        if (string.IsNullOrEmpty(filter) || TemplateDisplayList.Contains(filter))
+        {
+            foreach (var item in TemplateDisplayList) FilteredTemplateList.Add(item);
+            return;
+        }
+
+        var lower    = filter.ToLowerInvariant();
+        var prefix   = TemplateDisplayList.Where(x => x.ToLowerInvariant().StartsWith(lower)).OrderBy(x => x);
+        var contains = TemplateDisplayList.Where(x =>  x.ToLowerInvariant().Contains(lower)
+                                                    && !x.ToLowerInvariant().StartsWith(lower)).OrderBy(x => x);
+        foreach (var item in prefix.Concat(contains)) FilteredTemplateList.Add(item);
     }
 
     private void TogglePinApp()
@@ -332,6 +465,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             TemplateDisplayList.Add(p);
         foreach (var c in existing.Where(c => !PinnedTemplates.Contains(c)))
             TemplateDisplayList.Add(c);
+        RebuildFilteredTemplateList();
     }
 
     private void TogglePinTemplate()
@@ -460,12 +594,24 @@ public sealed class TaskEditorViewModel : ViewModelBase
         IsBusy = true;
         try
         {
-            var files = await _ssh.ListFilesAsync(RemoteWorkDir, ct);
+            // Use `ls -1` to list both files and subdirectories, surfacing errors via exit code
+            var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(
+                $"ls -1 {EscapeShellArg(RemoteWorkDir)} 2>&1", ct);
+
             TaskFiles.Clear();
-            foreach (var f in files)
-                TaskFiles.Add(f);
-            if (TaskFiles.Count == 0)
-                StatusMessage = "任务目录为空或不存在。";
+
+            if (exitCode != 0)
+            {
+                StatusMessage = $"无法读取目录（{stderr.Trim()}）。请检查路径和权限。";
+                return;
+            }
+
+            var entries = stdout.Split('\n',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var entry in entries)
+                TaskFiles.Add(entry);
+
+            StatusMessage = TaskFiles.Count == 0 ? "任务目录为空。" : $"已加载 {TaskFiles.Count} 个条目。";
         }
         catch (Exception ex) { StatusMessage = $"刷新文件列表失败：{ex.Message}"; }
         finally { IsBusy = false; }

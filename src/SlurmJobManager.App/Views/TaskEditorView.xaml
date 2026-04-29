@@ -27,7 +27,7 @@
 
         <!-- Task ID -->
         <TextBlock Text="{DynamicResource Task.TaskId}" Style="{StaticResource FieldLabelStyle}" />
-        <Grid Margin="0,0,0,6">
+        <Grid Margin="0,0,0,2">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <TextBox Grid.Column="0"
                      Text="{Binding TaskId, UpdateSourceTrigger=PropertyChanged}" />
@@ -35,6 +35,11 @@
                     Style="{StaticResource NeutralButtonStyle}"
                     Margin="4,0,0,0" Padding="8,4" />
         </Grid>
+        <!-- TaskId directory validation status -->
+        <TextBlock Text="{Binding TaskIdDirectoryStatus}"
+                   Style="{StaticResource MutedTextStyle}"
+                   Margin="0,0,0,4"
+                   FontSize="11" />
 
         <!-- Remote work dir (auto-computed from Root + TaskId) -->
         <TextBlock Text="{DynamicResource Task.RemoteWorkDir}" Style="{StaticResource FieldLabelStyle}" />
@@ -50,9 +55,11 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <ComboBox Grid.Column="0"
-                      ItemsSource="{Binding AppDisplayList}"
-                      Text="{Binding AppPath, UpdateSourceTrigger=PropertyChanged}"
-                      IsEditable="True" />
+                      IsEditable="True"
+                      IsTextSearchEnabled="False"
+                      StaysOpenOnEdit="True"
+                      ItemsSource="{Binding FilteredAppList}"
+                      Text="{Binding AppPath, UpdateSourceTrigger=PropertyChanged}" />
             <Button Grid.Column="1" Content="📌" Command="{Binding TogglePinAppCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Margin="4,0,0,0" Padding="6,4"
@@ -87,8 +94,11 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <ComboBox Grid.Column="0"
-                      ItemsSource="{Binding TemplateDisplayList}"
-                      SelectedItem="{Binding SelectedTemplate}" />
+                      IsEditable="True"
+                      IsTextSearchEnabled="False"
+                      StaysOpenOnEdit="True"
+                      ItemsSource="{Binding FilteredTemplateList}"
+                      Text="{Binding SelectedTemplate, UpdateSourceTrigger=PropertyChanged}" />
             <Button Grid.Column="1" Content="📌" Command="{Binding TogglePinTemplateCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Margin="4,0,0,0" Padding="6,4"

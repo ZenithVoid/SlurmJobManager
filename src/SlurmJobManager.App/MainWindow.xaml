@@ -28,6 +28,7 @@
     <Window.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
+        <conv:ZeroCountToVisibilityConverter x:Key="ZeroCountToVis" />
 
         <!-- Title-bar window control button style -->
         <Style x:Key="TitleBarButtonStyle" TargetType="Button">
@@ -294,7 +295,25 @@
                                        Foreground="{DynamicResource TextMutedBrush}"
                                        FontFamily="Consolas" FontSize="10"
                                        TextTrimming="CharacterEllipsis"
-                                       Margin="0,0,0,6" />
+                                       Margin="0,0,0,4" />
+
+                            <!-- Status message from TaskEditor -->
+                            <TextBlock DockPanel.Dock="Top"
+                                       Text="{Binding TaskEditor.StatusMessage}"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       FontSize="11"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,4" />
+
+                            <!-- Empty-state hint (shown when TaskFiles list is empty) -->
+                            <TextBlock DockPanel.Dock="Top"
+                                       Text="{DynamicResource Task.TaskFilesHint}"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       FontSize="11"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,4"
+                                       Visibility="{Binding TaskEditor.TaskFiles.Count,
+                                                            Converter={StaticResource ZeroCountToVis}}" />
 
                             <!-- File list -->
                             <ListBox x:Name="TaskFileListBox"
