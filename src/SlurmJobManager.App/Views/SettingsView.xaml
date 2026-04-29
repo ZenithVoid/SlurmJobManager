@@ -32,12 +32,15 @@
                                Style="{StaticResource SectionHeaderStyle}" />
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <CheckBox IsChecked="{Binding AutoConnectOnStartup, Mode=TwoWay}"
+                        <CheckBox x:Name="AutoConnectCheckBox"
+                                  IsChecked="{Binding AutoConnectOnStartup, Mode=TwoWay}"
                                   VerticalAlignment="Center"
                                   Margin="0,0,8,0" />
-                        <TextBlock Text="{DynamicResource Settings.AutoConnectLabel}"
-                                   Foreground="{DynamicResource TextPrimaryBrush}"
-                                   VerticalAlignment="Center" />
+                        <Label Target="{Binding ElementName=AutoConnectCheckBox}"
+                               Content="{DynamicResource Settings.AutoConnectLabel}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               VerticalAlignment="Center"
+                               Padding="0" />
                     </StackPanel>
                     <TextBlock Text="{DynamicResource Settings.AutoConnectDesc}"
                                Style="{StaticResource MutedTextStyle}"
@@ -103,7 +106,7 @@
                                Style="{StaticResource FieldLabelStyle}" />
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <Slider Minimum="2" Maximum="60"
-                                Value="{Binding PollIntervalSeconds, Mode=TwoWay}"
+                                Value="{Binding PollIntervalSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                 Width="200" VerticalAlignment="Center"
                                 Margin="0,0,10,0" />
                         <TextBlock Text="{Binding PollIntervalSeconds}"

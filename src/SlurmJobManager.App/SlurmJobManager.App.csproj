@@ -7,10 +7,15 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>SlurmJobManager.App</RootNamespace>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationIcon>Assets\AppIcon\server-palm.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SlurmJobManager.Core\SlurmJobManager.Core.csproj" />
     <ProjectReference Include="..\SlurmJobManager.Infrastructure\SlurmJobManager.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\AppIcon\server-palm.ico" />
   </ItemGroup>
 </Project>

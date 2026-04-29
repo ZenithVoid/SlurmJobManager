@@ -55,7 +55,11 @@ public sealed class SettingsViewModel : ViewModelBase
     public int PollIntervalSeconds
     {
         get => _main.Monitor.PollIntervalSeconds;
-        set => _main.Monitor.PollIntervalSeconds = value;
+        set
+        {
+            _main.Monitor.PollIntervalSeconds = value;
+            OnPropertyChanged();
+        }
     }
 
     // ── Refresh when theme changes so ThemeLabel stays in sync ───────────
