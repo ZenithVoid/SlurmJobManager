@@ -1,17 +1,23 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media.Animation;
+using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace SlurmJobManager.App.Behaviors;
 
 /// <summary>
 /// Attached behavior that intercepts mouse-wheel events on a <see cref="ScrollViewer"/>
-/// and produces smooth, eased scrolling instead of discrete per-item jumps.
+/// and produces smooth, continuous scrolling instead of discrete per-item jumps.
+/// <para>
+/// Child scrollable controls (DataGrid, TextBox with scrollbar, etc.) can still
+/// scroll independently when they have remaining scroll room; the wheel event is
+/// only claimed by the parent ScrollViewer when the child is at its boundary.
+/// </para>
 /// </summary>
 public static class SmoothScrollBehavior
 {
-    // ── Attached property ─────────────────────────────────────────────────
+    // ── IsEnabled attached property ───────────────────────────────────────
 
     public static readonly DependencyProperty IsEnabledProperty =
         DependencyProperty.RegisterAttached(
@@ -26,7 +32,7 @@ public static class SmoothScrollBehavior
     public static void SetIsEnabled(DependencyObject obj, bool value)
         => obj.SetValue(IsEnabledProperty, value);
 
-    // ── Scroll step size (in device-independent pixels per wheel notch) ──
+    // ── ScrollAmount (pixels per wheel notch) ────────────────────────────
 
     public static readonly DependencyProperty ScrollAmountProperty =
         DependencyProperty.RegisterAttached(
@@ -41,17 +47,23 @@ public static class SmoothScrollBehavior
     public static void SetScrollAmount(DependencyObject obj, double value)
         => obj.SetValue(ScrollAmountProperty, value);
 
-    // ── Animation duration ───────────────────────────────────────────────
+    // ── Per-ScrollViewer scroll state (DispatcherTimer-based lerp) ───────
 
-    private static readonly Duration AnimationDuration =
-        new(TimeSpan.FromMilliseconds(180));
+    private sealed class ScrollState
+    {
+        /// <summary>Accumulated target vertical offset.</summary>
+        public double TargetOffset;
+        /// <summary>Timer that drives the animation tick (~60 fps).</summary>
+        public DispatcherTimer? Timer;
+    }
 
-    // ── Tracking per-ScrollViewer target offset (weak refs prevent memory leaks) ─
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ScrollViewer, ScrollState>
+        States = new();
 
-    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ScrollViewer, OffsetHolder>
-        TargetOffsets = new();
-
-    private sealed class OffsetHolder { public double Value; }
+    // ── Lerp factor per 16 ms frame (≈ 60 fps). Larger = faster. ─────────
+    private const double LerpFactor = 0.25;
+    // ── Stop animating when closer than this many pixels to the target. ──
+    private const double SnapDistance = 0.5;
 
     // ── Attachment ────────────────────────────────────────────────────────
 
@@ -68,17 +80,24 @@ public static class SmoothScrollBehavior
         {
             sv.PreviewMouseWheel -= OnPreviewMouseWheel;
             sv.Unloaded          -= OnUnloaded;
-            TargetOffsets.Remove(sv);
+            StopAndRemoveState(sv);
         }
     }
 
     private static void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        if (sender is ScrollViewer sv)
+        if (sender is not ScrollViewer sv) return;
+        sv.PreviewMouseWheel -= OnPreviewMouseWheel;
+        sv.Unloaded          -= OnUnloaded;
+        StopAndRemoveState(sv);
+    }
+
+    private static void StopAndRemoveState(ScrollViewer sv)
+    {
+        if (States.TryGetValue(sv, out var state))
         {
-            sv.PreviewMouseWheel -= OnPreviewMouseWheel;
-            sv.Unloaded          -= OnUnloaded;
-            TargetOffsets.Remove(sv);
+            state.Timer?.Stop();
+            States.Remove(sv);
         }
     }
 
@@ -87,63 +106,88 @@ public static class SmoothScrollBehavior
     private static void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (sender is not ScrollViewer sv) return;
+
+        // Let child scrollable controls handle the event when they have scroll room.
+        if (ChildCanScrollInDirection(e.OriginalSource as DependencyObject, e.Delta, sv))
+            return;
+
         e.Handled = true;
 
-        var step   = GetScrollAmount(sv);
-        var delta  = e.Delta < 0 ? step : -step;
+        var step  = GetScrollAmount(sv);
+        var delta = e.Delta < 0 ? step : -step;
 
-        var holder = TargetOffsets.GetOrCreateValue(sv);
-        if (holder.Value == 0 && sv.VerticalOffset != 0)
-            holder.Value = sv.VerticalOffset;
+        var state = States.GetOrCreateValue(sv);
 
-        holder.Value = Math.Max(0, Math.Min(sv.ScrollableHeight, holder.Value + delta));
-        var target = holder.Value;
+        // Bootstrap: if no animation is running, start from the current visual offset.
+        if (state.Timer is not { IsEnabled: true })
+            state.TargetOffset = sv.VerticalOffset;
 
-        var anim = new DoubleAnimation(
-            sv.VerticalOffset,
-            target,
-            AnimationDuration,
-            FillBehavior.Stop)
+        state.TargetOffset = Math.Max(0, Math.Min(sv.ScrollableHeight, state.TargetOffset + delta));
+
+        // Lazily create the timer.
+        if (state.Timer == null)
         {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-        };
-
-        anim.Completed += (_, _) =>
-        {
-            // Reset holder so the next wheel event starts from the current position
-            if (TargetOffsets.TryGetValue(sv, out var h) &&
-                Math.Abs(sv.VerticalOffset - h.Value) < 1.0)
+            var capturedSv = sv;
+            state.Timer = new DispatcherTimer(DispatcherPriority.Render)
             {
-                h.Value = 0;
-            }
-        };
+                Interval = TimeSpan.FromMilliseconds(16),
+            };
+            state.Timer.Tick += (_, _) => AnimationTick(capturedSv, state);
+        }
 
-        sv.BeginAnimation(ScrollViewerHelper.VerticalOffsetProperty, anim);
+        if (!state.Timer.IsEnabled)
+            state.Timer.Start();
     }
-}
 
-/// <summary>
-/// Helper that exposes <see cref="ScrollViewer.VerticalOffset"/> as an animatable
-/// dependency property (the built-in property is read-only).
-/// </summary>
-internal static class ScrollViewerHelper
-{
-    public static readonly DependencyProperty VerticalOffsetProperty =
-        DependencyProperty.RegisterAttached(
-            "VerticalOffset",
-            typeof(double),
-            typeof(ScrollViewerHelper),
-            new PropertyMetadata(0.0, OnVerticalOffsetChanged));
+    // ── Per-frame lerp towards target ─────────────────────────────────────
 
-    public static double GetVerticalOffset(DependencyObject obj)
-        => (double)obj.GetValue(VerticalOffsetProperty);
-
-    public static void SetVerticalOffset(DependencyObject obj, double value)
-        => obj.SetValue(VerticalOffsetProperty, value);
-
-    private static void OnVerticalOffsetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void AnimationTick(ScrollViewer sv, ScrollState state)
     {
-        if (d is ScrollViewer sv)
-            sv.ScrollToVerticalOffset((double)e.NewValue);
+        var current = sv.VerticalOffset;
+        var target  = state.TargetOffset;
+        var diff    = target - current;
+
+        if (Math.Abs(diff) <= SnapDistance)
+        {
+            sv.ScrollToVerticalOffset(target);
+            state.Timer!.Stop();
+            return;
+        }
+
+        sv.ScrollToVerticalOffset(current + diff * LerpFactor);
+    }
+
+    // ── Child-scroll awareness ────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns <see langword="true"/> when the element under the cursor is
+    /// inside a nested <see cref="ScrollViewer"/> (e.g., DataGrid, TextBox)
+    /// that still has room to scroll in the requested direction.
+    /// </summary>
+    private static bool ChildCanScrollInDirection(
+        DependencyObject? source,
+        int wheelDelta,
+        ScrollViewer parentSv)
+    {
+        if (source == null) return false;
+
+        var candidate = source;
+        while (candidate != null && candidate != parentSv)
+        {
+            if (candidate is ScrollViewer childSv && !ReferenceEquals(childSv, parentSv))
+            {
+                // Check whether the child has scroll room in the requested direction.
+                if (wheelDelta < 0) // scrolling down
+                    return childSv.VerticalOffset < childSv.ScrollableHeight;
+                else                // scrolling up
+                    return childSv.VerticalOffset > 0;
+            }
+
+            // Walk up the visual tree.
+            candidate = VisualTreeHelper.GetParent(candidate)
+                        ?? LogicalTreeHelper.GetParent(candidate);
+        }
+
+        return false;
     }
 }
