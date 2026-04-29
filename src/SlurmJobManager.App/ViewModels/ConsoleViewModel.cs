@@ -74,13 +74,13 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         if (string.IsNullOrEmpty(cmd))
         {
             if (!string.IsNullOrWhiteSpace(CommandInput))
-                OutputLines.Add(ConsoleLine.Error("[error] 命令包含非法字符，已拒绝执行。"));
+                AppendLine(ConsoleLine.Error("[error] 命令包含非法字符，已拒绝执行。"));
             return;
         }
 
         if (!_ssh.IsConnected)
         {
-            OutputLines.Add(ConsoleLine.Error("未建立 SSH 连接，请先在连接页面建立连接。"));
+            AppendLine(ConsoleLine.Error("未建立 SSH 连接，请先在连接页面建立连接。"));
             return;
         }
 
@@ -88,7 +88,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         CommandInput  = string.Empty;
         _historyIndex = -1;
 
-        OutputLines.Add(ConsoleLine.Command($"$ {cmd}"));
+        AppendLine(ConsoleLine.Command($"$ {cmd}"));
         IsBusy = true;
         // Manage lifetimes explicitly: dispose linked source before the source it wraps
         var timeoutCts = new CancellationTokenSource(_settings.CommandTimeout);
@@ -100,31 +100,31 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
             sw.Stop();
 
             foreach (var line in stdout.Split('\n'))
-                if (line.Length > 0) OutputLines.Add(ConsoleLine.Stdout(line));
+                if (line.Length > 0) AppendLine(ConsoleLine.Stdout(line));
 
             if (!string.IsNullOrWhiteSpace(stderr))
                 foreach (var line in stderr.Split('\n'))
-                    if (line.Length > 0) OutputLines.Add(ConsoleLine.Stderr(line));
+                    if (line.Length > 0) AppendLine(ConsoleLine.Stderr(line));
 
             var meta = $"[exit {exitCode} | {sw.ElapsedMilliseconds} ms]";
-            OutputLines.Add(ConsoleLine.Meta(meta));
+            AppendLine(ConsoleLine.Meta(meta));
             _logger?.Debug($"Console cmd '{cmd}': exit {exitCode}, {sw.ElapsedMilliseconds} ms");
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
         {
             sw.Stop();
-            OutputLines.Add(ConsoleLine.Error($"[timeout] 命令超时（{_settings.CommandTimeout.TotalSeconds:0}s）已取消。"));
+            AppendLine(ConsoleLine.Error($"[timeout] 命令超时（{_settings.CommandTimeout.TotalSeconds:0}s）已取消。"));
             _logger?.Warning($"Console cmd '{cmd}' timed out after {sw.ElapsedMilliseconds} ms");
         }
         catch (OperationCanceledException)
         {
             sw.Stop();
-            OutputLines.Add(ConsoleLine.Meta($"[cancelled after {sw.ElapsedMilliseconds} ms]"));
+            AppendLine(ConsoleLine.Meta($"[cancelled after {sw.ElapsedMilliseconds} ms]"));
         }
         catch (Exception ex)
         {
             sw.Stop();
-            OutputLines.Add(ConsoleLine.Error($"[error] {ex.Message}"));
+            AppendLine(ConsoleLine.Error($"[error] {ex.Message}"));
             _logger?.Error($"Console cmd '{cmd}' failed", ex);
         }
         finally
@@ -133,7 +133,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
             _executeCts.Dispose();
             _executeCts = null;
             timeoutCts.Dispose();
-            IsBusy = false;
+            SetBusy(false);
         }
     }
 
@@ -154,7 +154,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     private void CancelExecution()
     {
         _executeCts?.Cancel();
-        OutputLines.Add(ConsoleLine.Meta("[cancelling…]"));
+        AppendLine(ConsoleLine.Meta("[cancelling…]"));
     }
 
     private void AddToHistory(string cmd)
@@ -197,5 +197,33 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
             _connection.PropertyChanged -= OnConnectionPropertyChanged;
         _executeCts?.Cancel();
         _executeCts?.Dispose();
+    }
+
+    // ── Thread-safe UI helpers ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Appends a line to <see cref="OutputLines"/> ensuring execution on the UI thread.
+    /// Protects against the rare case where an SSH library callback or continuation
+    /// fires on a thread-pool thread.
+    /// </summary>
+    private void AppendLine(ConsoleLine line)
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess())
+            dispatcher.InvokeAsync(() => OutputLines.Add(line));
+        else
+            OutputLines.Add(line);
+    }
+
+    /// <summary>
+    /// Sets <see cref="IsBusy"/> on the UI thread to keep WPF bindings happy.
+    /// </summary>
+    private void SetBusy(bool value)
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess())
+            dispatcher.InvokeAsync(() => IsBusy = value);
+        else
+            IsBusy = value;
     }
 }

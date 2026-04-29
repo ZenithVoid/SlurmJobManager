@@ -176,6 +176,17 @@
     <!-- ── 终端视图 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Console.NotConnected">⚠ 当前可浏览此页面，但执行命令需先建立 SSH 连接。</sys:String>
 
+    <!-- ── 崩溃对话框 ────────────────────────────────────────────────────── -->
+    <sys:String x:Key="Crash.Title">程序发生严重错误</sys:String>
+    <sys:String x:Key="Crash.Subtitle">应用将在关闭前显示错误详情，请复制后反馈。</sys:String>
+    <sys:String x:Key="Crash.FieldTime">发生时间</sys:String>
+    <sys:String x:Key="Crash.FieldType">异常类型</sys:String>
+    <sys:String x:Key="Crash.FieldMessage">错误消息</sys:String>
+    <sys:String x:Key="Crash.FieldLocation">发生位置</sys:String>
+    <sys:String x:Key="Crash.FieldStack">完整堆栈（可全选复制）</sys:String>
+    <sys:String x:Key="Crash.BtnCopy">📋  复制错误详情</sys:String>
+    <sys:String x:Key="Crash.BtnClose">✕  关闭程序</sys:String>
+
     <!-- ── 空态提示 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Monitor.EmptyState">请先输入监控用户名以开始监控作业。</sys:String>
     <sys:String x:Key="Monitor.EmptyTitle">暂无监控数据</sys:String>

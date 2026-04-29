@@ -1,5 +1,7 @@
 using System.Windows;
+using System.Windows.Threading;
 using SlurmJobManager.App.Services;
+using SlurmJobManager.App.Services.CrashHandling;
 using SlurmJobManager.App.ViewModels;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
@@ -14,6 +16,7 @@ public partial class App : Application
 {
     private MainViewModel?      _mainVm;
     private SerilogAppLogger?   _logger;
+    private CrashHandler?       _crashHandler;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -25,9 +28,12 @@ public partial class App : Application
         // Shared application settings (timeouts / retry)
         var settings = new AppSettings();
 
-        // Logging (must be initialised first so all services can use it)
+        // Logging (must be initialised early so the crash handler can write to it)
         _logger = new SerilogAppLogger();
         _logger.Info("SlurmJobManager starting up.");
+
+        // Wire global unhandled-exception hooks after logging is ready
+        RegisterCrashHandlers();
 
         // Infrastructure services (one SSH client shared across all consumers)
         var ssh      = new SshClientService(settings);
@@ -88,5 +94,83 @@ public partial class App : Application
 
         _logger?.Info("SlurmJobManager shut down.");
         _logger?.Dispose();
+    }
+
+    // ── Global exception hooks ───────────────────────────────────────────────
+
+    private void RegisterCrashHandlers()
+    {
+        // Build the crash-handler chain (logger may be null at very early startup)
+        var dialogService = new CrashDialogService(GracefulShutdown);
+        _crashHandler = new CrashHandler(_logger, dialogService);
+
+        // 1. WPF UI-thread unhandled exceptions
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+
+        // 2. CLR / thread-pool / background-thread unhandled exceptions
+        AppDomain.CurrentDomain.UnhandledException += OnAppDomainUnhandledException;
+
+        // 3. Unobserved task exceptions (fire-and-forget async that threw)
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+    }
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        // Mark as handled so WPF does not show its own generic crash box
+        e.Handled = true;
+        _crashHandler?.HandleException(e.Exception, "DispatcherUnhandledException");
+    }
+
+    private void OnAppDomainUnhandledException(object sender, UnhandledExceptionEventArgs e)
+    {
+        if (e.ExceptionObject is Exception ex)
+            _crashHandler?.HandleException(ex, "AppDomainUnhandledException");
+        // If IsTerminating == true, the CLR will exit after this handler returns.
+        // The dialog service blocks this thread until the user closes the dialog.
+    }
+
+    private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        e.SetObserved(); // prevent CLR from crashing the process for unobserved tasks
+        _crashHandler?.HandleException(e.Exception, "UnobservedTaskException");
+    }
+
+    /// <summary>
+    /// Disposes key resources and requests a graceful WPF shutdown.
+    /// Called after the crash dialog is dismissed.
+    /// </summary>
+    private void GracefulShutdown()
+    {
+        try
+        {
+            if (_mainVm?.Monitor is MonitorViewModel monitor)
+            {
+                try { if (monitor.IsPolling) monitor.StopPollingCommand.Execute(null); } catch { }
+                try { monitor.Dispose(); } catch { }
+            }
+            try { _mainVm?.LogViewer?.Dispose(); } catch { }
+            try { _mainVm?.Console?.Dispose();   } catch { }
+            _logger?.Info("GracefulShutdown invoked after fatal error.");
+            try { _logger?.Dispose(); } catch { }
+        }
+        catch
+        {
+            // Best-effort: we must always exit
+        }
+        finally
+        {
+            try
+            {
+                var dispatcher = Current?.Dispatcher;
+                if (dispatcher != null && !dispatcher.HasShutdownStarted)
+                    dispatcher.BeginInvoke(() => Current?.Shutdown(1));
+                else
+                    Environment.Exit(1);
+            }
+            catch
+            {
+                Environment.Exit(1);
+            }
+        }
     }
 }
