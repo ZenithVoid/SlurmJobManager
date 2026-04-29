@@ -180,8 +180,10 @@
     <sys:String x:Key="Task.SubmitAll">提交所有已启用任务单元</sys:String>
     <sys:String x:Key="Task.SubmitAllDesc">启用后将提交列表中所有标记为"启用"的任务单元；关闭则仅提交当前选中单元。</sys:String>
     <sys:String x:Key="Task.MultiUnitPrompt">检测到多个任务单元（旧数据）。本次将使用第一个单元作为活动单元。\n\n单元列表：\n{0}\n\n提交时只提交活动单元。</sys:String>
-    <sys:String x:Key="Task.CommandBuilderHint">点击上方按钮可选择远程程序路径、附加参数文件并预览最终命令行。</sys:String>
+    <sys:String x:Key="Task.CommandBuilderHint">点击上方按钮可配置多个运行命令、自动推断 MPI 路径，并预览和编辑 sbatch 脚本。</sys:String>
     <sys:String x:Key="Task.CommandUpdated">命令已更新，请记得保存任务。</sys:String>
+    <sys:String x:Key="Task.CommandsSummary">已配置命令（预览）</sys:String>
+    <sys:String x:Key="Task.TaskUnitSelectorDesc">每个 TaskId 下可有多个任务单元，每个单元独立维护命令集合和 sbatch 脚本。</sys:String>
     <sys:String x:Key="Btn.AddProgram">+ 添加程序</sys:String>
     <sys:String x:Key="Btn.RemoveProgram">- 删除程序</sys:String>
     <sys:String x:Key="Btn.AddParamFile">+ 添加参数文件</sys:String>
@@ -194,18 +196,34 @@
     <sys:String x:Key="CmdBuilder.Title">命令构建器</sys:String>
     <sys:String x:Key="CmdBuilder.AvailablePrograms">可用程序（远程）</sys:String>
     <sys:String x:Key="CmdBuilder.AvailableParamFiles">可用参数文件（远程）</sys:String>
-    <sys:String x:Key="CmdBuilder.SelectedProgram">选中程序路径</sys:String>
+    <sys:String x:Key="CmdBuilder.SelectedProgram">程序路径</sys:String>
     <sys:String x:Key="CmdBuilder.ChosenParamFiles">已附加参数文件</sys:String>
-    <sys:String x:Key="CmdBuilder.CommandPreview">最终命令行预览</sys:String>
+    <sys:String x:Key="CmdBuilder.CommandPreview">命令行预览</sys:String>
     <sys:String x:Key="CmdBuilder.FilterHint">输入关键词过滤列表</sys:String>
-    <sys:String x:Key="CmdBuilder.ProgramPathHint">可手动输入或从左侧列表选择</sys:String>
+    <sys:String x:Key="CmdBuilder.ProgramPathHint">可手动输入或从左侧列表双击选择</sys:String>
     <sys:String x:Key="CmdBuilder.DoubleClickHint">双击可打开并编辑远程参数文件</sys:String>
     <sys:String x:Key="CmdBuilder.AddParam">+ 添加到命令</sys:String>
     <sys:String x:Key="CmdBuilder.RemoveParam">- 移除</sys:String>
     <sys:String x:Key="CmdBuilder.Refresh">⟳ 刷新远程列表</sys:String>
     <sys:String x:Key="CmdBuilder.Test">🔍 测试命令</sys:String>
-    <sys:String x:Key="CmdBuilder.Confirm">✓ 确认</sys:String>
+    <sys:String x:Key="CmdBuilder.SaveApply">💾 保存并应用</sys:String>
     <sys:String x:Key="CmdBuilder.Cancel">✕ 取消</sys:String>
+    <!-- Multi-command + MPI -->
+    <sys:String x:Key="CmdBuilder.CommandList">命令列表（多命令）</sys:String>
+    <sys:String x:Key="CmdBuilder.AddCmd">+ 新增命令</sys:String>
+    <sys:String x:Key="CmdBuilder.RemoveCmd">- 删除命令</sys:String>
+    <sys:String x:Key="CmdBuilder.MoveUp">上移</sys:String>
+    <sys:String x:Key="CmdBuilder.MoveDown">下移</sys:String>
+    <sys:String x:Key="CmdBuilder.MpirunPath">mpirun 路径（自动推断/手动填写）</sys:String>
+    <sys:String x:Key="CmdBuilder.MpirunHint">留空则不添加 mpirun 前缀；可通过右侧"自动探测"按钮推断</sys:String>
+    <sys:String x:Key="CmdBuilder.DetectMpi">🔍 自动探测</sys:String>
+    <sys:String x:Key="CmdBuilder.ExtraArgs">额外命令行参数</sys:String>
+    <sys:String x:Key="CmdBuilder.ExtraArgsHint">追加在参数文件之后，顺序：程序 → 参数文件 → 额外参数</sys:String>
+    <sys:String x:Key="CmdBuilder.AddExtraArg">+ 添加参数</sys:String>
+    <!-- sbatch -->
+    <sys:String x:Key="CmdBuilder.SbatchScript">sbatch 脚本（可编辑）</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchHint">此脚本将在提交时使用。点击"重新生成"可用当前命令列表刷新内容。</sys:String>
+    <sys:String x:Key="CmdBuilder.RegenSbatch">⟳ 重新生成</sys:String>
 
     <!-- ── 远程目录选择器 ─────────────────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.Title">选择远程目录</sys:String>

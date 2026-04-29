@@ -67,7 +67,21 @@ public class ParameterFileEntry
 /// <summary>A single command-line entry within a <see cref="TaskUnit"/>.</summary>
 public class CommandEntry
 {
+    /// <summary>Rendered / legacy command line (populated from rich fields or stored as-is).</summary>
     public string  CommandLine  { get; set; } = string.Empty;
     public string? Description  { get; set; }
     public int     Order        { get; set; }
+
+    // ── Rich structured fields (new multi-command model) ────────────────────
+    /// <summary>Absolute path to the program executable on the remote host.</summary>
+    public string ProgramPath { get; set; } = string.Empty;
+
+    /// <summary>Ordered list of remote parameter file paths passed after the program.</summary>
+    public List<string> ParameterFiles { get; set; } = new();
+
+    /// <summary>Additional command-line arguments appended after parameter files.</summary>
+    public List<string> ExtraArgs { get; set; } = new();
+
+    /// <summary>Absolute path to mpirun inferred from the program's OpenMPI dependency.</summary>
+    public string? MpirunPath { get; set; }
 }

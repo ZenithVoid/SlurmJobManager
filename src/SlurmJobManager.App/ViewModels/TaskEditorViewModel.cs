@@ -156,8 +156,12 @@ public sealed class TaskEditorViewModel : ViewModelBase
     /// </summary>
     public TaskUnitViewModel? ActiveUnit => _selectedTaskUnit;
 
-    // Kept as internal storage; UI no longer exposes multi-unit management.
-    internal ObservableCollection<TaskUnitViewModel> TaskUnits { get; } = new();
+    /// <summary>All task units in the current workspace (exposed for the unit-selector ComboBox).</summary>
+    public ObservableCollection<TaskUnitViewModel> TaskUnits { get; } = new();
+
+    /// <summary>Commands for adding / removing task units from the unit selector.</summary>
+    public ICommand AddTaskUnitCommand    { get; private set; } = null!;
+    public ICommand RemoveTaskUnitCommand { get; private set; } = null!;
 
     /// <summary>The active (and only) task unit for the current workspace.</summary>
     public TaskUnitViewModel? SelectedTaskUnit
@@ -232,6 +236,8 @@ public sealed class TaskEditorViewModel : ViewModelBase
         RefreshTaskFilesCommand          = new AsyncRelayCommand(RefreshTaskFilesAsync,             () => _ssh.IsConnected && !IsBusy);
         OpenTaskFileCommand              = new AsyncRelayCommand<string>(OpenTaskFileAsync);
         OpenCommandBuilderCommand        = new AsyncRelayCommand(OpenCommandBuilderAsync,           () => !IsBusy);
+        AddTaskUnitCommand               = new RelayCommand(AddTaskUnitInternal);
+        RemoveTaskUnitCommand            = new RelayCommand<TaskUnitViewModel>(RemoveTaskUnit, u => u != null && TaskUnits.Count > 1);
 
         LoadPins();
         Directory.CreateDirectory(LocalDataRoot);
@@ -253,7 +259,6 @@ public sealed class TaskEditorViewModel : ViewModelBase
         }
     }
 
-    // Kept for internal use only (legacy code-paths in submit/save/load)
     private void AddTaskUnitInternal()
     {
         var name = !string.IsNullOrEmpty(TaskId) ? TaskId : $"Task {TaskUnits.Count + 1}";
@@ -757,10 +762,15 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
     private async Task OpenCommandBuilderAsync(CancellationToken ct)
     {
+        EnsureAtLeastOneTaskUnit();
+        var unit = _selectedTaskUnit!;
+
         var dlgVm = new CommandBuilderViewModel(
             _ssh,
-            initialProgram: _selectedTaskUnit?.Programs.FirstOrDefault()?.ProgramPath ?? string.Empty,
-            initialParamFiles: _selectedTaskUnit?.ParamFiles.Select(f => f.ToModel()));
+            taskId:         TaskId,
+            remoteWorkDir:  RemoteWorkDir,
+            initialCommands: unit.Commands.Select(c => c.ToModel()),
+            initialSbatch:  unit.SbatchTemplate);
 
         var win = new CommandBuilderView { DataContext = dlgVm };
         if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
@@ -770,28 +780,22 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
         if (win.ShowDialog() == true && dlgVm.Confirmed)
         {
-            // Apply results back to the active task unit
-            EnsureAtLeastOneTaskUnit();
-
-            var unit = _selectedTaskUnit!;
-
-            // Update program
-            var prog = dlgVm.GetResultProgram();
-            unit.Programs.Clear();
-            if (!string.IsNullOrWhiteSpace(prog))
-                unit.Programs.Add(new ProgramEntryViewModel(new Core.Models.ProgramEntry { ProgramPath = prog, Order = 0 }));
-            AppPath = prog;
-
-            // Update param files
-            unit.ParamFiles.Clear();
-            foreach (var pf in dlgVm.GetResultParamFiles())
-                unit.ParamFiles.Add(new ParameterFileEntryViewModel(pf));
-
-            // Sync command preview into Commands list as a single entry
-            var cmdLine = dlgVm.CommandPreview.Replace(" \\\n    ", " ");
+            // Apply commands back to the active task unit
             unit.Commands.Clear();
-            if (!string.IsNullOrWhiteSpace(cmdLine))
-                unit.Commands.Add(new CommandEntryViewModel(new Core.Models.CommandEntry { CommandLine = cmdLine, Order = 0 }));
+            foreach (var ce in dlgVm.GetResultCommands())
+                unit.Commands.Add(new CommandEntryViewModel(ce));
+
+            // Sync first command's program path back into Programs list for legacy submit logic
+            var firstProg = dlgVm.GetResultCommands()
+                .Where(c => !string.IsNullOrWhiteSpace(c.ProgramPath))
+                .FirstOrDefault()?.ProgramPath ?? string.Empty;
+            unit.Programs.Clear();
+            if (!string.IsNullOrWhiteSpace(firstProg))
+                unit.Programs.Add(new ProgramEntryViewModel(new Core.Models.ProgramEntry { ProgramPath = firstProg, Order = 0 }));
+            AppPath = firstProg;
+
+            // Persist the user-edited sbatch content on the unit
+            unit.SbatchTemplate = dlgVm.GetResultSbatch();
 
             StatusMessage = Application.Current?.TryFindResource("Task.CommandUpdated") as string ?? "命令已更新，请记得保存任务。";
             CommandManager.InvalidateRequerySuggested();

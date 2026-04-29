@@ -179,8 +179,10 @@
     <sys:String x:Key="Task.SubmitAll">Submit all enabled task units</sys:String>
     <sys:String x:Key="Task.SubmitAllDesc">When on, submits all units marked Enabled; when off, submits only the selected unit.</sys:String>
     <sys:String x:Key="Task.MultiUnitPrompt">Multiple task units detected (legacy data). The first unit will be used as the active unit.\n\nUnits:\n{0}\n\nOnly the active unit is submitted.</sys:String>
-    <sys:String x:Key="Task.CommandBuilderHint">Click the button above to select a remote program, attach parameter files, and preview the final command line.</sys:String>
+    <sys:String x:Key="Task.CommandBuilderHint">Click the button above to configure multiple run commands, auto-detect MPI paths, and preview/edit the sbatch script.</sys:String>
     <sys:String x:Key="Task.CommandUpdated">Command updated. Remember to save the task.</sys:String>
+    <sys:String x:Key="Task.CommandsSummary">Configured commands (preview)</sys:String>
+    <sys:String x:Key="Task.TaskUnitSelectorDesc">Each TaskId can have multiple task units. Each unit independently maintains its own command set and sbatch script.</sys:String>
     <sys:String x:Key="Btn.AddProgram">+ Add program</sys:String>
     <sys:String x:Key="Btn.RemoveProgram">- Remove program</sys:String>
     <sys:String x:Key="Btn.AddParamFile">+ Add param file</sys:String>
@@ -193,18 +195,34 @@
     <sys:String x:Key="CmdBuilder.Title">Command Builder</sys:String>
     <sys:String x:Key="CmdBuilder.AvailablePrograms">Available Programs (remote)</sys:String>
     <sys:String x:Key="CmdBuilder.AvailableParamFiles">Available Parameter Files (remote)</sys:String>
-    <sys:String x:Key="CmdBuilder.SelectedProgram">Selected Program Path</sys:String>
+    <sys:String x:Key="CmdBuilder.SelectedProgram">Program Path</sys:String>
     <sys:String x:Key="CmdBuilder.ChosenParamFiles">Attached Parameter Files</sys:String>
-    <sys:String x:Key="CmdBuilder.CommandPreview">Final Command Preview</sys:String>
+    <sys:String x:Key="CmdBuilder.CommandPreview">Command Preview</sys:String>
     <sys:String x:Key="CmdBuilder.FilterHint">Type to filter list</sys:String>
-    <sys:String x:Key="CmdBuilder.ProgramPathHint">Type manually or select from the left panel</sys:String>
+    <sys:String x:Key="CmdBuilder.ProgramPathHint">Type manually or double-click from the left panel</sys:String>
     <sys:String x:Key="CmdBuilder.DoubleClickHint">Double-click to open and edit a remote parameter file</sys:String>
     <sys:String x:Key="CmdBuilder.AddParam">+ Add to command</sys:String>
     <sys:String x:Key="CmdBuilder.RemoveParam">- Remove</sys:String>
     <sys:String x:Key="CmdBuilder.Refresh">⟳ Refresh remote list</sys:String>
     <sys:String x:Key="CmdBuilder.Test">🔍 Test command</sys:String>
-    <sys:String x:Key="CmdBuilder.Confirm">✓ Apply</sys:String>
+    <sys:String x:Key="CmdBuilder.SaveApply">💾 Save &amp; Apply</sys:String>
     <sys:String x:Key="CmdBuilder.Cancel">✕ Cancel</sys:String>
+    <!-- Multi-command + MPI -->
+    <sys:String x:Key="CmdBuilder.CommandList">Command List (multi-command)</sys:String>
+    <sys:String x:Key="CmdBuilder.AddCmd">+ Add command</sys:String>
+    <sys:String x:Key="CmdBuilder.RemoveCmd">- Remove command</sys:String>
+    <sys:String x:Key="CmdBuilder.MoveUp">Move up</sys:String>
+    <sys:String x:Key="CmdBuilder.MoveDown">Move down</sys:String>
+    <sys:String x:Key="CmdBuilder.MpirunPath">mpirun path (auto-detected / manual)</sys:String>
+    <sys:String x:Key="CmdBuilder.MpirunHint">Leave empty to omit mpirun prefix. Use the detect button to auto-infer from the program's OpenMPI dependency.</sys:String>
+    <sys:String x:Key="CmdBuilder.DetectMpi">🔍 Auto-detect</sys:String>
+    <sys:String x:Key="CmdBuilder.ExtraArgs">Extra command-line arguments</sys:String>
+    <sys:String x:Key="CmdBuilder.ExtraArgsHint">Appended after parameter files: program → param files → extra args</sys:String>
+    <sys:String x:Key="CmdBuilder.AddExtraArg">+ Add argument</sys:String>
+    <!-- sbatch -->
+    <sys:String x:Key="CmdBuilder.SbatchScript">sbatch Script (editable)</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchHint">This script will be used on submission. Click Regenerate to refresh it from the current command list.</sys:String>
+    <sys:String x:Key="CmdBuilder.RegenSbatch">⟳ Regenerate</sys:String>
 
     <!-- ── Remote directory picker ──────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.Title">Select Remote Directory</sys:String>

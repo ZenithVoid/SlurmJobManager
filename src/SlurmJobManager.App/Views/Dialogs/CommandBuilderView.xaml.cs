@@ -1,38 +1,105 @@
 using System.Windows;
 using System.Windows.Controls;
-using SlurmJobManager.App.ViewModels;
+using System.Windows.Input;
 using SlurmJobManager.App.ViewModels.Dialogs;
 
 namespace SlurmJobManager.App.Views.Dialogs;
 
-/// <summary>Code-behind for the Command Builder dialog.</summary>
+/// <summary>Code-behind for the upgraded Command Builder dialog.</summary>
 public partial class CommandBuilderView : Window
 {
     public CommandBuilderView()
     {
         InitializeComponent();
+        StateChanged += CommandBuilderView_StateChanged;
     }
 
-    // ── Chosen param-file list: track selection so Remove command works ────
+    // ── Custom title-bar interactions ─────────────────────────────────────
 
-    private void ChosenParamList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (sender is ListBox lb && lb.SelectedItem is ParameterFileEntryViewModel selected
-            && DataContext is CommandBuilderViewModel vm)
+        if (e.ClickCount == 2)
         {
-            vm.SelectedChosenParamFile = selected;
-            vm.EditParamFileCommand.Execute(selected);
+            ToggleMaximize();
+        }
+        else if (WindowState == WindowState.Normal || WindowState == WindowState.Maximized)
+        {
+            if (WindowState == WindowState.Maximized)
+                WindowState = WindowState.Normal;
+            DragMove();
         }
     }
 
-    // ── Confirm button ────────────────────────────────────────────────────
+    private void BtnMinimize_Click(object sender, RoutedEventArgs e)
+        => WindowState = WindowState.Minimized;
 
-    private void BtnConfirm_Click(object sender, RoutedEventArgs e)
+    private void BtnMaximize_Click(object sender, RoutedEventArgs e)
+        => ToggleMaximize();
+
+    private void BtnClose_Click(object sender, RoutedEventArgs e)
+        => DialogResult = false;
+
+    private void ToggleMaximize()
+    {
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
+    }
+
+    private void CommandBuilderView_StateChanged(object? sender, EventArgs e)
+    {
+        if (MaximizeIcon != null)
+        {
+            MaximizeIcon.Text = WindowState == WindowState.Maximized ? "\uE923" : "\uE922";
+        }
+        if (BtnMaximize != null)
+        {
+            var key = WindowState == WindowState.Maximized ? "TitleBar.Restore" : "TitleBar.Maximize";
+            BtnMaximize.ToolTip = Application.Current?.TryFindResource(key) as string
+                                   ?? (WindowState == WindowState.Maximized ? "Restore" : "Maximize");
+        }
+    }
+
+    // ── Program list double-click: assign to selected command ─────────────
+
+    private void ProgramList_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is ListBox lb && lb.SelectedItem is string path
+            && DataContext is CommandBuilderViewModel vm
+            && vm.SelectedCommand != null)
+        {
+            vm.SelectedCommand.ProgramPath = path;
+        }
+    }
+
+    // ── Chosen param-file list double-click: open remote editor ──────────
+
+    private void ChosenParamList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is ListBox lb && lb.SelectedItem is string path
+            && DataContext is CommandBuilderViewModel vm)
+        {
+            vm.EditParamFileCommand.Execute(path);
+        }
+    }
+
+    // ── Regenerate sbatch ─────────────────────────────────────────────────
+
+    private void BtnRegenSbatch_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is CommandBuilderViewModel vm)
+            vm.RegenerateSbatch();
+    }
+
+    // ── Save & Apply button ───────────────────────────────────────────────
+
+    private void BtnSaveApply_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is CommandBuilderViewModel vm)
         {
-            vm.ConfirmCommand.Execute(null);
-            DialogResult = true;
+            vm.SaveAndApplyCommand.Execute(null);
+            if (vm.Confirmed)
+                DialogResult = true;
         }
     }
 
@@ -41,3 +108,4 @@ public partial class CommandBuilderView : Window
     private void BtnCancel_Click(object sender, RoutedEventArgs e)
         => DialogResult = false;
 }
+
