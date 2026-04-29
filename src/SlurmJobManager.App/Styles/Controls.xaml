@@ -11,6 +11,7 @@
         <ResourceDictionary Source="pack://application:,,,/SlurmJobManager.App;component/Styles/ScrollBars.xaml" />
         <ResourceDictionary Source="pack://application:,,,/SlurmJobManager.App;component/Styles/TabsAndSidebar.xaml" />
         <ResourceDictionary Source="pack://application:,,,/SlurmJobManager.App;component/Styles/Toasts.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/SlurmJobManager.App;component/Styles/Sliders.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
     <!-- ── Shared TextBlock / misc styles ─────────────────────────────────── -->

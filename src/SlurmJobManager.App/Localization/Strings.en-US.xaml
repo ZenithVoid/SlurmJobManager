@@ -100,6 +100,9 @@
     <!-- ── Settings view ────────────────────────────────────────────────── -->
     <sys:String x:Key="Settings.Title">Settings</sys:String>
     <sys:String x:Key="Settings.SshConnection">SSH Connection</sys:String>
+    <sys:String x:Key="Settings.StartupBehavior">Startup Behavior</sys:String>
+    <sys:String x:Key="Settings.AutoConnectLabel">Auto-connect saved profile on startup</sys:String>
+    <sys:String x:Key="Settings.AutoConnectDesc">Automatically connect using the last saved SSH profile when the application starts.</sys:String>
     <sys:String x:Key="Settings.Appearance">Appearance</sys:String>
     <sys:String x:Key="Settings.Theme">Theme:</sys:String>
     <sys:String x:Key="Settings.ThemeDesc">Switch between dark (Catppuccin Mocha) and light (Catppuccin Latte) themes.</sys:String>
