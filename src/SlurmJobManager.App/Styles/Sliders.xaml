@@ -61,6 +61,10 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
+                    <!-- RenderTransformOrigin must be on this Ellipse (not a Style Setter on
+                         the Thumb) because the ScaleTransform lives on Ellipse.RenderTransform.
+                         A Style Setter would apply the origin to the Thumb control, which no
+                         longer owns the transform, so the scale centre would be wrong. -->
                     <Ellipse x:Name="ThumbCircle"
                              Width="{TemplateBinding Width}"
                              Height="{TemplateBinding Height}"
