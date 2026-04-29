@@ -176,6 +176,17 @@
     <!-- ── Console view ─────────────────────────────────────────────────── -->
     <sys:String x:Key="Console.NotConnected">⚠ You can browse this page freely. To execute commands, please establish an SSH connection first.</sys:String>
 
+    <!-- ── Crash dialog ─────────────────────────────────────────────────── -->
+    <sys:String x:Key="Crash.Title">Fatal Application Error</sys:String>
+    <sys:String x:Key="Crash.Subtitle">Error details are shown below. Please copy them before closing.</sys:String>
+    <sys:String x:Key="Crash.FieldTime">Occurred At</sys:String>
+    <sys:String x:Key="Crash.FieldType">Exception Type</sys:String>
+    <sys:String x:Key="Crash.FieldMessage">Message</sys:String>
+    <sys:String x:Key="Crash.FieldLocation">Location</sys:String>
+    <sys:String x:Key="Crash.FieldStack">Full Stack Trace (select all to copy)</sys:String>
+    <sys:String x:Key="Crash.BtnCopy">📋  Copy Error Details</sys:String>
+    <sys:String x:Key="Crash.BtnClose">✕  Close Application</sys:String>
+
     <!-- ── Empty states ─────────────────────────────────────────────────── -->
     <sys:String x:Key="Monitor.EmptyState">Enter a username above to start monitoring jobs.</sys:String>
     <sys:String x:Key="Monitor.EmptyTitle">No Monitor Data</sys:String>
