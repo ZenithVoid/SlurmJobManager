@@ -134,18 +134,44 @@
 
     <!-- ── Task editor ──────────────────────────────────────────────────── -->
     <sys:String x:Key="Task.Setup">Task Setup</sys:String>
-    <sys:String x:Key="Task.RootDirectory">Root Directory</sys:String>
+    <sys:String x:Key="Task.RootDirectory">Root Directory (remote)</sys:String>
+    <sys:String x:Key="Task.BrowseRemote">Browse remote directory (constrained to user home)</sys:String>
     <sys:String x:Key="Task.TaskId">Task ID</sys:String>
     <sys:String x:Key="Task.RemoteWorkDir">Remote Work Directory</sys:String>
     <sys:String x:Key="Task.AppPath">App Path (on remote)</sys:String>
+    <sys:String x:Key="Task.Pin">📌 Pin / Unpin</sys:String>
+    <sys:String x:Key="Task.Refresh">Refresh remote list</sys:String>
     <sys:String x:Key="Task.ParameterTemplates">Parameter Templates</sys:String>
     <sys:String x:Key="Task.TemplateDirectory">Template Directory</sys:String>
     <sys:String x:Key="Task.SelectTemplate">Select Template</sys:String>
     <sys:String x:Key="Task.TemplateContent">Template Content</sys:String>
+    <sys:String x:Key="Task.SaveAsFileName">Save filename (Save As)</sys:String>
     <sys:String x:Key="Task.ExtraParameters">Extra Parameters</sys:String>
     <sys:String x:Key="Task.ParamKey">Key</sys:String>
     <sys:String x:Key="Task.ParamValue">Value</sys:String>
     <sys:String x:Key="Task.Submit">Submit</sys:String>
+    <sys:String x:Key="Task.TaskFiles">Task Directory Files</sys:String>
+    <sys:String x:Key="Task.OverwriteTitle">Overwrite Confirmation</sys:String>
+    <sys:String x:Key="Task.OverwritePrompt">Remote file {0} already exists. Overwrite?</sys:String>
+    <sys:String x:Key="Task.SaveCancelled">Save cancelled.</sys:String>
+
+    <!-- ── Remote directory picker ──────────────────────────────────────── -->
+    <sys:String x:Key="RemotePicker.Title">Select Remote Directory</sys:String>
+    <sys:String x:Key="RemotePicker.GoUp">⬆ Up</sys:String>
+    <sys:String x:Key="RemotePicker.Refresh">⟳ Refresh</sys:String>
+    <sys:String x:Key="RemotePicker.Hint">Select the current directory or double-click to enter a subdirectory, then click [Select]</sys:String>
+    <sys:String x:Key="RemotePicker.Select">Select</sys:String>
+    <sys:String x:Key="RemotePicker.Cancel">Cancel</sys:String>
+
+    <!-- ── Remote file editor ───────────────────────────────────────────── -->
+    <sys:String x:Key="RemoteEditor.Title">Edit File:</sys:String>
+    <sys:String x:Key="RemoteEditor.Loading">Loading file…</sys:String>
+    <sys:String x:Key="RemoteEditor.LoadFailed">Load failed: </sys:String>
+    <sys:String x:Key="RemoteEditor.Saving">⏳ Saving…</sys:String>
+    <sys:String x:Key="RemoteEditor.Save">💾 Save</sys:String>
+    <sys:String x:Key="RemoteEditor.Saved">Saved: </sys:String>
+    <sys:String x:Key="RemoteEditor.SaveFailed">Save failed: </sys:String>
+    <sys:String x:Key="RemoteEditor.Close">Close</sys:String>
 
     <!-- ── Console view ─────────────────────────────────────────────────── -->
     <sys:String x:Key="Console.NotConnected">⚠ You can browse this page freely. To execute commands, please establish an SSH connection first.</sys:String>

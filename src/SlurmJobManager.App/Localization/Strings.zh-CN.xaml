@@ -134,18 +134,44 @@
 
     <!-- ── 任务编辑器 ────────────────────────────────────────────────────── -->
     <sys:String x:Key="Task.Setup">任务配置</sys:String>
-    <sys:String x:Key="Task.RootDirectory">根目录</sys:String>
+    <sys:String x:Key="Task.RootDirectory">根目录（远程）</sys:String>
+    <sys:String x:Key="Task.BrowseRemote">浏览远程目录（仅限用户主目录）</sys:String>
     <sys:String x:Key="Task.TaskId">任务 ID</sys:String>
     <sys:String x:Key="Task.RemoteWorkDir">远程工作目录</sys:String>
     <sys:String x:Key="Task.AppPath">应用路径（远程）</sys:String>
+    <sys:String x:Key="Task.Pin">📌 置顶 / 取消置顶</sys:String>
+    <sys:String x:Key="Task.Refresh">刷新远程列表</sys:String>
     <sys:String x:Key="Task.ParameterTemplates">参数模板</sys:String>
     <sys:String x:Key="Task.TemplateDirectory">模板目录</sys:String>
     <sys:String x:Key="Task.SelectTemplate">选择模板</sys:String>
     <sys:String x:Key="Task.TemplateContent">模板内容</sys:String>
+    <sys:String x:Key="Task.SaveAsFileName">保存文件名（另存为）</sys:String>
     <sys:String x:Key="Task.ExtraParameters">额外参数</sys:String>
     <sys:String x:Key="Task.ParamKey">键</sys:String>
     <sys:String x:Key="Task.ParamValue">值</sys:String>
     <sys:String x:Key="Task.Submit">提交</sys:String>
+    <sys:String x:Key="Task.TaskFiles">任务目录文件</sys:String>
+    <sys:String x:Key="Task.OverwriteTitle">覆盖确认</sys:String>
+    <sys:String x:Key="Task.OverwritePrompt">远程文件 {0} 已存在，是否覆盖？</sys:String>
+    <sys:String x:Key="Task.SaveCancelled">保存已取消。</sys:String>
+
+    <!-- ── 远程目录选择器 ─────────────────────────────────────────────────── -->
+    <sys:String x:Key="RemotePicker.Title">选择远程目录</sys:String>
+    <sys:String x:Key="RemotePicker.GoUp">⬆ 上级</sys:String>
+    <sys:String x:Key="RemotePicker.Refresh">⟳ 刷新</sys:String>
+    <sys:String x:Key="RemotePicker.Hint">选中当前目录或双击进入子目录后点击 [选择]</sys:String>
+    <sys:String x:Key="RemotePicker.Select">选择</sys:String>
+    <sys:String x:Key="RemotePicker.Cancel">取消</sys:String>
+
+    <!-- ── 远程文件编辑器 ─────────────────────────────────────────────────── -->
+    <sys:String x:Key="RemoteEditor.Title">编辑文件：</sys:String>
+    <sys:String x:Key="RemoteEditor.Loading">加载文件…</sys:String>
+    <sys:String x:Key="RemoteEditor.LoadFailed">加载失败：</sys:String>
+    <sys:String x:Key="RemoteEditor.Saving">⏳ 保存中…</sys:String>
+    <sys:String x:Key="RemoteEditor.Save">💾 保存</sys:String>
+    <sys:String x:Key="RemoteEditor.Saved">已保存：</sys:String>
+    <sys:String x:Key="RemoteEditor.SaveFailed">保存失败：</sys:String>
+    <sys:String x:Key="RemoteEditor.Close">关闭</sys:String>
 
     <!-- ── 终端视图 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Console.NotConnected">⚠ 当前可浏览此页面，但执行命令需先建立 SSH 连接。</sys:String>

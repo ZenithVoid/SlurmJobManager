@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -73,6 +74,17 @@ public partial class MainWindow : Window
         scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY);
     }
 
+    // ── B5: Task file list double-click handler ───────────────────────────
+
+    private void TaskFileListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is ListBox lb && lb.SelectedItem is string fileName
+            && DataContext is MainViewModel vm)
+        {
+            vm.TaskEditor.OpenTaskFileCommand.Execute(fileName);
+        }
+    }
+
     // ── Custom title-bar interactions ─────────────────────────────────────
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -129,4 +141,3 @@ public partial class MainWindow : Window
         }
     }
 }
-

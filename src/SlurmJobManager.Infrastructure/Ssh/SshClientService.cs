@@ -1,3 +1,4 @@
+using System.Text;
 using Renci.SshNet;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
@@ -92,6 +93,85 @@ public sealed class SshClientService : ISshClientService
         return Task.CompletedTask;
     }
 
+    // ── Remote file-system helpers ───────────────────────────────────────────
+
+    public async Task<string> GetHomeDirectoryAsync(CancellationToken ct = default)
+    {
+        var (stdout, _, _) = await ExecuteAsync("echo $HOME", ct);
+        return stdout.Trim();
+    }
+
+    public Task<IReadOnlyList<string>> ListDirectoriesAsync(string remotePath, CancellationToken ct = default)
+    {
+        EnsureConnected();
+        return Task.Run<IReadOnlyList<string>>(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            var entries = _sftpClient!.ListDirectory(remotePath);
+            return entries
+                .Where(e => e.IsDirectory && e.Name != "." && e.Name != "..")
+                .Select(e => e.Name)
+                .OrderBy(n => n)
+                .ToList();
+        }, ct);
+    }
+
+    public Task<IReadOnlyList<string>> ListFilesAsync(string remotePath, CancellationToken ct = default)
+    {
+        EnsureConnected();
+        return Task.Run<IReadOnlyList<string>>(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                var entries = _sftpClient!.ListDirectory(remotePath);
+                return entries
+                    .Where(e => e.IsRegularFile)
+                    .Select(e => e.Name)
+                    .OrderBy(n => n)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SshClientService.ListFilesAsync] {remotePath}: {ex.Message}");
+                return Array.Empty<string>();
+            }
+        }, ct);
+    }
+
+    public Task<string> ReadTextFileAsync(string remotePath, CancellationToken ct = default)
+    {
+        EnsureConnected();
+        return Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            using var ms = new MemoryStream();
+            _sftpClient!.DownloadFile(remotePath, ms);
+            return Encoding.UTF8.GetString(ms.ToArray());
+        }, ct);
+    }
+
+    public Task WriteTextFileAsync(string remotePath, string content, CancellationToken ct = default)
+    {
+        EnsureConnected();
+        return Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            var bytes = Encoding.UTF8.GetBytes(content);
+            using var ms = new MemoryStream(bytes);
+            _sftpClient!.UploadFile(ms, remotePath, canOverride: true);
+        }, ct);
+    }
+
+    public async Task<bool> RemoteFileExistsAsync(string remotePath, CancellationToken ct = default)
+    {
+        var (stdout, _, _) = await ExecuteAsync(
+            $"test -f {EscapeShellArg(remotePath)} && echo 1 || echo 0", ct);
+        return stdout.Trim() == "1";
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
     private void Disconnect()
     {
         try { _sftpClient?.Disconnect(); } catch (Exception) { /* best-effort cleanup */ }
@@ -116,6 +196,10 @@ public sealed class SshClientService : ISshClientService
 
         return new PasswordAuthenticationMethod(profile.Username, profile.Password ?? string.Empty);
     }
+
+    /// <summary>Single-quotes a path for use in a POSIX shell command.</summary>
+    private static string EscapeShellArg(string arg)
+        => "'" + arg.Replace("'", "'\\''") + "'";
 
     public void Dispose()
     {
