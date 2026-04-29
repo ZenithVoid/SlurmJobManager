@@ -31,6 +31,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private string _watchedUser = string.Empty;
     private int _pollIntervalSeconds = 3;
     private bool _isPolling;
+    private bool _showAllUsers;
     private string _statusMessage = string.Empty;
     private JobRow? _selectedJob;
     private string _statusFilter = "All";
@@ -42,8 +43,23 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     public string StatusMessage    { get => _statusMessage;       set => SetField(ref _statusMessage, value); }
     public JobRow? SelectedJob     { get => _selectedJob;         set => SetField(ref _selectedJob, value); }
 
+    /// <summary>When true, squeue is queried without a user filter (all users).</summary>
+    public bool ShowAllUsers
+    {
+        get => _showAllUsers;
+        set
+        {
+            if (SetField(ref _showAllUsers, value))
+            {
+                OnPropertyChanged(nameof(IsEmptyState));
+                // Immediately refresh with the new scope
+                RefreshCommand.Execute(null);
+            }
+        }
+    }
+
     /// <summary>True when no watched user has been configured yet — used to drive the empty-state overlay.</summary>
-    public bool IsEmptyState => string.IsNullOrWhiteSpace(WatchedUser);
+    public bool IsEmptyState => !ShowAllUsers && string.IsNullOrWhiteSpace(WatchedUser);
 
     public string StatusFilter
     {
@@ -86,6 +102,15 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         StopPollingCommand  = new RelayCommand(StopPolling,  () => IsPolling);
         CancelJobCommand    = new AsyncRelayCommand(CancelSelectedJobAsync, () => SelectedJob != null);
 
+        // Subscribe to connection changes so we can auto-fill the watched user and refresh
+        if (_connection != null)
+        {
+            _connection.PropertyChanged += OnConnectionPropertyChanged;
+            // Seed initial state if already connected at construction time
+            if (_connection.IsConnected && !string.IsNullOrWhiteSpace(_connection.Username) && string.IsNullOrWhiteSpace(WatchedUser))
+                WatchedUser = _connection.Username;
+        }
+
         // Show a friendly empty-state hint until the user configures a watched user
         StatusMessage = "请先输入监控用户名以开始监控";
     }
@@ -94,7 +119,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
     private async Task RefreshAsync(CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(WatchedUser))
+        if (!ShowAllUsers && string.IsNullOrWhiteSpace(WatchedUser))
         {
             StatusMessage = "请先输入监控用户名以开始监控";
             return;
@@ -103,7 +128,12 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         StatusMessage = "Refreshing…";
         try
         {
-            var jobs = await _slurm.GetUserJobsAsync(WatchedUser, ct);
+            IReadOnlyList<SlurmJobStatus> jobs;
+            if (ShowAllUsers)
+                jobs = await _slurm.GetAllJobsAsync(ct);
+            else
+                jobs = await _slurm.GetUserJobsAsync(WatchedUser, ct);
+
             Application.Current.Dispatcher.Invoke(() =>
             {
                 _allJobs = jobs.Select(j => new JobRow
@@ -119,8 +149,9 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
                 ApplyFilter();
             });
             _consecutiveFailures = 0;
+            var scope = ShowAllUsers ? "all users" : $"'{WatchedUser}'";
             StatusMessage = $"Updated: {DateTime.Now:HH:mm:ss}  ({jobs.Count} job(s))";
-            _logger?.Debug($"Monitor refreshed: {jobs.Count} job(s) for '{WatchedUser}'");
+            _logger?.Debug($"Monitor refreshed: {jobs.Count} job(s) for {scope}");
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
@@ -248,8 +279,23 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             _timer.Interval = TimeSpan.FromSeconds(_pollIntervalSeconds);
     }
 
+    private void OnConnectionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not nameof(ConnectionViewModel.IsConnected)) return;
+        if (_connection is null || !_connection.IsConnected) return;
+
+        // Auto-fill watched user with the SSH login username on first connect
+        if (!string.IsNullOrWhiteSpace(_connection.Username) && string.IsNullOrWhiteSpace(WatchedUser))
+            WatchedUser = _connection.Username;
+
+        // Trigger an initial refresh so data appears without manual interaction
+        RefreshCommand.Execute(null);
+    }
+
     public void Dispose()
     {
+        if (_connection != null)
+            _connection.PropertyChanged -= OnConnectionPropertyChanged;
         _timer?.Stop();
         _timer = null;
     }

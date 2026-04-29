@@ -81,6 +81,7 @@
     <sys:String x:Key="Monitor.WatchUser">Watch User</sys:String>
     <sys:String x:Key="Monitor.PollInterval">Poll interval (s):</sys:String>
     <sys:String x:Key="Monitor.Filter">Filter:</sys:String>
+    <sys:String x:Key="Monitor.ViewAll">View All</sys:String>
     <sys:String x:Key="Monitor.ColJobId">Job ID</sys:String>
     <sys:String x:Key="Monitor.ColName">Name</sys:String>
     <sys:String x:Key="Monitor.ColUser">User</sys:String>

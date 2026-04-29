@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
 using System.Windows.Input;
 using SlurmJobManager.Core.Interfaces;
+using SlurmJobManager.Core.Models;
 
 namespace SlurmJobManager.App.ViewModels;
 
@@ -14,6 +16,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     private readonly ISshClientService _ssh;
     private readonly IAppLogger?       _logger;
     private readonly ConnectionViewModel? _connection;
+    private readonly AppSettings      _settings;
     private const int MaxHistory = 50;
 
     private string _commandInput = string.Empty;
@@ -38,11 +41,12 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     public ICommand HistoryDownCommand { get; }
     public ICommand CopyOutputCommand  { get; }
 
-    public ConsoleViewModel(ISshClientService ssh, IAppLogger? logger = null, ConnectionViewModel? connection = null)
+    public ConsoleViewModel(ISshClientService ssh, IAppLogger? logger = null, ConnectionViewModel? connection = null, AppSettings? settings = null)
     {
         _ssh        = ssh    ?? throw new ArgumentNullException(nameof(ssh));
         _logger     = logger;
         _connection = connection;
+        _settings   = settings ?? new AppSettings();
 
         // Subscribe before reading the initial value to avoid a race between
         // subscribing and querying, then seed from the connection view-model.
@@ -66,8 +70,13 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
     private async Task ExecuteAsync(CancellationToken ct)
     {
-        var cmd = CommandInput.Trim();
-        if (string.IsNullOrEmpty(cmd)) return;
+        var cmd = SanitizeCommand(CommandInput);
+        if (string.IsNullOrEmpty(cmd))
+        {
+            if (!string.IsNullOrWhiteSpace(CommandInput))
+                OutputLines.Add(ConsoleLine.Error("[error] 命令包含非法字符，已拒绝执行。"));
+            return;
+        }
 
         if (!_ssh.IsConnected)
         {
@@ -81,7 +90,9 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
         OutputLines.Add(ConsoleLine.Command($"$ {cmd}"));
         IsBusy = true;
-        _executeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        // Manage lifetimes explicitly: dispose linked source before the source it wraps
+        var timeoutCts = new CancellationTokenSource(_settings.CommandTimeout);
+        _executeCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
@@ -99,6 +110,12 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
             OutputLines.Add(ConsoleLine.Meta(meta));
             _logger?.Debug($"Console cmd '{cmd}': exit {exitCode}, {sw.ElapsedMilliseconds} ms");
         }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
+        {
+            sw.Stop();
+            OutputLines.Add(ConsoleLine.Error($"[timeout] 命令超时（{_settings.CommandTimeout.TotalSeconds:0}s）已取消。"));
+            _logger?.Warning($"Console cmd '{cmd}' timed out after {sw.ElapsedMilliseconds} ms");
+        }
         catch (OperationCanceledException)
         {
             sw.Stop();
@@ -112,10 +129,26 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         }
         finally
         {
+            // Dispose linked source first, then the source it links to
             _executeCts.Dispose();
             _executeCts = null;
+            timeoutCts.Dispose();
             IsBusy = false;
         }
+    }
+
+    /// <summary>
+    /// Strips control characters (except tab) that could cause terminal injection or crashes.
+    /// Returns null-equivalent empty string if the resulting command is blank.
+    /// </summary>
+    private static readonly Regex ControlCharRegex =
+        new(@"[\x00-\x08\x0A-\x1F\x7F]", RegexOptions.Compiled);
+
+    private static string SanitizeCommand(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return string.Empty;
+        // Remove characters below 0x20 except horizontal tab (0x09), and remove DEL (0x7F)
+        return ControlCharRegex.Replace(input, string.Empty).Trim();
     }
 
     private void CancelExecution()

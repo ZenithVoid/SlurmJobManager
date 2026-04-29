@@ -100,6 +100,26 @@ public sealed class SlurmService : ISlurmService
     }
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyList<SlurmJobStatus>> GetAllJobsAsync(CancellationToken ct = default)
+    {
+        return await RetryHelper.ExecuteAsync(
+            async token =>
+            {
+                var (stdout, _, _) = await _ssh.ExecuteAsync(
+                    "squeue --noheader --format=\"%i|%j|%u|%T|%P|%D|%C|%N|%M|%S\"", token);
+
+                var results = new List<SlurmJobStatus>();
+                foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var status = ParseSqueueLine(line.Trim());
+                    if (status is not null) results.Add(status);
+                }
+                return (IReadOnlyList<SlurmJobStatus>)results;
+            },
+            _settings, _logger, "GetAllJobs()", ct);
+    }
+
+    /// <inheritdoc/>
     public async Task CancelJobAsync(long jobId, CancellationToken ct = default)
     {
         var (_, stderr, exitCode) = await _ssh.ExecuteAsync($"scancel {jobId}", ct);
