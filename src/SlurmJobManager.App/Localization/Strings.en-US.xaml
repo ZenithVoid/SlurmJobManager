@@ -157,6 +157,31 @@
     <sys:String x:Key="Task.OverwriteTitle">Overwrite Confirmation</sys:String>
     <sys:String x:Key="Task.OverwritePrompt">Remote file {0} already exists. Overwrite?</sys:String>
     <sys:String x:Key="Task.SaveCancelled">Save cancelled.</sys:String>
+    <!-- Multi-task workspace -->
+    <sys:String x:Key="Task.TaskUnits">Task Units</sys:String>
+    <sys:String x:Key="Task.AddUnit">Add task unit</sys:String>
+    <sys:String x:Key="Task.RemoveUnit">Remove selected task unit</sys:String>
+    <sys:String x:Key="Task.UnitName">Unit name</sys:String>
+    <sys:String x:Key="Task.UnitEnabled">Enabled (include in submission)</sys:String>
+    <sys:String x:Key="Task.Programs">Programs</sys:String>
+    <sys:String x:Key="Task.ProgramPath">Program path</sys:String>
+    <sys:String x:Key="Task.ArgsTemplate">Args template</sys:String>
+    <sys:String x:Key="Task.Order">Order</sys:String>
+    <sys:String x:Key="Task.ParamFiles">Parameter files</sys:String>
+    <sys:String x:Key="Task.FilePath">File path</sys:String>
+    <sys:String x:Key="Task.Alias">Alias</sys:String>
+    <sys:String x:Key="Task.IsPinned">Pinned</sys:String>
+    <sys:String x:Key="Task.Commands">Commands</sys:String>
+    <sys:String x:Key="Task.CommandLine">Command line</sys:String>
+    <sys:String x:Key="Task.Description">Description</sys:String>
+    <sys:String x:Key="Task.SubmitAll">Submit all enabled task units</sys:String>
+    <sys:String x:Key="Task.SubmitAllDesc">When on, submits all units marked Enabled; when off, submits only the selected unit.</sys:String>
+    <sys:String x:Key="Btn.AddProgram">+ Add program</sys:String>
+    <sys:String x:Key="Btn.RemoveProgram">- Remove program</sys:String>
+    <sys:String x:Key="Btn.AddParamFile">+ Add param file</sys:String>
+    <sys:String x:Key="Btn.RemoveParamFile">- Remove param file</sys:String>
+    <sys:String x:Key="Btn.AddCommand">+ Add command</sys:String>
+    <sys:String x:Key="Btn.RemoveCommand">- Remove command</sys:String>
 
     <!-- ── Remote directory picker ──────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.Title">Select Remote Directory</sys:String>

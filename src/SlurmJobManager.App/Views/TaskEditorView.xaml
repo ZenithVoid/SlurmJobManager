@@ -4,163 +4,312 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:SlurmJobManager.App.ViewModels"
     mc:Ignorable="d"
-    d:DesignHeight="800" d:DesignWidth="420"
+    d:DesignHeight="860" d:DesignWidth="700"
     Background="{DynamicResource BgBaseBrush}">
 
-    <StackPanel Margin="12">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+        <StackPanel Margin="12">
 
-        <TextBlock Text="{DynamicResource Task.Setup}"
-                   Style="{StaticResource SectionHeaderStyle}" />
+            <!-- Task Setup -->
+            <TextBlock Text="{DynamicResource Task.Setup}"
+                       Style="{StaticResource SectionHeaderStyle}" />
 
-        <!-- Root directory (remote, auto-filled on SSH connect) -->
-        <TextBlock Text="{DynamicResource Task.RootDirectory}" Style="{StaticResource FieldLabelStyle}" />
-        <Grid Margin="0,0,0,6">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <TextBox Grid.Column="0"
-                     Text="{Binding RootDirectory, UpdateSourceTrigger=PropertyChanged}" />
-            <Button Grid.Column="1" Content="…" Command="{Binding BrowseRootDirectoryCommand}"
+            <TextBlock Text="{DynamicResource Task.RootDirectory}" Style="{StaticResource FieldLabelStyle}" />
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0" Text="{Binding RootDirectory, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Grid.Column="1" Content="..." Command="{Binding BrowseRootDirectoryCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        AutomationProperties.Name="Browse remote directory"
+                        Margin="4,0,0,0" Padding="8,4"
+                        ToolTip="{DynamicResource Task.BrowseRemote}" />
+            </Grid>
+
+            <TextBlock Text="{DynamicResource Task.TaskId}" Style="{StaticResource FieldLabelStyle}" />
+            <Grid Margin="0,0,0,2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0" Text="{Binding TaskId, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Grid.Column="1" Content="{DynamicResource Btn.New}" Command="{Binding NewTaskIdCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        Margin="4,0,0,0" Padding="8,4" />
+            </Grid>
+            <TextBlock Text="{Binding TaskIdDirectoryStatus}"
+                       Style="{StaticResource MutedTextStyle}" Margin="0,0,0,4" FontSize="11" />
+
+            <TextBlock Text="{DynamicResource Task.RemoteWorkDir}" Style="{StaticResource FieldLabelStyle}" />
+            <TextBox Text="{Binding RemoteWorkDir, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
+
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="{DynamicResource Btn.SaveTask}" Command="{Binding SaveTaskCommand}"
+                        Style="{StaticResource AccentButtonStyle}" Margin="0,0,4,0" Padding="8,4" />
+                <Button Grid.Column="1" Content="{DynamicResource Btn.LoadTask}" Command="{Binding LoadTaskCommand}"
+                        Style="{StaticResource NeutralButtonStyle}" Padding="8,4" />
+            </Grid>
+
+            <Separator />
+
+            <!-- Task Units -->
+            <TextBlock Text="{DynamicResource Task.TaskUnits}" Style="{StaticResource SectionHeaderStyle}" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="165" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: task unit list -->
+                <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,8,0" Padding="4">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,4,0,0">
+                            <Button Content="+" Command="{Binding AddTaskUnitCommand}"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Padding="8,3" Margin="0,0,4,0"
+                                    ToolTip="{DynamicResource Task.AddUnit}" />
+                            <Button Content="-"
+                                    Command="{Binding RemoveTaskUnitCommand}"
+                                    CommandParameter="{Binding SelectedTaskUnit}"
+                                    Style="{StaticResource NeutralButtonStyle}"
+                                    Padding="8,3"
+                                    ToolTip="{DynamicResource Task.RemoveUnit}" />
+                        </StackPanel>
+                        <ListBox ItemsSource="{Binding TaskUnits}"
+                                 SelectedItem="{Binding SelectedTaskUnit, Mode=TwoWay}"
+                                 Background="Transparent" BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:TaskUnitViewModel}">
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                                  VerticalAlignment="Center" Margin="0,0,5,0" />
+                                        <TextBlock Text="{Binding TaskName}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="95" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+
+                <!-- Right: detail -->
+                <StackPanel Grid.Column="1">
+
+                    <!-- Unit name + enabled -->
+                    <TextBlock Text="{DynamicResource Task.UnitName}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding SelectedTaskUnit.TaskName, UpdateSourceTrigger=PropertyChanged}"
+                             Margin="0,0,0,6" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <CheckBox x:Name="UnitEnabledCheck"
+                                  IsChecked="{Binding SelectedTaskUnit.Enabled, Mode=TwoWay}"
+                                  Margin="0,0,10,0" />
+                        <Label Target="{Binding ElementName=UnitEnabledCheck}"
+                               Content="{DynamicResource Task.UnitEnabled}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               VerticalAlignment="Center" Cursor="Hand" Padding="0" />
+                    </StackPanel>
+
+                    <!-- Programs -->
+                    <TextBlock Text="{DynamicResource Task.Programs}" Style="{StaticResource SectionHeaderStyle}" />
+                    <DataGrid x:Name="ProgramsGrid"
+                              ItemsSource="{Binding SelectedTaskUnit.Programs}"
+                              AutoGenerateColumns="False" CanUserAddRows="False"
+                              Height="85" Margin="0,0,0,4">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{DynamicResource Task.ProgramPath}"
+                                                Binding="{Binding ProgramPath}" Width="*" />
+                            <DataGridTextColumn Header="{DynamicResource Task.ArgsTemplate}"
+                                                Binding="{Binding ArgsTemplate}" Width="80" />
+                            <DataGridTextColumn Header="{DynamicResource Task.Order}"
+                                                Binding="{Binding Order}" Width="40" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="{DynamicResource Btn.AddProgram}"
+                                Command="{Binding AddProgramCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="6,3" Margin="0,0,6,0" />
+                        <Button Content="{DynamicResource Btn.RemoveProgram}"
+                                Command="{Binding RemoveProgramCommand}"
+                                CommandParameter="{Binding SelectedItem, ElementName=ProgramsGrid}"
+                                Style="{StaticResource NeutralButtonStyle}" Padding="6,3" />
+                    </StackPanel>
+
+                    <!-- Parameter files -->
+                    <TextBlock Text="{DynamicResource Task.ParamFiles}" Style="{StaticResource SectionHeaderStyle}" />
+                    <DataGrid x:Name="ParamFilesGrid"
+                              ItemsSource="{Binding SelectedTaskUnit.ParamFiles}"
+                              AutoGenerateColumns="False" CanUserAddRows="False"
+                              Height="85" Margin="0,0,0,4">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{DynamicResource Task.FilePath}"
+                                                Binding="{Binding FilePath}" Width="*" />
+                            <DataGridTextColumn Header="{DynamicResource Task.Alias}"
+                                                Binding="{Binding Alias}" Width="70" />
+                            <DataGridCheckBoxColumn Header="{DynamicResource Task.IsPinned}"
+                                                    Binding="{Binding IsPinned}" Width="55" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="{DynamicResource Btn.AddParamFile}"
+                                Command="{Binding AddParamFileCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="6,3" Margin="0,0,6,0" />
+                        <Button Content="{DynamicResource Btn.RemoveParamFile}"
+                                Command="{Binding RemoveParamFileCommand}"
+                                CommandParameter="{Binding SelectedItem, ElementName=ParamFilesGrid}"
+                                Style="{StaticResource NeutralButtonStyle}" Padding="6,3" />
+                    </StackPanel>
+
+                    <!-- Commands -->
+                    <TextBlock Text="{DynamicResource Task.Commands}" Style="{StaticResource SectionHeaderStyle}" />
+                    <DataGrid x:Name="CommandsGrid"
+                              ItemsSource="{Binding SelectedTaskUnit.Commands}"
+                              AutoGenerateColumns="False" CanUserAddRows="False"
+                              Height="75" Margin="0,0,0,4">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{DynamicResource Task.CommandLine}"
+                                                Binding="{Binding CommandLine}" Width="*" />
+                            <DataGridTextColumn Header="{DynamicResource Task.Description}"
+                                                Binding="{Binding Description}" Width="90" />
+                            <DataGridTextColumn Header="{DynamicResource Task.Order}"
+                                                Binding="{Binding Order}" Width="40" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <Button Content="{DynamicResource Btn.AddCommand}"
+                                Command="{Binding AddCommandCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="6,3" Margin="0,0,6,0" />
+                        <Button Content="{DynamicResource Btn.RemoveCommand}"
+                                Command="{Binding RemoveCommandCommand}"
+                                CommandParameter="{Binding SelectedItem, ElementName=CommandsGrid}"
+                                Style="{StaticResource NeutralButtonStyle}" Padding="6,3" />
+                    </StackPanel>
+
+                </StackPanel>
+            </Grid>
+
+            <Separator Margin="0,6,0,8" />
+
+            <!-- App path -->
+            <TextBlock Text="{DynamicResource Task.AppPath}" Style="{StaticResource FieldLabelStyle}" />
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ComboBox Grid.Column="0" IsEditable="True" IsTextSearchEnabled="False" StaysOpenOnEdit="True"
+                          ItemsSource="{Binding FilteredAppList}"
+                          Text="{Binding AppPath, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Grid.Column="1" Content="&#x1F4CC;" Command="{Binding TogglePinAppCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        AutomationProperties.Name="Pin"
+                        Margin="4,0,0,0" Padding="6,4" ToolTip="{DynamicResource Task.Pin}" />
+                <Button Grid.Column="2" Content="&#x27F3;" Command="{Binding RefreshAppCandidatesCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        AutomationProperties.Name="Refresh"
+                        Margin="4,0,0,0" Padding="6,4" ToolTip="{DynamicResource Task.Refresh}" />
+            </Grid>
+
+            <Separator />
+
+            <!-- Parameter Templates -->
+            <TextBlock Text="{DynamicResource Task.ParameterTemplates}" Style="{StaticResource SectionHeaderStyle}" />
+
+            <TextBlock Text="{DynamicResource Task.SelectTemplate}" Style="{StaticResource FieldLabelStyle}" />
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ComboBox Grid.Column="0" IsEditable="True" IsTextSearchEnabled="False" StaysOpenOnEdit="True"
+                          ItemsSource="{Binding FilteredTemplateList}"
+                          Text="{Binding SelectedTemplate, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Grid.Column="1" Content="&#x1F4CC;" Command="{Binding TogglePinTemplateCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        AutomationProperties.Name="Pin template"
+                        Margin="4,0,0,0" Padding="6,4" ToolTip="{DynamicResource Task.Pin}" />
+                <Button Grid.Column="2" Content="&#x27F3;" Command="{Binding RefreshTemplateCandidatesCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        AutomationProperties.Name="Refresh templates"
+                        Margin="4,0,0,0" Padding="6,4" ToolTip="{DynamicResource Task.Refresh}" />
+            </Grid>
+
+            <TextBlock Text="{DynamicResource Task.TemplateContent}" Style="{StaticResource FieldLabelStyle}" />
+            <TextBox Text="{Binding TemplateContent, UpdateSourceTrigger=PropertyChanged}"
+                     Background="{DynamicResource BgCrustBrush}"
+                     Padding="6,4" Margin="0,0,0,2"
+                     FontFamily="Consolas" FontSize="11"
+                     AcceptsReturn="True" TextWrapping="Wrap"
+                     Height="100" VerticalScrollBarVisibility="Auto" />
+            <TextBlock Text="{Binding LastSavedTime}" Style="{StaticResource MutedTextStyle}" Margin="0,0,0,4" />
+
+            <TextBlock Text="{DynamicResource Task.SaveAsFileName}" Style="{StaticResource FieldLabelStyle}" />
+            <TextBox Text="{Binding SaveAsFileName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
+
+            <Button Content="{DynamicResource Btn.SaveParamFile}" Command="{Binding SaveParamFileCommand}"
+                    Style="{StaticResource PurpleButtonStyle}"
+                    Padding="8,4" Margin="0,0,0,8" HorizontalAlignment="Stretch" />
+
+            <Separator />
+
+            <!-- Extra Parameters -->
+            <TextBlock Text="{DynamicResource Task.ExtraParameters}" Style="{StaticResource SectionHeaderStyle}" />
+            <DataGrid ItemsSource="{Binding Parameters}"
+                      AutoGenerateColumns="False" CanUserAddRows="False"
+                      Height="100" Margin="0,0,0,4">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="{DynamicResource Task.ParamKey}"   Binding="{Binding Key}"   Width="*" />
+                    <DataGridTextColumn Header="{DynamicResource Task.ParamValue}" Binding="{Binding Value}" Width="*" />
+                </DataGrid.Columns>
+            </DataGrid>
+            <Button Content="{DynamicResource Btn.AddRow}" Command="{Binding AddParamCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
-                    Margin="4,0,0,0" Padding="8,4"
-                    ToolTip="{DynamicResource Task.BrowseRemote}" />
-        </Grid>
+                    Padding="8,4" Margin="0,0,0,8" HorizontalAlignment="Left" />
 
-        <!-- Task ID -->
-        <TextBlock Text="{DynamicResource Task.TaskId}" Style="{StaticResource FieldLabelStyle}" />
-        <Grid Margin="0,0,0,2">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <TextBox Grid.Column="0"
-                     Text="{Binding TaskId, UpdateSourceTrigger=PropertyChanged}" />
-            <Button Grid.Column="1" Content="{DynamicResource Btn.New}" Command="{Binding NewTaskIdCommand}"
-                    Style="{StaticResource NeutralButtonStyle}"
-                    Margin="4,0,0,0" Padding="8,4" />
-        </Grid>
-        <!-- TaskId directory validation status -->
-        <TextBlock Text="{Binding TaskIdDirectoryStatus}"
-                   Style="{StaticResource MutedTextStyle}"
-                   Margin="0,0,0,4"
-                   FontSize="11" />
+            <Separator />
 
-        <!-- Remote work dir (auto-computed from Root + TaskId) -->
-        <TextBlock Text="{DynamicResource Task.RemoteWorkDir}" Style="{StaticResource FieldLabelStyle}" />
-        <TextBox Text="{Binding RemoteWorkDir, UpdateSourceTrigger=PropertyChanged}"
-                 Margin="0,0,0,6" />
+            <!-- Submit -->
+            <TextBlock Text="{DynamicResource Task.Submit}" Style="{StaticResource SectionHeaderStyle}" />
 
-        <!-- App path (remote candidates + pin) -->
-        <TextBlock Text="{DynamicResource Task.AppPath}" Style="{StaticResource FieldLabelStyle}" />
-        <Grid Margin="0,0,0,6">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <ComboBox Grid.Column="0"
-                      IsEditable="True"
-                      IsTextSearchEnabled="False"
-                      StaysOpenOnEdit="True"
-                      ItemsSource="{Binding FilteredAppList}"
-                      Text="{Binding AppPath, UpdateSourceTrigger=PropertyChanged}" />
-            <Button Grid.Column="1" Content="📌" Command="{Binding TogglePinAppCommand}"
-                    Style="{StaticResource NeutralButtonStyle}"
-                    Margin="4,0,0,0" Padding="6,4"
-                    ToolTip="{DynamicResource Task.Pin}" />
-            <Button Grid.Column="2" Content="⟳" Command="{Binding RefreshAppCandidatesCommand}"
-                    Style="{StaticResource NeutralButtonStyle}"
-                    Margin="4,0,0,0" Padding="6,4"
-                    ToolTip="{DynamicResource Task.Refresh}" />
-        </Grid>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <CheckBox x:Name="SubmitAllCheck"
+                          IsChecked="{Binding SubmitAll, Mode=TwoWay}"
+                          Margin="0,0,10,0" />
+                <Label Target="{Binding ElementName=SubmitAllCheck}"
+                       Content="{DynamicResource Task.SubmitAll}"
+                       Foreground="{DynamicResource TextPrimaryBrush}"
+                       VerticalAlignment="Center" Cursor="Hand" Padding="0" />
+            </StackPanel>
+            <TextBlock Text="{DynamicResource Task.SubmitAllDesc}"
+                       Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,8" />
 
-        <!-- Save / Load task -->
-        <Grid Margin="0,0,0,8">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="{DynamicResource Btn.SaveTask}" Command="{Binding SaveTaskCommand}"
-                    Style="{StaticResource AccentButtonStyle}"
-                    Margin="0,0,4,0" Padding="8,4" />
-            <Button Grid.Column="1" Content="{DynamicResource Btn.LoadTask}" Command="{Binding LoadTaskCommand}"
-                    Style="{StaticResource NeutralButtonStyle}"
-                    Padding="8,4" />
-        </Grid>
+            <Button Content="{DynamicResource Btn.SubmitSbatch}" Command="{Binding SubmitJobCommand}"
+                    Style="{StaticResource SuccessButtonStyle}"
+                    Padding="10,8" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
 
-        <Separator />
-        <TextBlock Text="{DynamicResource Task.ParameterTemplates}"
-                   Style="{StaticResource SectionHeaderStyle}" />
+            <TextBlock Text="{Binding LastJobIdText}"
+                       Foreground="{DynamicResource AccentGreenBrush}"
+                       FontSize="12" Margin="0,0,0,4" />
+            <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource StatusTextStyle}" />
 
-        <!-- Template selector (from fixed remote dir) -->
-        <TextBlock Text="{DynamicResource Task.SelectTemplate}" Style="{StaticResource FieldLabelStyle}" />
-        <Grid Margin="0,0,0,6">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <ComboBox Grid.Column="0"
-                      IsEditable="True"
-                      IsTextSearchEnabled="False"
-                      StaysOpenOnEdit="True"
-                      ItemsSource="{Binding FilteredTemplateList}"
-                      Text="{Binding SelectedTemplate, UpdateSourceTrigger=PropertyChanged}" />
-            <Button Grid.Column="1" Content="📌" Command="{Binding TogglePinTemplateCommand}"
-                    Style="{StaticResource NeutralButtonStyle}"
-                    Margin="4,0,0,0" Padding="6,4"
-                    ToolTip="{DynamicResource Task.Pin}" />
-            <Button Grid.Column="2" Content="⟳" Command="{Binding RefreshTemplateCandidatesCommand}"
-                    Style="{StaticResource NeutralButtonStyle}"
-                    Margin="4,0,0,0" Padding="6,4"
-                    ToolTip="{DynamicResource Task.Refresh}" />
-        </Grid>
-
-        <!-- Template content editor -->
-        <TextBlock Text="{DynamicResource Task.TemplateContent}" Style="{StaticResource FieldLabelStyle}" />
-        <TextBox Text="{Binding TemplateContent, UpdateSourceTrigger=PropertyChanged}"
-                 Background="{DynamicResource BgCrustBrush}"
-                 Padding="6,4" Margin="0,0,0,2"
-                 FontFamily="Consolas" FontSize="11"
-                 AcceptsReturn="True" TextWrapping="Wrap"
-                 Height="100" VerticalScrollBarVisibility="Auto" />
-        <TextBlock Text="{Binding LastSavedTime}"
-                   Style="{StaticResource MutedTextStyle}" Margin="0,0,0,4" />
-
-        <!-- Save As filename (B4) -->
-        <TextBlock Text="{DynamicResource Task.SaveAsFileName}" Style="{StaticResource FieldLabelStyle}" />
-        <TextBox Text="{Binding SaveAsFileName, UpdateSourceTrigger=PropertyChanged}"
-                 Margin="0,0,0,6" />
-
-        <Button Content="{DynamicResource Btn.SaveParamFile}" Command="{Binding SaveParamFileCommand}"
-                Style="{StaticResource PurpleButtonStyle}"
-                Padding="8,4" Margin="0,0,0,8"
-                HorizontalAlignment="Stretch" />
-
-        <Separator />
-        <TextBlock Text="{DynamicResource Task.ExtraParameters}"
-                   Style="{StaticResource SectionHeaderStyle}" />
-
-        <DataGrid ItemsSource="{Binding Parameters}"
-                  AutoGenerateColumns="False" CanUserAddRows="False"
-                  Height="120" Margin="0,0,0,4">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="{DynamicResource Task.ParamKey}"   Binding="{Binding Key}"   Width="*" />
-                <DataGridTextColumn Header="{DynamicResource Task.ParamValue}" Binding="{Binding Value}" Width="*" />
-            </DataGrid.Columns>
-        </DataGrid>
-        <Button Content="{DynamicResource Btn.AddRow}" Command="{Binding AddParamCommand}"
-                Style="{StaticResource NeutralButtonStyle}"
-                Padding="8,4" Margin="0,0,0,8"
-                HorizontalAlignment="Left" />
-
-        <Separator />
-        <TextBlock Text="{DynamicResource Task.Submit}"
-                   Style="{StaticResource SectionHeaderStyle}" />
-
-        <Button Content="{DynamicResource Btn.SubmitSbatch}" Command="{Binding SubmitJobCommand}"
-                Style="{StaticResource SuccessButtonStyle}"
-                Padding="10,8"
-                HorizontalAlignment="Stretch" Margin="0,0,0,6" />
-
-        <TextBlock Text="{Binding LastJobIdText}"
-                   Foreground="{DynamicResource AccentGreenBrush}"
-                   FontSize="12" Margin="0,0,0,4" />
-        <TextBlock Text="{Binding StatusMessage}"
-                   Style="{StaticResource StatusTextStyle}" />
-
-    </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>
