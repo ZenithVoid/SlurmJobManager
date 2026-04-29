@@ -131,8 +131,9 @@ public sealed class SshClientService : ISshClientService
                     .OrderBy(n => n)
                     .ToList();
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[SshClientService.ListFilesAsync] {remotePath}: {ex.Message}");
                 return Array.Empty<string>();
             }
         }, ct);

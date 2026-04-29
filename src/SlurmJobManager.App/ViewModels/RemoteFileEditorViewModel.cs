@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.Core.Interfaces;
 
@@ -18,6 +19,9 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     public string RemotePath { get; }
     public string FileName   => RemotePath.Contains('/') ? RemotePath[(RemotePath.LastIndexOf('/') + 1)..] : RemotePath;
 
+    /// <summary>Formatted window title including the filename, resolved from localization resources at runtime.</summary>
+    public string WindowTitle => $"{Application.Current?.TryFindResource("RemoteEditor.Title") as string ?? "编辑文件："} {FileName}";
+
     public string Content
     {
         get => _content;
@@ -34,15 +38,15 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
 
     public RemoteFileEditorViewModel(ISshClientService ssh, string remotePath)
     {
-        _ssh       = ssh ?? throw new ArgumentNullException(nameof(ssh));
-        RemotePath = remotePath;
+        _ssh        = ssh ?? throw new ArgumentNullException(nameof(ssh));
+        RemotePath  = remotePath;
         SaveCommand = new AsyncRelayCommand(SaveAsync, () => !IsBusy);
     }
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
         IsBusy = true;
-        StatusMessage = "加载文件…";
+        StatusMessage = Application.Current?.TryFindResource("RemoteEditor.Loading") as string ?? "加载文件…";
         try
         {
             Content = await _ssh.ReadTextFileAsync(RemotePath, ct);
@@ -50,7 +54,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"加载失败：{ex.Message}";
+            StatusMessage = $"{Application.Current?.TryFindResource("RemoteEditor.LoadFailed") as string ?? "加载失败："}{ex.Message}";
         }
         finally { IsBusy = false; }
     }
@@ -58,16 +62,16 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     private async Task SaveAsync(CancellationToken ct)
     {
         IsBusy = true;
-        StatusMessage = "保存中…";
+        StatusMessage = Application.Current?.TryFindResource("RemoteEditor.Saving") as string ?? "保存中…";
         try
         {
             await _ssh.WriteTextFileAsync(RemotePath, Content, ct);
-            StatusMessage = $"已保存：{DateTime.Now:HH:mm:ss}";
+            StatusMessage = $"{Application.Current?.TryFindResource("RemoteEditor.Saved") as string ?? "已保存："}{DateTime.Now:HH:mm:ss}";
             SaveCompleted = true;
         }
         catch (Exception ex)
         {
-            StatusMessage = $"保存失败：{ex.Message}";
+            StatusMessage = $"{Application.Current?.TryFindResource("RemoteEditor.SaveFailed") as string ?? "保存失败："}{ex.Message}";
         }
         finally { IsBusy = false; }
     }

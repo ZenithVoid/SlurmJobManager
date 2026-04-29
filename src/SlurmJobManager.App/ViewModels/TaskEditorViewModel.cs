@@ -219,8 +219,9 @@ public sealed class TaskEditorViewModel : ViewModelBase
         {
             homeDir = await _ssh.GetHomeDirectoryAsync(ct);
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[TaskEditorViewModel.BrowseRootDirectoryAsync] GetHomeDirectory: {ex.Message}");
             homeDir = RootDirectory;
         }
 
@@ -273,7 +274,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
                     var files = await _ssh.ListFilesAsync(dir, ct);
                     all.AddRange(files.Select(f => $"{dir}/{f}"));
                 }
-                catch { /* skip inaccessible dirs */ }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[TaskEditorViewModel] ListFilesAsync({dir}): {ex.Message}"); }
             }
 
             RebuildAppDisplayList(all);
@@ -381,7 +382,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             RebuildAppDisplayList();
             RebuildTemplateDisplayList();
         }
-        catch { /* ignore corrupt pins file */ }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[TaskEditorViewModel.LoadPins] {ex.Message}"); }
     }
 
     private void SavePins()
@@ -392,7 +393,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             var data = new PinsData(PinnedApps.ToList(), PinnedTemplates.ToList());
             File.WriteAllText(PinsFilePath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
         }
-        catch { /* best-effort */ }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[TaskEditorViewModel.SavePins] {ex.Message}"); }
     }
 
     // ── B4: Parameter file save with Save As + overwrite confirm ─────────────
@@ -423,14 +424,17 @@ public sealed class TaskEditorViewModel : ViewModelBase
             // Overwrite confirmation
             if (await _ssh.RemoteFileExistsAsync(remoteDest, ct))
             {
+                var msgText   = Application.Current?.TryFindResource("Task.OverwritePrompt") as string
+                                ?? $"远程文件 {remoteDest} 已存在，是否覆盖？";
+                var msgTitle  = Application.Current?.TryFindResource("Task.OverwriteTitle") as string ?? "覆盖确认";
                 var result = MessageBox.Show(
-                    $"远程文件 {remoteDest} 已存在，是否覆盖？",
-                    "覆盖确认",
+                    string.Format(msgText, remoteDest),
+                    msgTitle,
                     MessageBoxButton.OKCancel,
                     MessageBoxImage.Question);
                 if (result != MessageBoxResult.OK)
                 {
-                    StatusMessage = "保存已取消。";
+                    StatusMessage = Application.Current?.TryFindResource("Task.SaveCancelled") as string ?? "保存已取消。";
                     return;
                 }
             }

@@ -5,7 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="选择远程目录"
+    Title="{DynamicResource RemotePicker.Title}"
     Height="480" Width="520"
     MinHeight="300" MinWidth="380"
     WindowStartupLocation="CenterOwner"
@@ -31,10 +31,10 @@
 
         <!-- Toolbar -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
-            <Button Content="⬆ 上级" Command="{Binding GoUpCommand}"
+            <Button Content="{DynamicResource RemotePicker.GoUp}" Command="{Binding GoUpCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Padding="8,4" Margin="0,0,6,0" />
-            <Button Content="⟳ 刷新" Command="{Binding RefreshCommand}"
+            <Button Content="{DynamicResource RemotePicker.Refresh}" Command="{Binding RefreshCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Padding="8,4" />
         </StackPanel>
@@ -78,14 +78,14 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock Grid.Column="0"
-                       Text="选中当前目录或双击进入子目录后点击 [选择]"
+                       Text="{DynamicResource RemotePicker.Hint}"
                        Foreground="{DynamicResource TextMutedBrush}"
                        FontSize="11" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Content="选择"
+            <Button Grid.Column="1" Content="{DynamicResource RemotePicker.Select}"
                     Style="{StaticResource AccentButtonStyle}"
                     Padding="12,5" Margin="0,0,6,0"
                     Click="BtnSelect_Click" />
-            <Button Grid.Column="2" Content="取消"
+            <Button Grid.Column="2" Content="{DynamicResource RemotePicker.Cancel}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Padding="12,5"
                     Click="BtnCancel_Click" />

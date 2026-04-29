@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="{Binding FileName, StringFormat='编辑文件：{0}'}"
+    Title="{Binding WindowTitle}"
     Height="540" Width="680"
     MinHeight="320" MinWidth="440"
     WindowStartupLocation="CenterOwner"
@@ -64,16 +64,16 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock Grid.Column="0"
-                       Text="⏳ 保存中…"
+                       Text="{DynamicResource RemoteEditor.Saving}"
                        Foreground="{DynamicResource TextMutedBrush}"
                        FontSize="11" VerticalAlignment="Center"
                        Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
 
-            <Button Grid.Column="1" Content="💾 保存"
+            <Button Grid.Column="1" Content="{DynamicResource RemoteEditor.Save}"
                     Command="{Binding SaveCommand}"
                     Style="{StaticResource AccentButtonStyle}"
                     Padding="12,5" Margin="0,0,6,0" />
-            <Button Grid.Column="2" Content="关闭"
+            <Button Grid.Column="2" Content="{DynamicResource RemoteEditor.Close}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Padding="12,5"
                     Click="BtnClose_Click" />
