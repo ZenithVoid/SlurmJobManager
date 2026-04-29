@@ -11,7 +11,8 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0"
                   b:SmoothScrollBehavior.IsEnabled="True"
-                  b:SmoothScrollBehavior.ScrollAmount="60">
+                  b:SmoothScrollBehavior.ScrollAmount="60"
+                  b:MouseWheelRoutingBehavior.IsEnabled="True">
         <StackPanel Margin="12">
 
             <!-- Task Setup -->
