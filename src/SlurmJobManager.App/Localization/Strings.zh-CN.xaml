@@ -101,7 +101,7 @@
     <sys:String x:Key="Settings.Title">设置</sys:String>
     <sys:String x:Key="Settings.SshConnection">SSH 连接</sys:String>
     <sys:String x:Key="Settings.StartupBehavior">启动行为</sys:String>
-    <sys:String x:Key="Settings.AutoConnectLabel">打开程序默认连接已保存配置</sys:String>
+    <sys:String x:Key="Settings.AutoConnectLabel">启动程序时自动连接已保存配置</sys:String>
     <sys:String x:Key="Settings.AutoConnectDesc">启动后自动连接上次保存的 SSH 配置（需已保存连接信息）。</sys:String>
     <sys:String x:Key="Settings.Appearance">外观</sys:String>
     <sys:String x:Key="Settings.Theme">主题：</sys:String>

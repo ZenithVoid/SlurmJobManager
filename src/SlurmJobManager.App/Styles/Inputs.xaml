@@ -203,11 +203,6 @@
         </Setter>
     </Style>
 
-    <!-- Slider -->
-    <Style TargetType="Slider">
-        <Setter Property="Foreground" Value="{DynamicResource AccentBlueBrush}" />
-    </Style>
-
     <!-- CheckBox -->
     <Style TargetType="CheckBox">
         <Setter Property="Foreground"       Value="{DynamicResource TextPrimaryBrush}" />
