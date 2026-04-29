@@ -29,7 +29,7 @@ public partial class CommandBuilderView : Window
 
     private void BtnConfirm_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is CommandBuilderViewModel vm && vm.ConfirmCommand.CanExecute(null))
+        if (DataContext is CommandBuilderViewModel vm)
         {
             vm.ConfirmCommand.Execute(null);
             DialogResult = true;

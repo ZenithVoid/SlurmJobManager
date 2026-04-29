@@ -181,6 +181,7 @@
     <sys:String x:Key="Task.SubmitAllDesc">启用后将提交列表中所有标记为"启用"的任务单元；关闭则仅提交当前选中单元。</sys:String>
     <sys:String x:Key="Task.MultiUnitPrompt">检测到多个任务单元（旧数据）。本次将使用第一个单元作为活动单元。\n\n单元列表：\n{0}\n\n提交时只提交活动单元。</sys:String>
     <sys:String x:Key="Task.CommandBuilderHint">点击上方按钮可选择远程程序路径、附加参数文件并预览最终命令行。</sys:String>
+    <sys:String x:Key="Task.CommandUpdated">命令已更新，请记得保存任务。</sys:String>
     <sys:String x:Key="Btn.AddProgram">+ 添加程序</sys:String>
     <sys:String x:Key="Btn.RemoveProgram">- 删除程序</sys:String>
     <sys:String x:Key="Btn.AddParamFile">+ 添加参数文件</sys:String>

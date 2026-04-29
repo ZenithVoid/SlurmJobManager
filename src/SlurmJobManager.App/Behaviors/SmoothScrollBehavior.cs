@@ -150,7 +150,7 @@ public static class SmoothScrollBehavior
         if (Math.Abs(diff) <= SnapDistance)
         {
             sv.ScrollToVerticalOffset(target);
-            state.Timer!.Stop();
+            state.Timer?.Stop();
             return;
         }
 

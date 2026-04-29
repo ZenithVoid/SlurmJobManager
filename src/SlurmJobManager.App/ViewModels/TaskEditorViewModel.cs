@@ -793,7 +793,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             if (!string.IsNullOrWhiteSpace(cmdLine))
                 unit.Commands.Add(new CommandEntryViewModel(new Core.Models.CommandEntry { CommandLine = cmdLine, Order = 0 }));
 
-            StatusMessage = "命令已更新，请记得保存任务。";
+            StatusMessage = Application.Current?.TryFindResource("Task.CommandUpdated") as string ?? "命令已更新，请记得保存任务。";
             CommandManager.InvalidateRequerySuggested();
         }
     }

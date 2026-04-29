@@ -180,6 +180,7 @@
     <sys:String x:Key="Task.SubmitAllDesc">When on, submits all units marked Enabled; when off, submits only the selected unit.</sys:String>
     <sys:String x:Key="Task.MultiUnitPrompt">Multiple task units detected (legacy data). The first unit will be used as the active unit.\n\nUnits:\n{0}\n\nOnly the active unit is submitted.</sys:String>
     <sys:String x:Key="Task.CommandBuilderHint">Click the button above to select a remote program, attach parameter files, and preview the final command line.</sys:String>
+    <sys:String x:Key="Task.CommandUpdated">Command updated. Remember to save the task.</sys:String>
     <sys:String x:Key="Btn.AddProgram">+ Add program</sys:String>
     <sys:String x:Key="Btn.RemoveProgram">- Remove program</sys:String>
     <sys:String x:Key="Btn.AddParamFile">+ Add param file</sys:String>
