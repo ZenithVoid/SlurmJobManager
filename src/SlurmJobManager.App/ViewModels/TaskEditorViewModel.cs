@@ -277,7 +277,11 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
     private void RemoveTaskUnit(TaskUnitViewModel? unit)
     {
-        if (unit == null || TaskUnits.Count <= 1) return;
+        if (unit == null || TaskUnits.Count <= 1)
+        {
+            StatusMessage = "至少需要保留一个任务单元。";
+            return;
+        }
         var idx = TaskUnits.IndexOf(unit);
         TaskUnits.Remove(unit);
         SelectedTaskUnit = TaskUnits[Math.Min(idx, TaskUnits.Count - 1)];
@@ -315,10 +319,11 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
     private void AddParam()
     {
-        var entry = new ParameterEntry();
-        Parameters.Add(entry);
-        // mirror into selected unit
-        _selectedTaskUnit?.ExtraParams.Add(entry);
+        // Create independent instances for both collections to avoid shared-reference side-effects
+        var editorEntry = new ParameterEntry();
+        Parameters.Add(editorEntry);
+        if (_selectedTaskUnit != null)
+            _selectedTaskUnit.ExtraParams.Add(new ParameterEntry { Key = editorEntry.Key, Value = editorEntry.Value });
     }
 
     /// <summary>
@@ -871,12 +876,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
         var appPath = unit.Programs.FirstOrDefault()?.ProgramPath ?? AppPath;
 
-        var firstParam = unit.ParamFiles.FirstOrDefault()?.FilePath;
-        var paramFile  = !string.IsNullOrEmpty(firstParam)
-            ? $"{workDir.TrimEnd('/')}/params/{firstParam}".Replace('\\', '/')
-            : (!string.IsNullOrEmpty(SelectedTemplate)
-                ? $"{workDir.TrimEnd('/')}/params/{SelectedTemplate}".Replace('\\', '/')
-                : string.Empty);
+        var paramFile = GetParameterFilePath(unit, workDir);
 
         var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -915,6 +915,22 @@ public sealed class TaskEditorViewModel : ViewModelBase
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Resolves the remote parameter file path for a task unit submission.
+    /// Priority: unit's first ParameterFile → global SelectedTemplate → empty.
+    /// </summary>
+    private string GetParameterFilePath(TaskUnitViewModel unit, string workDir)
+    {
+        var firstParam = unit.ParamFiles.FirstOrDefault()?.FilePath;
+        if (!string.IsNullOrEmpty(firstParam))
+            return $"{workDir.TrimEnd('/')}/params/{firstParam}".Replace('\\', '/');
+
+        if (!string.IsNullOrEmpty(SelectedTemplate))
+            return $"{workDir.TrimEnd('/')}/params/{SelectedTemplate}".Replace('\\', '/');
+
+        return string.Empty;
+    }
 
     private bool CanSubmit() =>
         !IsBusy

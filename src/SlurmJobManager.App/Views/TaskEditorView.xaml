@@ -25,6 +25,7 @@
                 <TextBox Grid.Column="0" Text="{Binding RootDirectory, UpdateSourceTrigger=PropertyChanged}" />
                 <Button Grid.Column="1" Content="..." Command="{Binding BrowseRootDirectoryCommand}"
                         Style="{StaticResource NeutralButtonStyle}"
+                        AutomationProperties.Name="Browse remote directory"
                         Margin="4,0,0,0" Padding="8,4"
                         ToolTip="{DynamicResource Task.BrowseRemote}" />
             </Grid>
@@ -218,9 +219,11 @@
                           Text="{Binding AppPath, UpdateSourceTrigger=PropertyChanged}" />
                 <Button Grid.Column="1" Content="&#x1F4CC;" Command="{Binding TogglePinAppCommand}"
                         Style="{StaticResource NeutralButtonStyle}"
+                        AutomationProperties.Name="Pin"
                         Margin="4,0,0,0" Padding="6,4" ToolTip="{DynamicResource Task.Pin}" />
                 <Button Grid.Column="2" Content="&#x27F3;" Command="{Binding RefreshAppCandidatesCommand}"
                         Style="{StaticResource NeutralButtonStyle}"
+                        AutomationProperties.Name="Refresh"
                         Margin="4,0,0,0" Padding="6,4" ToolTip="{DynamicResource Task.Refresh}" />
             </Grid>
 
@@ -241,9 +244,11 @@
                           Text="{Binding SelectedTemplate, UpdateSourceTrigger=PropertyChanged}" />
                 <Button Grid.Column="1" Content="&#x1F4CC;" Command="{Binding TogglePinTemplateCommand}"
                         Style="{StaticResource NeutralButtonStyle}"
+                        AutomationProperties.Name="Pin template"
                         Margin="4,0,0,0" Padding="6,4" ToolTip="{DynamicResource Task.Pin}" />
                 <Button Grid.Column="2" Content="&#x27F3;" Command="{Binding RefreshTemplateCandidatesCommand}"
                         Style="{StaticResource NeutralButtonStyle}"
+                        AutomationProperties.Name="Refresh templates"
                         Margin="4,0,0,0" Padding="6,4" ToolTip="{DynamicResource Task.Refresh}" />
             </Grid>
 

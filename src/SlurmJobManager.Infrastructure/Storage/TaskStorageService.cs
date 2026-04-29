@@ -115,6 +115,8 @@ public sealed class TaskStorageService : ITaskStorageService
             Enabled             = true,
             RemoteWorkDirectory = r.RemoteWorkDirectory,
             SlurmJobId          = r.SlurmJobId,
+            // TaskRecord uses "Parameters" for sbatch key/values; TaskUnit calls the same
+            // concept "ExtraParameters" to distinguish it from the structured program/file entries.
             ExtraParameters     = new Dictionary<string, string>(r.Parameters),
         };
 
