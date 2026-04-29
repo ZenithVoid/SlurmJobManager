@@ -315,9 +315,15 @@ public sealed class TaskEditorViewModel : ViewModelBase
         var capturedTaskId = TaskId;
         var capturedRoot   = RootDirectory;
 
-        _ = Task.Delay(300, cts.Token).ContinueWith(async delayTask =>
+        _ = Task.Run(async () =>
         {
-            if (delayTask.IsCanceled || cts.IsCancellationRequested) return;
+            try
+            {
+                await Task.Delay(300, cts.Token);
+            }
+            catch (OperationCanceledException) { return; }
+
+            if (cts.IsCancellationRequested) return;
 
             var path = $"{capturedRoot.TrimEnd('/')}/{capturedTaskId}";
             try
@@ -338,11 +344,12 @@ public sealed class TaskEditorViewModel : ViewModelBase
                 {
                     if (cts.IsCancellationRequested) return;
                     _taskIdDirectoryExists = null;
-                    TaskIdDirectoryStatus  = $"校验失败：{ex.Message}";
+                    TaskIdDirectoryStatus  = "目录校验失败，请检查连接状态。";
+                    System.Diagnostics.Debug.WriteLine($"[TaskIdValidation] {ex.Message}");
                     CommandManager.InvalidateRequerySuggested();
                 });
             }
-        }, TaskScheduler.Default);
+        }, cts.Token);
     }
 
     private async Task RefreshAppCandidatesAsync(CancellationToken ct)
@@ -596,13 +603,16 @@ public sealed class TaskEditorViewModel : ViewModelBase
         {
             // Use `ls -1` to list both files and subdirectories, surfacing errors via exit code
             var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(
-                $"ls -1 {EscapeShellArg(RemoteWorkDir)} 2>&1", ct);
+                $"ls -1 {EscapeShellArg(RemoteWorkDir)}", ct);
 
             TaskFiles.Clear();
 
             if (exitCode != 0)
             {
-                StatusMessage = $"无法读取目录（{stderr.Trim()}）。请检查路径和权限。";
+                var errDetail = stderr.Trim();
+                StatusMessage = string.IsNullOrEmpty(errDetail)
+                    ? "无法读取目录，请检查路径和权限。"
+                    : $"无法读取目录：{errDetail}";
                 return;
             }
 

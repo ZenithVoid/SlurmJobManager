@@ -107,10 +107,10 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            // Decryption failures (e.g. profile from a different machine) are surfaced as a
+            // Surface any failure (decryption errors, I/O errors, JSON parse errors, etc.) as a
             // friendly status message so the user can re-enter and save their credentials.
             Current.Dispatcher.Invoke(() =>
-                connectionVm.StatusMessage = $"加载配置失败（密码解密错误，请重新输入并保存）：{ex.Message}");
+                connectionVm.StatusMessage = $"加载配置失败，请重新输入并保存（{ex.GetType().Name}）。");
         }
     }
 
