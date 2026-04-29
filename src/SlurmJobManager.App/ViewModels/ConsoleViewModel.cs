@@ -90,8 +90,8 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
         OutputLines.Add(ConsoleLine.Command($"$ {cmd}"));
         IsBusy = true;
-        // Link caller cancellation with a command timeout
-        using var timeoutCts = new CancellationTokenSource(_settings.CommandTimeout);
+        // Manage lifetimes explicitly: dispose linked source before the source it wraps
+        var timeoutCts = new CancellationTokenSource(_settings.CommandTimeout);
         _executeCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
@@ -129,8 +129,10 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         }
         finally
         {
+            // Dispose linked source first, then the source it links to
             _executeCts.Dispose();
             _executeCts = null;
+            timeoutCts.Dispose();
             IsBusy = false;
         }
     }
@@ -139,12 +141,14 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     /// Strips control characters (except tab) that could cause terminal injection or crashes.
     /// Returns null-equivalent empty string if the resulting command is blank.
     /// </summary>
+    private static readonly Regex ControlCharRegex =
+        new(@"[\x00-\x08\x0A-\x1F\x7F]", RegexOptions.Compiled);
+
     private static string SanitizeCommand(string input)
     {
         if (string.IsNullOrEmpty(input)) return string.Empty;
         // Remove characters below 0x20 except horizontal tab (0x09), and remove DEL (0x7F)
-        var sanitized = Regex.Replace(input, @"[\x00-\x08\x0A-\x1F\x7F]", string.Empty);
-        return sanitized.Trim();
+        return ControlCharRegex.Replace(input, string.Empty).Trim();
     }
 
     private void CancelExecution()

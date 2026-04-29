@@ -107,7 +107,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         {
             _connection.PropertyChanged += OnConnectionPropertyChanged;
             // Seed initial state if already connected at construction time
-            if (_connection.IsConnected && string.IsNullOrWhiteSpace(WatchedUser))
+            if (_connection.IsConnected && !string.IsNullOrWhiteSpace(_connection.Username) && string.IsNullOrWhiteSpace(WatchedUser))
                 WatchedUser = _connection.Username;
         }
 
@@ -285,7 +285,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         if (_connection is null || !_connection.IsConnected) return;
 
         // Auto-fill watched user with the SSH login username on first connect
-        if (string.IsNullOrWhiteSpace(WatchedUser))
+        if (!string.IsNullOrWhiteSpace(_connection.Username) && string.IsNullOrWhiteSpace(WatchedUser))
             WatchedUser = _connection.Username;
 
         // Trigger an initial refresh so data appears without manual interaction
