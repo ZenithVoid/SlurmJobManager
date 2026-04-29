@@ -160,6 +160,8 @@
     <sys:String x:Key="Task.SaveCancelled">保存已取消。</sys:String>
     <!-- Multi-task workspace -->
     <sys:String x:Key="Task.TaskUnits">任务单元</sys:String>
+    <sys:String x:Key="Task.ActiveUnit">活动任务单元</sys:String>
+    <sys:String x:Key="Task.ActiveUnitDesc">每个 TaskId 仅维护一个活动单元用于提交。如加载到旧多单元数据，将自动选取第一个单元。</sys:String>
     <sys:String x:Key="Task.AddUnit">新建任务单元</sys:String>
     <sys:String x:Key="Task.RemoveUnit">删除所选任务单元</sys:String>
     <sys:String x:Key="Task.UnitName">单元名称</sys:String>
@@ -177,12 +179,33 @@
     <sys:String x:Key="Task.Description">描述</sys:String>
     <sys:String x:Key="Task.SubmitAll">提交所有已启用任务单元</sys:String>
     <sys:String x:Key="Task.SubmitAllDesc">启用后将提交列表中所有标记为"启用"的任务单元；关闭则仅提交当前选中单元。</sys:String>
+    <sys:String x:Key="Task.MultiUnitPrompt">检测到多个任务单元（旧数据）。本次将使用第一个单元作为活动单元。\n\n单元列表：\n{0}\n\n提交时只提交活动单元。</sys:String>
+    <sys:String x:Key="Task.CommandBuilderHint">点击上方按钮可选择远程程序路径、附加参数文件并预览最终命令行。</sys:String>
+    <sys:String x:Key="Task.CommandUpdated">命令已更新，请记得保存任务。</sys:String>
     <sys:String x:Key="Btn.AddProgram">+ 添加程序</sys:String>
     <sys:String x:Key="Btn.RemoveProgram">- 删除程序</sys:String>
     <sys:String x:Key="Btn.AddParamFile">+ 添加参数文件</sys:String>
     <sys:String x:Key="Btn.RemoveParamFile">- 删除参数文件</sys:String>
     <sys:String x:Key="Btn.AddCommand">+ 添加命令</sys:String>
     <sys:String x:Key="Btn.RemoveCommand">- 删除命令</sys:String>
+    <sys:String x:Key="Btn.ConfigureCommand">⚙ 配置运行命令…</sys:String>
+
+    <!-- ── 命令构建器 ──────────────────────────────────────────────────────── -->
+    <sys:String x:Key="CmdBuilder.Title">命令构建器</sys:String>
+    <sys:String x:Key="CmdBuilder.AvailablePrograms">可用程序（远程）</sys:String>
+    <sys:String x:Key="CmdBuilder.AvailableParamFiles">可用参数文件（远程）</sys:String>
+    <sys:String x:Key="CmdBuilder.SelectedProgram">选中程序路径</sys:String>
+    <sys:String x:Key="CmdBuilder.ChosenParamFiles">已附加参数文件</sys:String>
+    <sys:String x:Key="CmdBuilder.CommandPreview">最终命令行预览</sys:String>
+    <sys:String x:Key="CmdBuilder.FilterHint">输入关键词过滤列表</sys:String>
+    <sys:String x:Key="CmdBuilder.ProgramPathHint">可手动输入或从左侧列表选择</sys:String>
+    <sys:String x:Key="CmdBuilder.DoubleClickHint">双击可打开并编辑远程参数文件</sys:String>
+    <sys:String x:Key="CmdBuilder.AddParam">+ 添加到命令</sys:String>
+    <sys:String x:Key="CmdBuilder.RemoveParam">- 移除</sys:String>
+    <sys:String x:Key="CmdBuilder.Refresh">⟳ 刷新远程列表</sys:String>
+    <sys:String x:Key="CmdBuilder.Test">🔍 测试命令</sys:String>
+    <sys:String x:Key="CmdBuilder.Confirm">✓ 确认</sys:String>
+    <sys:String x:Key="CmdBuilder.Cancel">✕ 取消</sys:String>
 
     <!-- ── 远程目录选择器 ─────────────────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.Title">选择远程目录</sys:String>

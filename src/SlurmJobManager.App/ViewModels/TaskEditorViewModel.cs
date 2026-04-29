@@ -3,7 +3,9 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
+using SlurmJobManager.App.ViewModels.Dialogs;
 using SlurmJobManager.App.Views;
+using SlurmJobManager.App.Views.Dialogs;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
 using SlurmJobManager.Core.Services;
@@ -48,14 +50,17 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private string _statusMessage = string.Empty;
     private long? _lastJobId;
     private string? _selectedTaskFile;
-    private bool _submitAll;
 
     // ── TaskId directory validation ──────────────────────────────────────────
     private bool? _taskIdDirectoryExists;
     private string _taskIdDirectoryStatus = string.Empty;
     private CancellationTokenSource? _taskIdValidationCts;
 
-    // ── Workspace / task-unit state ──────────────────────────────────────────
+    // ── Workspace / active task-unit state ──────────────────────────────────
+    // Each TaskId has exactly ONE active task unit.  Legacy workspaces with
+    // multiple units are migrated at load time (user picks one; the rest are
+    // discarded from the active editing session but remain in the saved file
+    // until the next explicit Save).
     private TaskUnitViewModel? _selectedTaskUnit;
 
     // ── Properties ───────────────────────────────────────────────────────────
@@ -143,21 +148,18 @@ public sealed class TaskEditorViewModel : ViewModelBase
         set => SetField(ref _selectedTaskFile, value);
     }
 
-    /// <summary>
-    /// When true, "submit all enabled task units" is used; otherwise only the selected unit.
-    /// </summary>
-    public bool SubmitAll
-    {
-        get => _submitAll;
-        set { SetField(ref _submitAll, value); CommandManager.InvalidateRequerySuggested(); }
-    }
-
     // ── Task-unit management ─────────────────────────────────────────────────
 
-    /// <summary>All task units for the current workspace.</summary>
-    public ObservableCollection<TaskUnitViewModel> TaskUnits { get; } = new();
+    /// <summary>
+    /// The single active task unit for the current workspace.
+    /// Binding alias exposed to the view.
+    /// </summary>
+    public TaskUnitViewModel? ActiveUnit => _selectedTaskUnit;
 
-    /// <summary>The currently selected task unit in the list.</summary>
+    // Kept as internal storage; UI no longer exposes multi-unit management.
+    internal ObservableCollection<TaskUnitViewModel> TaskUnits { get; } = new();
+
+    /// <summary>The active (and only) task unit for the current workspace.</summary>
     public TaskUnitViewModel? SelectedTaskUnit
     {
         get => _selectedTaskUnit;
@@ -166,6 +168,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             if (SetField(ref _selectedTaskUnit, value))
             {
                 SyncFromSelectedUnit();
+                OnPropertyChanged(nameof(ActiveUnit));
                 CommandManager.InvalidateRequerySuggested();
             }
         }
@@ -181,7 +184,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     public ObservableCollection<string> PinnedTemplates      { get; } = new();
     public ObservableCollection<string> FilteredTemplateList { get; } = new();
 
-    /// <summary>Key/value extra parameters (bound to the selected task unit).</summary>
+    /// <summary>Key/value extra parameters (bound to the active task unit).</summary>
     public ObservableCollection<ParameterEntry> Parameters { get; } = new();
 
     public ObservableCollection<string> TaskFiles { get; } = new();
@@ -203,17 +206,8 @@ public sealed class TaskEditorViewModel : ViewModelBase
     public ICommand RefreshTaskFilesCommand           { get; }
     public ICommand OpenTaskFileCommand               { get; }
 
-    // Task-unit CRUD
-    public ICommand AddTaskUnitCommand    { get; }
-    public ICommand RemoveTaskUnitCommand { get; }
-
-    // Per-unit entry CRUD
-    public ICommand AddProgramCommand       { get; }
-    public ICommand RemoveProgramCommand    { get; }
-    public ICommand AddParamFileCommand     { get; }
-    public ICommand RemoveParamFileCommand  { get; }
-    public ICommand AddCommandCommand       { get; }
-    public ICommand RemoveCommandCommand    { get; }
+    /// <summary>Opens the Command Builder dialog for the active task unit.</summary>
+    public ICommand OpenCommandBuilderCommand { get; }
 
     // ── Constructor ──────────────────────────────────────────────────────────
 
@@ -237,21 +231,12 @@ public sealed class TaskEditorViewModel : ViewModelBase
         TogglePinTemplateCommand         = new RelayCommand(TogglePinTemplate,                     () => !string.IsNullOrWhiteSpace(SelectedTemplate));
         RefreshTaskFilesCommand          = new AsyncRelayCommand(RefreshTaskFilesAsync,             () => _ssh.IsConnected && !IsBusy);
         OpenTaskFileCommand              = new AsyncRelayCommand<string>(OpenTaskFileAsync);
-
-        AddTaskUnitCommand    = new RelayCommand(AddTaskUnit);
-        RemoveTaskUnitCommand = new RelayCommand<TaskUnitViewModel>(RemoveTaskUnit);
-
-        AddProgramCommand      = new RelayCommand(AddProgram,      () => _selectedTaskUnit != null);
-        RemoveProgramCommand   = new RelayCommand<ProgramEntryViewModel>(RemoveProgram);
-        AddParamFileCommand    = new RelayCommand(AddParamFile,    () => _selectedTaskUnit != null);
-        RemoveParamFileCommand = new RelayCommand<ParameterFileEntryViewModel>(RemoveParamFile);
-        AddCommandCommand      = new RelayCommand(AddCommand,      () => _selectedTaskUnit != null);
-        RemoveCommandCommand   = new RelayCommand<CommandEntryViewModel>(RemoveCommand);
+        OpenCommandBuilderCommand        = new AsyncRelayCommand(OpenCommandBuilderAsync,           () => !IsBusy);
 
         LoadPins();
         Directory.CreateDirectory(LocalDataRoot);
 
-        // Create a default task unit so the UI is never empty on first run
+        // Create a single default task unit so the UI is never empty on first run
         EnsureAtLeastOneTaskUnit();
     }
 
@@ -261,15 +246,17 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         if (TaskUnits.Count == 0)
         {
-            var unit = new TaskUnitViewModel(new TaskUnit { TaskName = "Task 1", Enabled = true });
+            var defaultName = !string.IsNullOrEmpty(TaskId) ? TaskId : "default";
+            var unit = new TaskUnitViewModel(new TaskUnit { TaskName = defaultName, Enabled = true });
             TaskUnits.Add(unit);
             SelectedTaskUnit = unit;
         }
     }
 
-    private void AddTaskUnit()
+    // Kept for internal use only (legacy code-paths in submit/save/load)
+    private void AddTaskUnitInternal()
     {
-        var name = $"Task {TaskUnits.Count + 1}";
+        var name = !string.IsNullOrEmpty(TaskId) ? TaskId : $"Task {TaskUnits.Count + 1}";
         var unit = new TaskUnitViewModel(new TaskUnit { TaskName = name, Enabled = true });
         TaskUnits.Add(unit);
         SelectedTaskUnit = unit;
@@ -766,6 +753,51 @@ public sealed class TaskEditorViewModel : ViewModelBase
         win.ShowDialog();
     }
 
+    // ── Command Builder dialog ────────────────────────────────────────────────
+
+    private async Task OpenCommandBuilderAsync(CancellationToken ct)
+    {
+        var dlgVm = new CommandBuilderViewModel(
+            _ssh,
+            initialProgram: _selectedTaskUnit?.Programs.FirstOrDefault()?.ProgramPath ?? string.Empty,
+            initialParamFiles: _selectedTaskUnit?.ParamFiles.Select(f => f.ToModel()));
+
+        var win = new CommandBuilderView { DataContext = dlgVm };
+        if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
+
+        if (_ssh.IsConnected)
+            await dlgVm.LoadInitialAsync(ct);
+
+        if (win.ShowDialog() == true && dlgVm.Confirmed)
+        {
+            // Apply results back to the active task unit
+            EnsureAtLeastOneTaskUnit();
+
+            var unit = _selectedTaskUnit!;
+
+            // Update program
+            var prog = dlgVm.GetResultProgram();
+            unit.Programs.Clear();
+            if (!string.IsNullOrWhiteSpace(prog))
+                unit.Programs.Add(new ProgramEntryViewModel(new Core.Models.ProgramEntry { ProgramPath = prog, Order = 0 }));
+            AppPath = prog;
+
+            // Update param files
+            unit.ParamFiles.Clear();
+            foreach (var pf in dlgVm.GetResultParamFiles())
+                unit.ParamFiles.Add(new ParameterFileEntryViewModel(pf));
+
+            // Sync command preview into Commands list as a single entry
+            var cmdLine = dlgVm.CommandPreview.Replace(" \\\n    ", " ");
+            unit.Commands.Clear();
+            if (!string.IsNullOrWhiteSpace(cmdLine))
+                unit.Commands.Add(new CommandEntryViewModel(new Core.Models.CommandEntry { CommandLine = cmdLine, Order = 0 }));
+
+            StatusMessage = Application.Current?.TryFindResource("Task.CommandUpdated") as string ?? "命令已更新，请记得保存任务。";
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
     // ── Persistence (workspace + legacy) ────────────────────────────────────
 
     private string GetLocalTaskDir() => Path.Combine(LocalDataRoot, TaskId);
@@ -820,10 +852,33 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private void ApplyWorkspace(TaskWorkspace w)
     {
         TaskUnits.Clear();
+
+        if (w.Tasks.Count == 0)
+        {
+            // No units in workspace — create a fresh default
+            EnsureAtLeastOneTaskUnit();
+            return;
+        }
+
+        if (w.Tasks.Count == 1)
+        {
+            // Exactly one unit — the happy path
+            TaskUnits.Add(new TaskUnitViewModel(w.Tasks[0]));
+            SelectedTaskUnit = TaskUnits[0];
+            return;
+        }
+
+        // Legacy multi-unit workspace: prompt the user to pick one active unit.
+        // All units are loaded internally but only the chosen one is used for editing/submitting.
         foreach (var unit in w.Tasks)
             TaskUnits.Add(new TaskUnitViewModel(unit));
 
-        EnsureAtLeastOneTaskUnit();
+        var names   = TaskUnits.Select((u, i) => $"{i + 1}. {u.TaskName}").ToArray();
+        var prompt  = Application.Current?.TryFindResource("Task.MultiUnitPrompt") as string
+                      ?? "检测到多个任务单元（旧数据）。本次将仅使用第一个单元作为活动单元。\n\n单元列表：\n{0}\n\n提交时只提交活动单元。";
+        StatusMessage = string.Format(prompt, string.Join("\n", names));
+
+        // Default: use the first unit
         SelectedTaskUnit = TaskUnits[0];
     }
 
@@ -840,13 +895,9 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         if (!ValidateSubmitRequirements()) return;
 
-        var unitsToSubmit = SubmitAll
-            ? TaskUnits.Where(u => u.Enabled).ToList()
-            : (_selectedTaskUnit != null ? new List<TaskUnitViewModel> { _selectedTaskUnit } : new List<TaskUnitViewModel>());
-
-        if (unitsToSubmit.Count == 0)
+        if (_selectedTaskUnit == null)
         {
-            StatusMessage = "没有可提交的任务单元（请检查是否已启用）。";
+            StatusMessage = "没有活动任务单元可提交，请先保存任务配置。";
             return;
         }
 
@@ -854,15 +905,9 @@ public sealed class TaskEditorViewModel : ViewModelBase
         StatusMessage = "准备提交…";
         try
         {
-            long? lastId = null;
-            foreach (var unit in unitsToSubmit)
-            {
-                lastId = await SubmitUnitAsync(unit, ct);
-            }
-            LastJobId = lastId;
-            StatusMessage = unitsToSubmit.Count == 1
-                ? $"作业已提交！Job ID = {lastId}"
-                : $"已提交 {unitsToSubmit.Count} 个任务单元，最后 Job ID = {lastId}";
+            var jobId = await SubmitUnitAsync(_selectedTaskUnit, ct);
+            LastJobId = jobId;
+            StatusMessage = $"作业已提交！Job ID = {jobId}";
         }
         catch (Exception ex) { StatusMessage = $"提交失败：{ex.Message}"; }
         finally { IsBusy = false; }
