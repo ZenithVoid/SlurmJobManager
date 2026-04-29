@@ -3,11 +3,37 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
-        Unified Toggle-Switch style for CheckBox (reference image).
+        Unified Toggle-Switch style for CheckBox.
           On  → blue  track (#2979FF) + white  thumb shifted right
           Off → gray  track (#44444C) + light-gray thumb on left
-        Animation: 150 ms ThicknessAnimation on thumb Margin +
-                   ColorAnimation via property paths on Track/Thumb elements.
+
+        Root-cause fix
+        ══════════════
+        The previous implementation animated Brush objects via property-path
+        strings (e.g. "(Border.Background).(SolidColorBrush.Color)").  When a
+        Trigger.Setter replaces an element's Background with a shared Setter
+        value, WPF freezes that SolidColorBrush, and the subsequent animation
+        throws InvalidOperationException: "Cannot animate a frozen Freezable".
+
+        Trigger.Setter cannot use TargetName on Freezable objects (MC4111).
+
+        Solution: VisualStateManager
+        ─────────────────────────────
+        • TrackBrush / ThumbBrush are per-instance SolidColorBrush elements
+          defined inline with <x:Name> inside the ControlTemplate, so they are
+          never shared or frozen.
+        • All state-driven changes go through VisualStateManager Storyboards,
+          which target named objects via Storyboard.TargetName — valid for any
+          named DependencyObject, including Freezables.
+        • CheckBox inherits ToggleButton's VSM GoToState calls for
+          "Checked"/"Unchecked"/"Indeterminate" (CheckStates) and
+          "Normal"/"MouseOver"/"Pressed"/"Disabled" (CommonStates),
+          so no code-behind is required.
+        • VisualTransition Storyboards drive the animated transitions; the
+          VisualState Storyboards (Duration=0) define the settled appearance
+          and are seeked-to-end instantly on first load (useTransitions=false).
+        • Hover/press feedback uses a named Border overlay (UIElement) whose
+          Opacity is animated — no Brush replacement occurs.
         Row-click linkage: wrap the CheckBox in a Label with Target binding.
     -->
 
@@ -21,125 +47,180 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
-                    <!-- Fixed outer height prevents layout jitter during animation -->
-                    <Border Background="Transparent" Height="26" SnapsToDevicePixels="True">
+                    <!-- Root border is named so the Disabled state can dim the whole control. -->
+                    <Border x:Name="Root"
+                            Background="Transparent"
+                            Height="26"
+                            SnapsToDevicePixels="True">
+
+                        <VisualStateManager.VisualStateGroups>
+
+                            <!-- ── Check state group ──────────────────────────────── -->
+                            <VisualStateGroup x:Name="CheckStates">
+
+                                <!-- Animated transitions between Checked / Unchecked -->
+                                <VisualStateGroup.Transitions>
+                                    <VisualTransition From="Unchecked" To="Checked">
+                                        <Storyboard>
+                                            <ThicknessAnimation
+                                                Storyboard.TargetName="Thumb"
+                                                Storyboard.TargetProperty="Margin"
+                                                To="21,0,0,0" Duration="0:0:0.15">
+                                                <ThicknessAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </ThicknessAnimation.EasingFunction>
+                                            </ThicknessAnimation>
+                                            <!-- Target the named per-instance brush directly.
+                                                 Storyboard.TargetName is valid for any named
+                                                 DependencyObject — no frozen-brush issue. -->
+                                            <ColorAnimation
+                                                Storyboard.TargetName="TrackBrush"
+                                                Storyboard.TargetProperty="Color"
+                                                To="#2979FF" Duration="0:0:0.15" />
+                                            <ColorAnimation
+                                                Storyboard.TargetName="ThumbBrush"
+                                                Storyboard.TargetProperty="Color"
+                                                To="White" Duration="0:0:0.15" />
+                                        </Storyboard>
+                                    </VisualTransition>
+                                    <VisualTransition From="Checked" To="Unchecked">
+                                        <Storyboard>
+                                            <ThicknessAnimation
+                                                Storyboard.TargetName="Thumb"
+                                                Storyboard.TargetProperty="Margin"
+                                                To="3,0,0,0" Duration="0:0:0.15">
+                                                <ThicknessAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </ThicknessAnimation.EasingFunction>
+                                            </ThicknessAnimation>
+                                            <ColorAnimation
+                                                Storyboard.TargetName="TrackBrush"
+                                                Storyboard.TargetProperty="Color"
+                                                To="#44444C" Duration="0:0:0.15" />
+                                            <ColorAnimation
+                                                Storyboard.TargetName="ThumbBrush"
+                                                Storyboard.TargetProperty="Color"
+                                                To="#A0A0AC" Duration="0:0:0.15" />
+                                        </Storyboard>
+                                    </VisualTransition>
+                                </VisualStateGroup.Transitions>
+
+                                <!-- Settled "Checked" appearance (seeked-to-end on initial load). -->
+                                <VisualState x:Name="Checked">
+                                    <Storyboard>
+                                        <ThicknessAnimation
+                                            Storyboard.TargetName="Thumb"
+                                            Storyboard.TargetProperty="Margin"
+                                            To="21,0,0,0" Duration="0" />
+                                        <ColorAnimation
+                                            Storyboard.TargetName="TrackBrush"
+                                            Storyboard.TargetProperty="Color"
+                                            To="#2979FF" Duration="0" />
+                                        <ColorAnimation
+                                            Storyboard.TargetName="ThumbBrush"
+                                            Storyboard.TargetProperty="Color"
+                                            To="White" Duration="0" />
+                                    </Storyboard>
+                                </VisualState>
+
+                                <!-- Settled "Unchecked" appearance. -->
+                                <VisualState x:Name="Unchecked">
+                                    <Storyboard>
+                                        <ThicknessAnimation
+                                            Storyboard.TargetName="Thumb"
+                                            Storyboard.TargetProperty="Margin"
+                                            To="3,0,0,0" Duration="0" />
+                                        <ColorAnimation
+                                            Storyboard.TargetName="TrackBrush"
+                                            Storyboard.TargetProperty="Color"
+                                            To="#44444C" Duration="0" />
+                                        <ColorAnimation
+                                            Storyboard.TargetName="ThumbBrush"
+                                            Storyboard.TargetProperty="Color"
+                                            To="#A0A0AC" Duration="0" />
+                                    </Storyboard>
+                                </VisualState>
+
+                                <VisualState x:Name="Indeterminate" />
+
+                            </VisualStateGroup>
+
+                            <!-- ── Common state group (hover / press / disabled) ───── -->
+                            <VisualStateGroup x:Name="CommonStates">
+
+                                <!-- Smooth 100 ms fade for hover-overlay opacity changes -->
+                                <VisualStateGroup.Transitions>
+                                    <VisualTransition GeneratedDuration="0:0:0.1" />
+                                </VisualStateGroup.Transitions>
+
+                                <VisualState x:Name="Normal" />
+
+                                <VisualState x:Name="MouseOver">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="HoverOverlay"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="0.12" Duration="0" />
+                                    </Storyboard>
+                                </VisualState>
+
+                                <VisualState x:Name="Pressed">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="HoverOverlay"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="0.28" Duration="0" />
+                                    </Storyboard>
+                                </VisualState>
+
+                                <VisualState x:Name="Disabled">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="Root"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="0.4" Duration="0" />
+                                    </Storyboard>
+                                </VisualState>
+
+                            </VisualStateGroup>
+
+                        </VisualStateManager.VisualStateGroups>
+
                         <Grid VerticalAlignment="Center" Width="40" Height="22">
 
-                            <!-- Track: Background color animated via property path -->
+                            <!-- Track: per-instance named brush (never frozen, safely animated) -->
                             <Border x:Name="Track"
-                                    Background="#44444C"
                                     CornerRadius="11"
                                     SnapsToDevicePixels="True"
-                                    UseLayoutRounding="True" />
+                                    UseLayoutRounding="True">
+                                <Border.Background>
+                                    <SolidColorBrush x:Name="TrackBrush" Color="#44444C" />
+                                </Border.Background>
+                            </Border>
 
-                            <!-- Thumb: Margin.Left drives position (animated via ThicknessAnimation) -->
+                            <!-- Semi-transparent white overlay for hover/press feedback.
+                                 Targeting a UIElement's Opacity is always valid. -->
+                            <Border x:Name="HoverOverlay"
+                                    CornerRadius="11"
+                                    Background="White"
+                                    Opacity="0"
+                                    IsHitTestVisible="False" />
+
+                            <!-- Thumb: per-instance named brush; Margin drives position. -->
                             <Ellipse x:Name="Thumb"
                                      Width="16" Height="16"
-                                     Fill="#A0A0AC"
                                      HorizontalAlignment="Left"
                                      VerticalAlignment="Center"
                                      Margin="3,0,0,0"
                                      SnapsToDevicePixels="True"
-                                     UseLayoutRounding="True" />
+                                     UseLayoutRounding="True">
+                                <Ellipse.Fill>
+                                    <SolidColorBrush x:Name="ThumbBrush" Color="#A0A0AC" />
+                                </Ellipse.Fill>
+                            </Ellipse>
 
                         </Grid>
                     </Border>
-
-                    <ControlTemplate.Triggers>
-
-                        <!-- Checked → On: animate thumb right + blue track + white thumb -->
-                        <EventTrigger RoutedEvent="Checked">
-                            <BeginStoryboard>
-                                <Storyboard FillBehavior="Stop">
-                                    <ThicknessAnimation
-                                        Storyboard.TargetName="Thumb"
-                                        Storyboard.TargetProperty="Margin"
-                                        To="21,0,0,0" Duration="0:0:0.15">
-                                        <ThicknessAnimation.EasingFunction>
-                                            <CubicEase EasingMode="EaseOut" />
-                                        </ThicknessAnimation.EasingFunction>
-                                    </ThicknessAnimation>
-                                    <ColorAnimation
-                                        Storyboard.TargetName="Track"
-                                        Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                        To="#2979FF" Duration="0:0:0.15" />
-                                    <ColorAnimation
-                                        Storyboard.TargetName="Thumb"
-                                        Storyboard.TargetProperty="(Ellipse.Fill).(SolidColorBrush.Color)"
-                                        To="White" Duration="0:0:0.15" />
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-
-                        <!-- Unchecked → Off: animate thumb left + gray track + gray thumb -->
-                        <EventTrigger RoutedEvent="Unchecked">
-                            <BeginStoryboard>
-                                <Storyboard FillBehavior="Stop">
-                                    <ThicknessAnimation
-                                        Storyboard.TargetName="Thumb"
-                                        Storyboard.TargetProperty="Margin"
-                                        To="3,0,0,0" Duration="0:0:0.15">
-                                        <ThicknessAnimation.EasingFunction>
-                                            <CubicEase EasingMode="EaseOut" />
-                                        </ThicknessAnimation.EasingFunction>
-                                    </ThicknessAnimation>
-                                    <ColorAnimation
-                                        Storyboard.TargetName="Track"
-                                        Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                        To="#44444C" Duration="0:0:0.15" />
-                                    <ColorAnimation
-                                        Storyboard.TargetName="Thumb"
-                                        Storyboard.TargetProperty="(Ellipse.Fill).(SolidColorBrush.Color)"
-                                        To="#A0A0AC" Duration="0:0:0.15" />
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-
-                        <!-- Static initial state: set directly on named elements (no animation at load) -->
-                        <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Thumb"  Property="Margin"     Value="21,0,0,0" />
-                            <Setter TargetName="Track"  Property="Background" Value="#2979FF" />
-                            <Setter TargetName="Thumb"  Property="Fill"       Value="White" />
-                        </Trigger>
-
-                        <!-- Hover: brighten track -->
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsMouseOver" Value="True" />
-                                <Condition Property="IsChecked"   Value="False" />
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="Track" Property="Background" Value="#55555E" />
-                        </MultiTrigger>
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsMouseOver" Value="True" />
-                                <Condition Property="IsChecked"   Value="True" />
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="Track" Property="Background" Value="#448AFF" />
-                        </MultiTrigger>
-
-                        <!-- Pressed: darken track -->
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsPressed" Value="True" />
-                                <Condition Property="IsChecked" Value="False" />
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="Track" Property="Background" Value="#333338" />
-                        </MultiTrigger>
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsPressed" Value="True" />
-                                <Condition Property="IsChecked" Value="True" />
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="Track" Property="Background" Value="#1565C0" />
-                        </MultiTrigger>
-
-                        <!-- Disabled -->
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4" />
-                        </Trigger>
-
-                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
