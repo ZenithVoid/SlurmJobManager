@@ -25,6 +25,26 @@
                 </StackPanel>
             </Border>
 
+            <!-- ── Startup Behavior ──────────────────────────────────────── -->
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.StartupBehavior}"
+                               Style="{StaticResource SectionHeaderStyle}" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <CheckBox IsChecked="{Binding AutoConnectOnStartup, Mode=TwoWay}"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,8,0" />
+                        <TextBlock Text="{DynamicResource Settings.AutoConnectLabel}"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.AutoConnectDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
             <!-- ── Theme ────────────────────────────────────────────────── -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
                 <StackPanel>

@@ -170,6 +170,13 @@ public sealed class SshClientService : ISshClientService
         return stdout.Trim() == "1";
     }
 
+    public async Task<bool> RemoteDirectoryExistsAsync(string remotePath, CancellationToken ct = default)
+    {
+        var (stdout, _, _) = await ExecuteAsync(
+            $"test -d {EscapeShellArg(remotePath)} && echo 1 || echo 0", ct);
+        return stdout.Trim() == "1";
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private void Disconnect()

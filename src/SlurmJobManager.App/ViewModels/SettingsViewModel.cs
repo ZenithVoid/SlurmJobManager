@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using SlurmJobManager.App.Services;
 
 namespace SlurmJobManager.App.ViewModels;
 
@@ -9,13 +10,33 @@ namespace SlurmJobManager.App.ViewModels;
 public sealed class SettingsViewModel : ViewModelBase
 {
     private readonly MainViewModel _main;
+    private readonly AppPreferencesService _prefs;
 
-    public SettingsViewModel(MainViewModel main)
-        => _main = main ?? throw new ArgumentNullException(nameof(main));
+    public SettingsViewModel(MainViewModel main, AppPreferencesService prefs)
+    {
+        _main  = main  ?? throw new ArgumentNullException(nameof(main));
+        _prefs = prefs ?? throw new ArgumentNullException(nameof(prefs));
+    }
 
     // ── Connection configuration (re-exposed for embedding ConnectionView) ──
 
     public ConnectionViewModel Connection => _main.Connection;
+
+    // ── Startup auto-connect ──────────────────────────────────────────────
+
+    /// <summary>
+    /// When enabled, the app automatically connects using the saved profile on startup.
+    /// Persisted via <see cref="AppPreferencesService"/>.
+    /// </summary>
+    public bool AutoConnectOnStartup
+    {
+        get => _prefs.AutoConnectOnStartup;
+        set
+        {
+            _prefs.AutoConnectOnStartup = value;
+            OnPropertyChanged();
+        }
+    }
 
     // ── Theme ─────────────────────────────────────────────────────────────
 

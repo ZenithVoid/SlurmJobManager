@@ -35,6 +35,9 @@ public partial class App : Application
         // Wire global unhandled-exception hooks after logging is ready
         RegisterCrashHandlers();
 
+        // App-level user preferences (auto-connect on startup, etc.)
+        var prefs = new AppPreferencesService();
+
         // Infrastructure services (one SSH client shared across all consumers)
         var ssh      = new SshClientService(settings);
         var slurm    = new SlurmService(ssh, settings, _logger);
@@ -59,7 +62,7 @@ public partial class App : Application
         // Wire SSH connection → TaskEditor auto-fill
         connectionVm.ConnectionEstablished += username => taskEditorVm.OnConnectionEstablished(username);
 
-        _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm);
+        _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm, prefs);
 
         // Default locale: zh-CN (loaded regardless of system language)
         _mainVm.ApplyLocale("zh-CN");
@@ -67,6 +70,48 @@ public partial class App : Application
         var mainWindow = new MainWindow { DataContext = _mainVm };
         mainWindow.Closing += OnMainWindowClosing;
         mainWindow.Show();
+
+        // Auto-load saved profile on startup (async, does not block UI)
+        if (profileStore != null)
+            _ = AutoLoadProfileAsync(connectionVm, profileStore, prefs);
+    }
+
+    /// <summary>
+    /// Loads the saved connection profile (including encrypted password) into the connection VM.
+    /// If <see cref="AppPreferencesService.AutoConnectOnStartup"/> is enabled, also connects.
+    /// </summary>
+    private static async Task AutoLoadProfileAsync(
+        ConnectionViewModel connectionVm,
+        IConnectionProfileStore profileStore,
+        AppPreferencesService prefs)
+    {
+        try
+        {
+            var profile = await profileStore.LoadAsync();
+            if (profile is null) return;
+
+            // Populate fields on the UI thread
+            Current.Dispatcher.Invoke(() =>
+            {
+                connectionVm.Host                 = profile.Host;
+                connectionVm.Port                 = profile.Port;
+                connectionVm.Username             = profile.Username;
+                connectionVm.Password             = profile.Password             ?? string.Empty;
+                connectionVm.PrivateKeyPath       = profile.PrivateKeyPath       ?? string.Empty;
+                connectionVm.PrivateKeyPassphrase = profile.PrivateKeyPassphrase ?? string.Empty;
+                connectionVm.StatusMessage        = "已加载保存的配置。";
+
+                if (prefs.AutoConnectOnStartup)
+                    connectionVm.ConnectCommand.Execute(null);
+            });
+        }
+        catch (Exception ex)
+        {
+            // Surface any failure (decryption errors, I/O errors, JSON parse errors, etc.) as a
+            // friendly status message so the user can re-enter and save their credentials.
+            Current.Dispatcher.Invoke(() =>
+                connectionVm.StatusMessage = $"加载配置失败，请重新输入并保存（{ex.GetType().Name}）。");
+        }
     }
 
     private void OnMainWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)

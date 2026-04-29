@@ -100,6 +100,9 @@
     <!-- ── 设置视图 ─────────────────────────────────────────────────────── -->
     <sys:String x:Key="Settings.Title">设置</sys:String>
     <sys:String x:Key="Settings.SshConnection">SSH 连接</sys:String>
+    <sys:String x:Key="Settings.StartupBehavior">启动行为</sys:String>
+    <sys:String x:Key="Settings.AutoConnectLabel">打开程序默认连接已保存配置</sys:String>
+    <sys:String x:Key="Settings.AutoConnectDesc">启动后自动连接上次保存的 SSH 配置（需已保存连接信息）。</sys:String>
     <sys:String x:Key="Settings.Appearance">外观</sys:String>
     <sys:String x:Key="Settings.Theme">主题：</sys:String>
     <sys:String x:Key="Settings.ThemeDesc">在深色（Catppuccin Mocha）与浅色（Catppuccin Latte）主题间切换。</sys:String>
@@ -151,6 +154,7 @@
     <sys:String x:Key="Task.ParamValue">值</sys:String>
     <sys:String x:Key="Task.Submit">提交</sys:String>
     <sys:String x:Key="Task.TaskFiles">任务目录文件</sys:String>
+    <sys:String x:Key="Task.TaskFilesHint">请先建立连接并设置任务目录，然后点击 ⟳ 刷新。</sys:String>
     <sys:String x:Key="Task.OverwriteTitle">覆盖确认</sys:String>
     <sys:String x:Key="Task.OverwritePrompt">远程文件 {0} 已存在，是否覆盖？</sys:String>
     <sys:String x:Key="Task.SaveCancelled">保存已取消。</sys:String>

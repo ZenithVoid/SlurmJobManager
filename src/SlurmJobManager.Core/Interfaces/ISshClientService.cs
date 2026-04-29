@@ -42,4 +42,7 @@ public interface ISshClientService : IDisposable
 
     /// <summary>Returns true when the given remote path exists as a regular file.</summary>
     Task<bool> RemoteFileExistsAsync(string remotePath, CancellationToken ct = default);
+
+    /// <summary>Returns true when the given remote path exists as a directory.</summary>
+    Task<bool> RemoteDirectoryExistsAsync(string remotePath, CancellationToken ct = default);
 }

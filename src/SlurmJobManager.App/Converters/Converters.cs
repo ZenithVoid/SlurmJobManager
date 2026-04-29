@@ -105,6 +105,17 @@ public sealed class InverseBoolConverter : IValueConverter
         => value is not true;
 }
 
+/// <summary>Converts an integer count to Visibility: 0 → Visible (empty-state shown), >0 → Collapsed.</summary>
+[ValueConversion(typeof(int), typeof(Visibility))]
+public sealed class ZeroCountToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is int n && n == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => DependencyProperty.UnsetValue;
+}
+
 
 public enum ConsoleLineKind
 {

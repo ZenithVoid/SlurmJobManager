@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using SlurmJobManager.App.Services;
 
 namespace SlurmJobManager.App.ViewModels;
 
@@ -121,7 +122,8 @@ public sealed class MainViewModel : ViewModelBase
         TaskEditorViewModel taskEditor,
         MonitorViewModel    monitor,
         LogViewerViewModel  logViewer,
-        ConsoleViewModel    console)
+        ConsoleViewModel    console,
+        AppPreferencesService prefs)
     {
         Connection = connection ?? throw new ArgumentNullException(nameof(connection));
         TaskEditor = taskEditor ?? throw new ArgumentNullException(nameof(taskEditor));
@@ -147,7 +149,7 @@ public sealed class MainViewModel : ViewModelBase
         _activeNavItem = NavItems[0];
 
         Dashboard = new DashboardViewModel(connection, monitor, tab => ActiveTab = tab);
-        Settings  = new SettingsViewModel(this);
+        Settings  = new SettingsViewModel(this, prefs);
     }
 
     private static void ApplyTheme(bool dark)
