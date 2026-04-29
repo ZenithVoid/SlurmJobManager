@@ -115,3 +115,46 @@ public sealed class AsyncRelayCommand : ICommand
         }
     }
 }
+
+/// <summary>Generic ICommand that wraps an async operation with a typed parameter.</summary>
+public sealed class AsyncRelayCommand<T> : ICommand
+{
+    private readonly Func<T?, CancellationToken, Task> _execute;
+    private readonly Func<T?, bool>? _canExecute;
+    private bool _isExecuting;
+
+    public AsyncRelayCommand(Func<T?, CancellationToken, Task> execute, Func<T?, bool>? canExecute = null)
+    {
+        _execute    = execute;
+        _canExecute = canExecute;
+    }
+
+    public event EventHandler? CanExecuteChanged
+    {
+        add    => CommandManager.RequerySuggested += value;
+        remove => CommandManager.RequerySuggested -= value;
+    }
+
+    public bool CanExecute(object? parameter) =>
+        !_isExecuting && (_canExecute?.Invoke((T?)parameter) ?? true);
+
+    public async void Execute(object? parameter)
+    {
+        if (_isExecuting) return;
+        _isExecuting = true;
+        CommandManager.InvalidateRequerySuggested();
+        try
+        {
+            await _execute((T?)parameter, CancellationToken.None);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AsyncRelayCommand<T>] Unhandled exception: {ex}");
+        }
+        finally
+        {
+            _isExecuting = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+}

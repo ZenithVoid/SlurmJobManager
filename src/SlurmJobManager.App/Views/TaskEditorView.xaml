@@ -5,7 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    d:DesignHeight="800" d:DesignWidth="380"
+    d:DesignHeight="800" d:DesignWidth="420"
     Background="{DynamicResource BgBaseBrush}">
 
     <StackPanel Margin="12">
@@ -13,7 +13,7 @@
         <TextBlock Text="{DynamicResource Task.Setup}"
                    Style="{StaticResource SectionHeaderStyle}" />
 
-        <!-- Root directory -->
+        <!-- Root directory (remote, auto-filled on SSH connect) -->
         <TextBlock Text="{DynamicResource Task.RootDirectory}" Style="{StaticResource FieldLabelStyle}" />
         <Grid Margin="0,0,0,6">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -21,7 +21,8 @@
                      Text="{Binding RootDirectory, UpdateSourceTrigger=PropertyChanged}" />
             <Button Grid.Column="1" Content="…" Command="{Binding BrowseRootDirectoryCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
-                    Margin="4,0,0,0" Padding="8,4" />
+                    Margin="4,0,0,0" Padding="8,4"
+                    ToolTip="{DynamicResource Task.BrowseRemote}" />
         </Grid>
 
         <!-- Task ID -->
@@ -35,15 +36,32 @@
                     Margin="4,0,0,0" Padding="8,4" />
         </Grid>
 
-        <!-- Remote work dir -->
+        <!-- Remote work dir (auto-computed from Root + TaskId) -->
         <TextBlock Text="{DynamicResource Task.RemoteWorkDir}" Style="{StaticResource FieldLabelStyle}" />
         <TextBox Text="{Binding RemoteWorkDir, UpdateSourceTrigger=PropertyChanged}"
                  Margin="0,0,0,6" />
 
-        <!-- App path -->
+        <!-- App path (remote candidates + pin) -->
         <TextBlock Text="{DynamicResource Task.AppPath}" Style="{StaticResource FieldLabelStyle}" />
-        <TextBox Text="{Binding AppPath, UpdateSourceTrigger=PropertyChanged}"
-                 Margin="0,0,0,6" />
+        <Grid Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ComboBox Grid.Column="0"
+                      ItemsSource="{Binding AppDisplayList}"
+                      Text="{Binding AppPath, UpdateSourceTrigger=PropertyChanged}"
+                      IsEditable="True" />
+            <Button Grid.Column="1" Content="📌" Command="{Binding TogglePinAppCommand}"
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Margin="4,0,0,0" Padding="6,4"
+                    ToolTip="{DynamicResource Task.Pin}" />
+            <Button Grid.Column="2" Content="⟳" Command="{Binding RefreshAppCandidatesCommand}"
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Margin="4,0,0,0" Padding="6,4"
+                    ToolTip="{DynamicResource Task.Refresh}" />
+        </Grid>
 
         <!-- Save / Load task -->
         <Grid Margin="0,0,0,8">
@@ -60,22 +78,26 @@
         <TextBlock Text="{DynamicResource Task.ParameterTemplates}"
                    Style="{StaticResource SectionHeaderStyle}" />
 
-        <!-- Template directory -->
-        <TextBlock Text="{DynamicResource Task.TemplateDirectory}" Style="{StaticResource FieldLabelStyle}" />
-        <Grid Margin="0,0,0,6">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <TextBox Grid.Column="0"
-                     Text="{Binding TemplateDirectory, UpdateSourceTrigger=PropertyChanged}" />
-            <Button Grid.Column="1" Content="…" Command="{Binding BrowseTemplateDirectoryCommand}"
-                    Style="{StaticResource NeutralButtonStyle}"
-                    Margin="4,0,0,0" Padding="8,4" />
-        </Grid>
-
-        <!-- Template file selector -->
+        <!-- Template selector (from fixed remote dir) -->
         <TextBlock Text="{DynamicResource Task.SelectTemplate}" Style="{StaticResource FieldLabelStyle}" />
-        <ComboBox ItemsSource="{Binding TemplateFiles}"
-                  SelectedItem="{Binding SelectedTemplate}"
-                  Margin="0,0,0,6" />
+        <Grid Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ComboBox Grid.Column="0"
+                      ItemsSource="{Binding TemplateDisplayList}"
+                      SelectedItem="{Binding SelectedTemplate}" />
+            <Button Grid.Column="1" Content="📌" Command="{Binding TogglePinTemplateCommand}"
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Margin="4,0,0,0" Padding="6,4"
+                    ToolTip="{DynamicResource Task.Pin}" />
+            <Button Grid.Column="2" Content="⟳" Command="{Binding RefreshTemplateCandidatesCommand}"
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Margin="4,0,0,0" Padding="6,4"
+                    ToolTip="{DynamicResource Task.Refresh}" />
+        </Grid>
 
         <!-- Template content editor -->
         <TextBlock Text="{DynamicResource Task.TemplateContent}" Style="{StaticResource FieldLabelStyle}" />
@@ -86,7 +108,12 @@
                  AcceptsReturn="True" TextWrapping="Wrap"
                  Height="100" VerticalScrollBarVisibility="Auto" />
         <TextBlock Text="{Binding LastSavedTime}"
-                   Style="{StaticResource MutedTextStyle}" Margin="0,0,0,6" />
+                   Style="{StaticResource MutedTextStyle}" Margin="0,0,0,4" />
+
+        <!-- Save As filename (B4) -->
+        <TextBlock Text="{DynamicResource Task.SaveAsFileName}" Style="{StaticResource FieldLabelStyle}" />
+        <TextBox Text="{Binding SaveAsFileName, UpdateSourceTrigger=PropertyChanged}"
+                 Margin="0,0,0,6" />
 
         <Button Content="{DynamicResource Btn.SaveParamFile}" Command="{Binding SaveParamFileCommand}"
                 Style="{StaticResource PurpleButtonStyle}"

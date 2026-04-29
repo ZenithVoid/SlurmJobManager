@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.Json;
+using System.Windows;
 using System.Windows.Input;
+using SlurmJobManager.App.Views;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
 using SlurmJobManager.Core.Services;
@@ -16,60 +19,146 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private readonly ISlurmService _slurm;
     private readonly ITaskStorageService _storage;
 
+    // ── Local app-data storage root (task.json, local scripts) ──────────────
+    private static readonly string LocalDataRoot = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "SlurmJobManager", "tasks");
+
+    private static readonly string PinsFilePath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "SlurmJobManager", "pins.json");
+
+    // ── Remote source directories for app path and templates ────────────────
+    private static readonly string[] AppSourceDirs = { "/env/preprocess/out", "/env/preprocess/bin" };
+    private const string RemoteTemplateDir = "/env/preprocess/out/config";
+
+    // ── Backing fields ───────────────────────────────────────────────────────
     private string _rootDirectory = string.Empty;
     private string _taskId = string.Empty;
-    private string _templateDirectory = string.Empty;
     private string? _selectedTemplate;
     private string _templateContent = string.Empty;
     private string _lastSavedTime = string.Empty;
     private string _remoteWorkDir = string.Empty;
     private string _appPath = string.Empty;
+    private string _saveAsFileName = string.Empty;
     private string _sbatchTemplate = DefaultSbatchTemplate;
     private bool _isBusy;
     private string _statusMessage = string.Empty;
     private long? _lastJobId;
+    private string? _selectedTaskFile;
+
+    // ── Properties ───────────────────────────────────────────────────────────
 
     public string RootDirectory
     {
         get => _rootDirectory;
-        set { if (SetField(ref _rootDirectory, value)) CommandManager.InvalidateRequerySuggested(); }
+        set
+        {
+            if (SetField(ref _rootDirectory, value))
+            {
+                CommandManager.InvalidateRequerySuggested();
+                TryAutoFillRemoteWorkDir();
+            }
+        }
     }
 
     public string TaskId
     {
         get => _taskId;
-        set { if (SetField(ref _taskId, value)) CommandManager.InvalidateRequerySuggested(); }
+        set
+        {
+            if (SetField(ref _taskId, value))
+            {
+                CommandManager.InvalidateRequerySuggested();
+                TryAutoFillRemoteWorkDir();
+            }
+        }
     }
 
-    public string TemplateDirectory { get => _templateDirectory; set { if (SetField(ref _templateDirectory, value)) RefreshTemplateList(); } }
-    public string? SelectedTemplate { get => _selectedTemplate;  set { if (SetField(ref _selectedTemplate, value)) LoadSelectedTemplate(); } }
+    public string? SelectedTemplate
+    {
+        get => _selectedTemplate;
+        set
+        {
+            if (SetField(ref _selectedTemplate, value))
+            {
+                LoadSelectedRemoteTemplate();
+                if (!string.IsNullOrEmpty(value))
+                    SaveAsFileName = value;
+            }
+        }
+    }
+
     public string TemplateContent   { get => _templateContent;   set => SetField(ref _templateContent, value); }
     public string LastSavedTime     { get => _lastSavedTime;     set => SetField(ref _lastSavedTime, value); }
-    public string RemoteWorkDir     { get => _remoteWorkDir;     set => SetField(ref _remoteWorkDir, value); }
+
+    public string RemoteWorkDir
+    {
+        get => _remoteWorkDir;
+        set => SetField(ref _remoteWorkDir, value);
+    }
 
     public string AppPath
     {
         get => _appPath;
         set { if (SetField(ref _appPath, value)) CommandManager.InvalidateRequerySuggested(); }
     }
+
+    /// <summary>Filename used for Save As; defaults to SelectedTemplate when a template is chosen.</summary>
+    public string SaveAsFileName
+    {
+        get => _saveAsFileName;
+        set => SetField(ref _saveAsFileName, value);
+    }
+
     public string SbatchTemplate    { get => _sbatchTemplate;    set => SetField(ref _sbatchTemplate, value); }
     public bool IsBusy              { get => _isBusy;            set => SetField(ref _isBusy, value); }
     public string StatusMessage     { get => _statusMessage;     set => SetField(ref _statusMessage, value); }
     public long? LastJobId          { get => _lastJobId;         set { SetField(ref _lastJobId, value); OnPropertyChanged(nameof(LastJobIdText)); } }
     public string LastJobIdText     => _lastJobId.HasValue ? $"Last Job ID: {_lastJobId}" : string.Empty;
 
-    public ObservableCollection<string> TemplateFiles { get; } = new();
+    public string? SelectedTaskFile
+    {
+        get => _selectedTaskFile;
+        set => SetField(ref _selectedTaskFile, value);
+    }
+
+    // ── Collections ──────────────────────────────────────────────────────────
+
+    /// <summary>Remote app executable candidates (pinned first, then the rest).</summary>
+    public ObservableCollection<string> AppDisplayList     { get; } = new();
+    /// <summary>Pinned app paths.</summary>
+    public ObservableCollection<string> PinnedApps         { get; } = new();
+
+    /// <summary>Remote template file candidates (pinned first, then the rest).</summary>
+    public ObservableCollection<string> TemplateDisplayList { get; } = new();
+    /// <summary>Pinned template filenames.</summary>
+    public ObservableCollection<string> PinnedTemplates    { get; } = new();
+
+    /// <summary>Key/value extra parameters for sbatch.</summary>
     public ObservableCollection<ParameterEntry> Parameters { get; } = new();
 
-    public ICommand BrowseRootDirectoryCommand     { get; }
-    public ICommand BrowseTemplateDirectoryCommand { get; }
-    public ICommand NewTaskIdCommand               { get; }
-    public ICommand SaveTaskCommand                { get; }
-    public ICommand LoadTaskCommand                { get; }
-    public ICommand SaveParamFileCommand           { get; }
-    public ICommand SubmitJobCommand               { get; }
-    public ICommand AddParamCommand                { get; }
-    public ICommand RemoveParamCommand             { get; }
+    /// <summary>Files listed under the current task's remote work directory.</summary>
+    public ObservableCollection<string> TaskFiles { get; } = new();
+
+    // ── Commands ─────────────────────────────────────────────────────────────
+
+    public ICommand BrowseRootDirectoryCommand        { get; }
+    public ICommand NewTaskIdCommand                  { get; }
+    public ICommand SaveTaskCommand                   { get; }
+    public ICommand LoadTaskCommand                   { get; }
+    public ICommand SaveParamFileCommand              { get; }
+    public ICommand SubmitJobCommand                  { get; }
+    public ICommand AddParamCommand                   { get; }
+    public ICommand RemoveParamCommand                { get; }
+    public ICommand RefreshAppCandidatesCommand       { get; }
+    public ICommand TogglePinAppCommand               { get; }
+    public ICommand RefreshTemplateCandidatesCommand  { get; }
+    public ICommand TogglePinTemplateCommand          { get; }
+    public ICommand RefreshTaskFilesCommand           { get; }
+    public ICommand OpenTaskFileCommand               { get; }
+
+    // ── Constructor ──────────────────────────────────────────────────────────
 
     public TaskEditorViewModel(ISshClientService ssh, ISlurmService slurm, ITaskStorageService storage)
     {
@@ -77,78 +166,343 @@ public sealed class TaskEditorViewModel : ViewModelBase
         _slurm   = slurm   ?? throw new ArgumentNullException(nameof(slurm));
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
 
-        BrowseRootDirectoryCommand     = new RelayCommand(BrowseRootDirectory);
-        BrowseTemplateDirectoryCommand = new RelayCommand(BrowseTemplateDirectory);
-        NewTaskIdCommand               = new RelayCommand(GenerateNewTaskId);
-        SaveTaskCommand                = new AsyncRelayCommand(SaveTaskAsync,     () => !IsBusy);
-        LoadTaskCommand                = new AsyncRelayCommand(LoadTaskAsync,     () => !IsBusy);
-        SaveParamFileCommand           = new AsyncRelayCommand(SaveParamFileAsync, () => !IsBusy);
-        SubmitJobCommand               = new AsyncRelayCommand(SubmitJobAsync,    CanSubmit);
-        AddParamCommand                = new RelayCommand(() => Parameters.Add(new ParameterEntry()));
-        RemoveParamCommand             = new RelayCommand<ParameterEntry>(p => { if (p != null) Parameters.Remove(p); });
+        BrowseRootDirectoryCommand       = new AsyncRelayCommand(BrowseRootDirectoryAsync, () => _ssh.IsConnected);
+        NewTaskIdCommand                 = new RelayCommand(GenerateNewTaskId);
+        SaveTaskCommand                  = new AsyncRelayCommand(SaveTaskAsync,     () => !IsBusy);
+        LoadTaskCommand                  = new AsyncRelayCommand(LoadTaskAsync,     () => !IsBusy);
+        SaveParamFileCommand             = new AsyncRelayCommand(SaveParamFileAsync, () => !IsBusy);
+        SubmitJobCommand                 = new AsyncRelayCommand(SubmitJobAsync,    CanSubmit);
+        AddParamCommand                  = new RelayCommand(() => Parameters.Add(new ParameterEntry()));
+        RemoveParamCommand               = new RelayCommand<ParameterEntry>(p => { if (p != null) Parameters.Remove(p); });
+        RefreshAppCandidatesCommand      = new AsyncRelayCommand(RefreshAppCandidatesAsync,       () => _ssh.IsConnected && !IsBusy);
+        TogglePinAppCommand              = new RelayCommand(TogglePinApp,                          () => !string.IsNullOrWhiteSpace(AppPath));
+        RefreshTemplateCandidatesCommand = new AsyncRelayCommand(RefreshTemplateCandidatesAsync,   () => _ssh.IsConnected && !IsBusy);
+        TogglePinTemplateCommand         = new RelayCommand(TogglePinTemplate,                     () => !string.IsNullOrWhiteSpace(SelectedTemplate));
+        RefreshTaskFilesCommand          = new AsyncRelayCommand(RefreshTaskFilesAsync,             () => _ssh.IsConnected && !IsBusy);
+        OpenTaskFileCommand              = new AsyncRelayCommand<string>(OpenTaskFileAsync);
+
+        LoadPins();
+        Directory.CreateDirectory(LocalDataRoot);
     }
 
-    // ── Directory browsing ───────────────────────────────────────────────────
+    // ── B1: Remote root directory auto-fill + picker ─────────────────────────
 
-    private void BrowseRootDirectory()
+    /// <summary>Called by ConnectionViewModel via MainViewModel when SSH connects successfully.</summary>
+    public async void OnConnectionEstablished(string username)
     {
-        var dlg = new Microsoft.Win32.OpenFolderDialog
+        try
         {
-            Title = "Select Task Root Directory",
-        };
-        if (dlg.ShowDialog() == true)
-            RootDirectory = dlg.FolderName;
+            var home = await _ssh.GetHomeDirectoryAsync();
+            if (!string.IsNullOrEmpty(home) && string.IsNullOrEmpty(RootDirectory))
+                RootDirectory = home;
+
+            await RefreshAppCandidatesAsync(CancellationToken.None);
+            await RefreshTemplateCandidatesAsync(CancellationToken.None);
+            CommandManager.InvalidateRequerySuggested();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"连接后初始化失败：{ex.Message}";
+        }
     }
 
-    private void BrowseTemplateDirectory()
+    private async Task BrowseRootDirectoryAsync(CancellationToken ct)
     {
-        var dlg = new Microsoft.Win32.OpenFolderDialog
+        if (!_ssh.IsConnected)
         {
-            Title = "Select Parameter Template Directory",
-        };
-        if (dlg.ShowDialog() == true)
-            TemplateDirectory = dlg.FolderName;
+            StatusMessage = "请先建立 SSH 连接后再浏览远程目录。";
+            return;
+        }
+
+        string homeDir;
+        try
+        {
+            homeDir = await _ssh.GetHomeDirectoryAsync(ct);
+        }
+        catch
+        {
+            homeDir = RootDirectory;
+        }
+
+        if (string.IsNullOrEmpty(homeDir))
+            homeDir = "/home";
+
+        var vm = new RemoteDirectoryPickerViewModel(_ssh, homeDir);
+        var win = new RemoteDirectoryPickerView { DataContext = vm };
+
+        // Set WPF owner to avoid taskbar flicker
+        if (Application.Current.MainWindow is { } mainWin)
+            win.Owner = mainWin;
+
+        await vm.LoadInitialAsync(ct);
+
+        if (win.ShowDialog() == true && vm.ResultPath != null)
+            RootDirectory = vm.ResultPath;
     }
 
-    private void GenerateNewTaskId() =>
+    private void TryAutoFillRemoteWorkDir()
+    {
+        if (string.IsNullOrEmpty(RemoteWorkDir)
+            && !string.IsNullOrEmpty(RootDirectory)
+            && !string.IsNullOrEmpty(TaskId))
+        {
+            RemoteWorkDir = $"{RootDirectory.TrimEnd('/')}/{TaskId}";
+        }
+    }
+
+    private void GenerateNewTaskId()
+    {
         TaskId = $"task_{DateTime.Now:yyyyMMdd_HHmmss}";
-
-    // ── Template management ──────────────────────────────────────────────────
-
-    private static readonly HashSet<string> TemplateExtensions =
-        new(StringComparer.OrdinalIgnoreCase) { ".json", ".yaml", ".yml", ".txt", ".conf" };
-
-    private void RefreshTemplateList()
-    {
-        TemplateFiles.Clear();
-        if (!Directory.Exists(_templateDirectory)) return;
-        foreach (var f in Directory.EnumerateFiles(_templateDirectory)
-                     .Where(f => TemplateExtensions.Contains(Path.GetExtension(f))))
-            TemplateFiles.Add(Path.GetFileName(f));
+        // Reset RemoteWorkDir so TryAutoFillRemoteWorkDir can recompute
+        RemoteWorkDir = string.Empty;
+        TryAutoFillRemoteWorkDir();
     }
 
-    private void LoadSelectedTemplate()
+    // ── B2: App path candidates + pinning ────────────────────────────────────
+
+    private async Task RefreshAppCandidatesAsync(CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(_selectedTemplate) || !Directory.Exists(_templateDirectory)) return;
-        var path = Path.Combine(_templateDirectory, _selectedTemplate);
-        if (File.Exists(path))
-            TemplateContent = File.ReadAllText(path);
+        IsBusy = true;
+        try
+        {
+            var all = new List<string>();
+            foreach (var dir in AppSourceDirs)
+            {
+                try
+                {
+                    var files = await _ssh.ListFilesAsync(dir, ct);
+                    all.AddRange(files.Select(f => $"{dir}/{f}"));
+                }
+                catch { /* skip inaccessible dirs */ }
+            }
+
+            RebuildAppDisplayList(all);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"刷新应用路径失败：{ex.Message}";
+        }
+        finally { IsBusy = false; }
+    }
+
+    private void RebuildAppDisplayList(IEnumerable<string>? allCandidates = null)
+    {
+        var existing = allCandidates ?? AppDisplayList.Where(x => !PinnedApps.Contains(x)).ToList();
+        AppDisplayList.Clear();
+        foreach (var p in PinnedApps)
+            AppDisplayList.Add(p);
+        foreach (var c in existing.Where(c => !PinnedApps.Contains(c)))
+            AppDisplayList.Add(c);
+    }
+
+    private void TogglePinApp()
+    {
+        if (string.IsNullOrWhiteSpace(AppPath)) return;
+        if (PinnedApps.Contains(AppPath))
+            PinnedApps.Remove(AppPath);
+        else
+            PinnedApps.Add(AppPath);
+        RebuildAppDisplayList();
+        SavePins();
+    }
+
+    // ── B3: Template candidates + pinning ────────────────────────────────────
+
+    private async Task RefreshTemplateCandidatesAsync(CancellationToken ct)
+    {
+        IsBusy = true;
+        try
+        {
+            var files = await _ssh.ListFilesAsync(RemoteTemplateDir, ct);
+            RebuildTemplateDisplayList(files);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"刷新模板列表失败：{ex.Message}";
+        }
+        finally { IsBusy = false; }
+    }
+
+    private void RebuildTemplateDisplayList(IEnumerable<string>? allCandidates = null)
+    {
+        var existing = allCandidates ?? TemplateDisplayList.Where(x => !PinnedTemplates.Contains(x)).ToList();
+        TemplateDisplayList.Clear();
+        foreach (var p in PinnedTemplates)
+            TemplateDisplayList.Add(p);
+        foreach (var c in existing.Where(c => !PinnedTemplates.Contains(c)))
+            TemplateDisplayList.Add(c);
+    }
+
+    private void TogglePinTemplate()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedTemplate)) return;
+        var t = SelectedTemplate!;
+        if (PinnedTemplates.Contains(t))
+            PinnedTemplates.Remove(t);
+        else
+            PinnedTemplates.Add(t);
+        RebuildTemplateDisplayList();
+        SavePins();
+    }
+
+    private void LoadSelectedRemoteTemplate()
+    {
+        if (string.IsNullOrEmpty(_selectedTemplate)) return;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var remotePath = $"{RemoteTemplateDir}/{_selectedTemplate}";
+                var content = await _ssh.ReadTextFileAsync(remotePath);
+                Application.Current.Dispatcher.Invoke(() => TemplateContent = content);
+            }
+            catch (Exception ex)
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                    StatusMessage = $"加载模板失败：{ex.Message}");
+            }
+        });
+    }
+
+    // ── Pin persistence ───────────────────────────────────────────────────────
+
+    private sealed record PinsData(List<string> PinnedApps, List<string> PinnedTemplates);
+
+    private void LoadPins()
+    {
+        try
+        {
+            if (!File.Exists(PinsFilePath)) return;
+            var json = File.ReadAllText(PinsFilePath);
+            var data = JsonSerializer.Deserialize<PinsData>(json);
+            if (data is null) return;
+            foreach (var a in data.PinnedApps)      PinnedApps.Add(a);
+            foreach (var t in data.PinnedTemplates) PinnedTemplates.Add(t);
+            RebuildAppDisplayList();
+            RebuildTemplateDisplayList();
+        }
+        catch { /* ignore corrupt pins file */ }
+    }
+
+    private void SavePins()
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(PinsFilePath)!);
+            var data = new PinsData(PinnedApps.ToList(), PinnedTemplates.ToList());
+            File.WriteAllText(PinsFilePath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch { /* best-effort */ }
+    }
+
+    // ── B4: Parameter file save with Save As + overwrite confirm ─────────────
+
+    private async Task SaveParamFileAsync(CancellationToken ct)
+    {
+        if (!ValidateRootAndId() || string.IsNullOrWhiteSpace(SaveAsFileName))
+        {
+            StatusMessage = "请先完成必填项后再保存参数文件（根目录、TaskId 和文件名不可为空）。";
+            return;
+        }
+
+        if (!_ssh.IsConnected)
+        {
+            StatusMessage = "请先建立 SSH 连接后再保存参数文件。";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var remoteParamsDir = $"{RemoteWorkDir.TrimEnd('/')}/params";
+            // Ensure remote params dir exists
+            await _ssh.ExecuteAsync($"mkdir -p {EscapeShellArg(remoteParamsDir)}", ct);
+
+            var remoteDest = $"{remoteParamsDir}/{SaveAsFileName}";
+
+            // Overwrite confirmation
+            if (await _ssh.RemoteFileExistsAsync(remoteDest, ct))
+            {
+                var result = MessageBox.Show(
+                    $"远程文件 {remoteDest} 已存在，是否覆盖？",
+                    "覆盖确认",
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Question);
+                if (result != MessageBoxResult.OK)
+                {
+                    StatusMessage = "保存已取消。";
+                    return;
+                }
+            }
+
+            await _ssh.WriteTextFileAsync(remoteDest, TemplateContent, ct);
+            LastSavedTime = $"已保存：{DateTime.Now:HH:mm:ss}";
+            StatusMessage = $"参数文件已保存：{remoteDest}";
+        }
+        catch (Exception ex) { StatusMessage = $"保存参数文件失败：{ex.Message}"; }
+        finally { IsBusy = false; }
+    }
+
+    // ── B5: Task directory file list + remote editor ──────────────────────────
+
+    private async Task RefreshTaskFilesAsync(CancellationToken ct)
+    {
+        if (!_ssh.IsConnected || string.IsNullOrWhiteSpace(RemoteWorkDir))
+        {
+            StatusMessage = "请先建立 SSH 连接并设置任务目录。";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var files = await _ssh.ListFilesAsync(RemoteWorkDir, ct);
+            TaskFiles.Clear();
+            foreach (var f in files)
+                TaskFiles.Add(f);
+            if (TaskFiles.Count == 0)
+                StatusMessage = "任务目录为空或不存在。";
+        }
+        catch (Exception ex) { StatusMessage = $"刷新文件列表失败：{ex.Message}"; }
+        finally { IsBusy = false; }
+    }
+
+    private async Task OpenTaskFileAsync(string? fileName, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(fileName) || string.IsNullOrWhiteSpace(RemoteWorkDir)) return;
+        if (!_ssh.IsConnected)
+        {
+            StatusMessage = "请先建立 SSH 连接。";
+            return;
+        }
+
+        var remotePath = $"{RemoteWorkDir.TrimEnd('/')}/{fileName}";
+        var vm  = new RemoteFileEditorViewModel(_ssh, remotePath);
+        var win = new RemoteFileEditorView { DataContext = vm };
+
+        if (Application.Current.MainWindow is { } mainWin)
+            win.Owner = mainWin;
+
+        await vm.LoadAsync(ct);
+        win.ShowDialog();
     }
 
     // ── Persistence ──────────────────────────────────────────────────────────
+
+    private string GetLocalTaskDir() => Path.Combine(LocalDataRoot, TaskId);
 
     private async Task SaveTaskAsync(CancellationToken ct)
     {
         if (!ValidateRootAndId()) return;
         IsBusy = true;
-        StatusMessage = "Saving task…";
+        StatusMessage = "保存任务…";
         try
         {
-            EnsureTaskDirectories();
+            Directory.CreateDirectory(GetLocalTaskDir());
             await _storage.SaveAsync(BuildTaskRecord(), ct);
-            StatusMessage = $"Task saved: {_storage.GetTaskDirectory(RootDirectory, TaskId)}";
+            StatusMessage = $"任务已保存：{GetLocalTaskDir()}";
         }
-        catch (Exception ex) { StatusMessage = $"Save failed: {ex.Message}"; }
+        catch (Exception ex) { StatusMessage = $"保存失败：{ex.Message}"; }
         finally { IsBusy = false; }
     }
 
@@ -156,39 +510,15 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         if (!ValidateRootAndId()) return;
         IsBusy = true;
-        StatusMessage = "Loading task…";
+        StatusMessage = "加载任务…";
         try
         {
-            var record = await _storage.LoadAsync(RootDirectory, TaskId, ct);
-            if (record == null) { StatusMessage = "task.json not found."; return; }
+            var record = await _storage.LoadAsync(LocalDataRoot, TaskId, ct);
+            if (record == null) { StatusMessage = "task.json 未找到。"; return; }
             ApplyTaskRecord(record);
-            StatusMessage = $"Task loaded: {TaskId}";
+            StatusMessage = $"任务已加载：{TaskId}";
         }
-        catch (Exception ex) { StatusMessage = $"Load failed: {ex.Message}"; }
-        finally { IsBusy = false; }
-    }
-
-    // ── Parameter file ───────────────────────────────────────────────────────
-
-    private async Task SaveParamFileAsync(CancellationToken ct)
-    {
-        if (!ValidateRootAndId() || string.IsNullOrWhiteSpace(SelectedTemplate))
-        {
-            StatusMessage = "请先完成必填项后再保存参数文件（根目录、TaskId 和模板不可为空）。";
-            return;
-        }
-
-        IsBusy = true;
-        try
-        {
-            var paramsDir = Path.Combine(_storage.GetTaskDirectory(RootDirectory, TaskId), "params");
-            Directory.CreateDirectory(paramsDir);
-            var dest = Path.Combine(paramsDir, SelectedTemplate);
-            await File.WriteAllTextAsync(dest, TemplateContent, ct);
-            LastSavedTime = $"Saved: {DateTime.Now:HH:mm:ss}";
-            StatusMessage = $"Parameter file saved: {dest}";
-        }
-        catch (Exception ex) { StatusMessage = $"Save param failed: {ex.Message}"; }
+        catch (Exception ex) { StatusMessage = $"加载失败：{ex.Message}"; }
         finally { IsBusy = false; }
     }
 
@@ -198,16 +528,16 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         if (!ValidateSubmitRequirements()) return;
         IsBusy = true;
-        StatusMessage = "Preparing sbatch script…";
+        StatusMessage = "准备 sbatch 脚本…";
         try
         {
-            EnsureTaskDirectories();
-            var taskDir    = _storage.GetTaskDirectory(RootDirectory, TaskId);
-            var scriptsDir = Path.Combine(taskDir, "scripts");
+            var localTaskDir  = GetLocalTaskDir();
+            var scriptsDir    = Path.Combine(localTaskDir, "scripts");
             Directory.CreateDirectory(scriptsDir);
+            Directory.CreateDirectory(Path.Combine(localTaskDir, "logs"));
 
-            var paramFile = SelectedTemplate != null
-                ? Path.Combine(RemoteWorkDir, "params", SelectedTemplate).Replace('\\', '/')
+            var paramFile = !string.IsNullOrEmpty(SelectedTemplate)
+                ? $"{RemoteWorkDir.TrimEnd('/')}/params/{SelectedTemplate}".Replace('\\', '/')
                 : string.Empty;
 
             var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -222,32 +552,27 @@ public sealed class TaskEditorViewModel : ViewModelBase
             foreach (var p in Parameters.Where(p => !string.IsNullOrWhiteSpace(p.Key)))
                 parameters[p.Key] = p.Value;
 
-            var renderer    = new SbatchTemplateRenderer(SbatchTemplate);
-            var rendered    = renderer.Render(parameters);
+            var rendered    = new SbatchTemplateRenderer(SbatchTemplate).Render(parameters);
             var localScript = Path.Combine(scriptsDir, "submit.sbatch");
             await File.WriteAllTextAsync(localScript, rendered, ct);
 
-            StatusMessage = "Uploading and submitting…";
+            StatusMessage = "上传并提交中…";
             var jobId = await _slurm.SubmitSbatchAsync(localScript, RemoteWorkDir, ct);
             LastJobId = jobId;
 
-            // Write submission log
-            var logsDir = Path.Combine(taskDir, "logs");
-            Directory.CreateDirectory(logsDir);
             await File.WriteAllTextAsync(
-                Path.Combine(logsDir, "submit.log"),
+                Path.Combine(localTaskDir, "logs", "submit.log"),
                 $"Submitted at {DateTime.UtcNow:u}\nJob ID: {jobId}\n",
                 ct);
 
-            // Persist job id back to task.json
-            var record = (await _storage.LoadAsync(RootDirectory, TaskId, ct)) ?? BuildTaskRecord();
+            var record = (await _storage.LoadAsync(LocalDataRoot, TaskId, ct)) ?? BuildTaskRecord();
             record.SlurmJobId = jobId;
             record.UpdatedAt  = DateTime.UtcNow;
             await _storage.SaveAsync(record, ct);
 
-            StatusMessage = $"Job submitted! Job ID = {jobId}";
+            StatusMessage = $"作业已提交！Job ID = {jobId}";
         }
-        catch (Exception ex) { StatusMessage = $"Submit failed: {ex.Message}"; }
+        catch (Exception ex) { StatusMessage = $"提交失败：{ex.Message}"; }
         finally { IsBusy = false; }
     }
 
@@ -286,17 +611,10 @@ public sealed class TaskEditorViewModel : ViewModelBase
         return true;
     }
 
-    private void EnsureTaskDirectories()
-    {
-        var taskDir = _storage.GetTaskDirectory(RootDirectory, TaskId);
-        foreach (var sub in new[] { "params", "scripts", "logs", "result-cache" })
-            Directory.CreateDirectory(Path.Combine(taskDir, sub));
-    }
-
     private TaskRecord BuildTaskRecord() => new()
     {
         TaskId              = TaskId,
-        LocalRootDirectory  = RootDirectory,
+        LocalRootDirectory  = LocalDataRoot,
         RemoteWorkDirectory = RemoteWorkDir,
         TemplateFileName    = SelectedTemplate,
         SlurmJobId          = LastJobId,
@@ -314,6 +632,9 @@ public sealed class TaskEditorViewModel : ViewModelBase
         foreach (var (k, v) in r.Parameters)
             Parameters.Add(new ParameterEntry { Key = k, Value = v });
     }
+
+    private static string EscapeShellArg(string arg)
+        => "'" + arg.Replace("'", "'\\''") + "'";
 
     // ── Default sbatch template ──────────────────────────────────────────────
 
@@ -340,4 +661,3 @@ public sealed class ParameterEntry : ViewModelBase
     public string Key   { get => _key;   set => SetField(ref _key, value); }
     public string Value { get => _value; set => SetField(ref _value, value); }
 }
-

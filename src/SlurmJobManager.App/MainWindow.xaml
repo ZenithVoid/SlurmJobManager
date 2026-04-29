@@ -246,11 +246,78 @@
                     <Grid.RenderTransform>
                         <ScaleTransform x:Name="ScaleTasks" ScaleX="1" ScaleY="1" />
                     </Grid.RenderTransform>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" MinWidth="340" />
+                        <ColumnDefinition Width="4" />
+                        <ColumnDefinition Width="*" MinWidth="200" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: task editor form -->
+                    <ScrollViewer Grid.Column="0"
+                                  VerticalScrollBarVisibility="Auto"
                                   Background="{DynamicResource BgBaseBrush}">
                         <views:TaskEditorView DataContext="{Binding TaskEditor}"
                                               Margin="24,20,24,20" />
                     </ScrollViewer>
+
+                    <!-- Splitter -->
+                    <GridSplitter Grid.Column="1"
+                                  Width="4"
+                                  HorizontalAlignment="Stretch"
+                                  Background="{DynamicResource BorderBrush}"
+                                  ResizeBehavior="PreviousAndNext" />
+
+                    <!-- Right: task directory file list (B5) -->
+                    <Border Grid.Column="2"
+                            Background="{DynamicResource BgPanelBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="0,0,0,0">
+                        <DockPanel Margin="12">
+                            <!-- Header + refresh -->
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                                <TextBlock Text="{DynamicResource Task.TaskFiles}"
+                                           Style="{StaticResource SectionHeaderStyle}"
+                                           DockPanel.Dock="Left"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,0,0" />
+                                <Button Content="⟳"
+                                        Command="{Binding TaskEditor.RefreshTaskFilesCommand}"
+                                        Style="{StaticResource NeutralButtonStyle}"
+                                        HorizontalAlignment="Right"
+                                        Padding="6,3"
+                                        ToolTip="{DynamicResource Task.Refresh}" />
+                            </DockPanel>
+
+                            <!-- Path hint -->
+                            <TextBlock DockPanel.Dock="Top"
+                                       Text="{Binding TaskEditor.RemoteWorkDir}"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       FontFamily="Consolas" FontSize="10"
+                                       TextTrimming="CharacterEllipsis"
+                                       Margin="0,0,0,6" />
+
+                            <!-- File list -->
+                            <ListBox x:Name="TaskFileListBox"
+                                     ItemsSource="{Binding TaskEditor.TaskFiles}"
+                                     SelectedItem="{Binding TaskEditor.SelectedTaskFile}"
+                                     Background="{DynamicResource BgCrustBrush}"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"
+                                     BorderBrush="{DynamicResource BorderBrush}"
+                                     BorderThickness="1"
+                                     FontFamily="Consolas" FontSize="12"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     MouseDoubleClick="TaskFileListBox_MouseDoubleClick">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="📄 " FontSize="12" />
+                                            <TextBlock Text="{Binding}" FontSize="12" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
                 </Grid>
 
                 <!-- Monitor -->

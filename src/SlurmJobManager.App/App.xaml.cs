@@ -50,6 +50,9 @@ public partial class App : Application
         var logViewerVm  = new LogViewerViewModel(logChunk, _logger);
         var consoleVm    = new ConsoleViewModel(ssh, _logger, connectionVm);
 
+        // Wire SSH connection → TaskEditor auto-fill
+        connectionVm.ConnectionEstablished += username => taskEditorVm.OnConnectionEstablished(username);
+
         _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm);
 
         // Default locale: zh-CN (loaded regardless of system language)

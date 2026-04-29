@@ -22,4 +22,24 @@ public interface ISshClientService : IDisposable
 
     /// <summary>Closes the connection.</summary>
     Task DisconnectAsync();
+
+    // ── Remote file-system helpers ───────────────────────────────────────────
+
+    /// <summary>Returns the remote user's home directory (expands $HOME).</summary>
+    Task<string> GetHomeDirectoryAsync(CancellationToken ct = default);
+
+    /// <summary>Lists immediate subdirectory names under <paramref name="remotePath"/>.</summary>
+    Task<IReadOnlyList<string>> ListDirectoriesAsync(string remotePath, CancellationToken ct = default);
+
+    /// <summary>Lists immediate file names under <paramref name="remotePath"/>.</summary>
+    Task<IReadOnlyList<string>> ListFilesAsync(string remotePath, CancellationToken ct = default);
+
+    /// <summary>Reads a remote text file and returns its content.</summary>
+    Task<string> ReadTextFileAsync(string remotePath, CancellationToken ct = default);
+
+    /// <summary>Writes <paramref name="content"/> to a remote text file (creates or overwrites).</summary>
+    Task WriteTextFileAsync(string remotePath, string content, CancellationToken ct = default);
+
+    /// <summary>Returns true when the given remote path exists as a regular file.</summary>
+    Task<bool> RemoteFileExistsAsync(string remotePath, CancellationToken ct = default);
 }

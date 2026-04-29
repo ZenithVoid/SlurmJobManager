@@ -55,6 +55,9 @@ public sealed class ConnectionViewModel : ViewModelBase
     public bool IsBusy          { get => _isBusy;         private set => SetField(ref _isBusy, value); }
     public bool IsConnected     => Status == ConnectionStatus.Connected;
 
+    /// <summary>Raised (on the UI thread) after a successful connection. Passes the connected username.</summary>
+    public event Action<string>? ConnectionEstablished;
+
     public ICommand ConnectCommand        { get; }
     public ICommand DisconnectCommand     { get; }
     public ICommand TestConnectionCommand { get; }
@@ -104,6 +107,7 @@ public sealed class ConnectionViewModel : ViewModelBase
             await _ssh.ConnectAsync(BuildProfile(), ct);
             Status = ConnectionStatus.Connected;
             StatusMessage = $"Connected to {_host}:{_port}";
+            ConnectionEstablished?.Invoke(_username);
         }
         catch (Exception ex)
         {

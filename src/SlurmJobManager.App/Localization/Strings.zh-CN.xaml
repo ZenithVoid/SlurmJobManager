@@ -134,18 +134,23 @@
 
     <!-- ── 任务编辑器 ────────────────────────────────────────────────────── -->
     <sys:String x:Key="Task.Setup">任务配置</sys:String>
-    <sys:String x:Key="Task.RootDirectory">根目录</sys:String>
+    <sys:String x:Key="Task.RootDirectory">根目录（远程）</sys:String>
+    <sys:String x:Key="Task.BrowseRemote">浏览远程目录（仅限用户主目录）</sys:String>
     <sys:String x:Key="Task.TaskId">任务 ID</sys:String>
     <sys:String x:Key="Task.RemoteWorkDir">远程工作目录</sys:String>
     <sys:String x:Key="Task.AppPath">应用路径（远程）</sys:String>
+    <sys:String x:Key="Task.Pin">📌 置顶 / 取消置顶</sys:String>
+    <sys:String x:Key="Task.Refresh">刷新远程列表</sys:String>
     <sys:String x:Key="Task.ParameterTemplates">参数模板</sys:String>
     <sys:String x:Key="Task.TemplateDirectory">模板目录</sys:String>
     <sys:String x:Key="Task.SelectTemplate">选择模板</sys:String>
     <sys:String x:Key="Task.TemplateContent">模板内容</sys:String>
+    <sys:String x:Key="Task.SaveAsFileName">保存文件名（另存为）</sys:String>
     <sys:String x:Key="Task.ExtraParameters">额外参数</sys:String>
     <sys:String x:Key="Task.ParamKey">键</sys:String>
     <sys:String x:Key="Task.ParamValue">值</sys:String>
     <sys:String x:Key="Task.Submit">提交</sys:String>
+    <sys:String x:Key="Task.TaskFiles">任务目录文件</sys:String>
 
     <!-- ── 终端视图 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Console.NotConnected">⚠ 当前可浏览此页面，但执行命令需先建立 SSH 连接。</sys:String>
