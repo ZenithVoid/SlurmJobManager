@@ -158,6 +158,31 @@
     <sys:String x:Key="Task.OverwriteTitle">覆盖确认</sys:String>
     <sys:String x:Key="Task.OverwritePrompt">远程文件 {0} 已存在，是否覆盖？</sys:String>
     <sys:String x:Key="Task.SaveCancelled">保存已取消。</sys:String>
+    <!-- Multi-task workspace -->
+    <sys:String x:Key="Task.TaskUnits">任务单元</sys:String>
+    <sys:String x:Key="Task.AddUnit">新建任务单元</sys:String>
+    <sys:String x:Key="Task.RemoveUnit">删除所选任务单元</sys:String>
+    <sys:String x:Key="Task.UnitName">单元名称</sys:String>
+    <sys:String x:Key="Task.UnitEnabled">启用（参与提交）</sys:String>
+    <sys:String x:Key="Task.Programs">程序列表</sys:String>
+    <sys:String x:Key="Task.ProgramPath">程序路径</sys:String>
+    <sys:String x:Key="Task.ArgsTemplate">参数模板</sys:String>
+    <sys:String x:Key="Task.Order">顺序</sys:String>
+    <sys:String x:Key="Task.ParamFiles">参数文件</sys:String>
+    <sys:String x:Key="Task.FilePath">文件路径</sys:String>
+    <sys:String x:Key="Task.Alias">别名</sys:String>
+    <sys:String x:Key="Task.IsPinned">置顶</sys:String>
+    <sys:String x:Key="Task.Commands">命令列表</sys:String>
+    <sys:String x:Key="Task.CommandLine">命令行</sys:String>
+    <sys:String x:Key="Task.Description">描述</sys:String>
+    <sys:String x:Key="Task.SubmitAll">提交所有已启用任务单元</sys:String>
+    <sys:String x:Key="Task.SubmitAllDesc">启用后将提交列表中所有标记为"启用"的任务单元；关闭则仅提交当前选中单元。</sys:String>
+    <sys:String x:Key="Btn.AddProgram">+ 添加程序</sys:String>
+    <sys:String x:Key="Btn.RemoveProgram">- 删除程序</sys:String>
+    <sys:String x:Key="Btn.AddParamFile">+ 添加参数文件</sys:String>
+    <sys:String x:Key="Btn.RemoveParamFile">- 删除参数文件</sys:String>
+    <sys:String x:Key="Btn.AddCommand">+ 添加命令</sys:String>
+    <sys:String x:Key="Btn.RemoveCommand">- 删除命令</sys:String>
 
     <!-- ── 远程目录选择器 ─────────────────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.Title">选择远程目录</sys:String>

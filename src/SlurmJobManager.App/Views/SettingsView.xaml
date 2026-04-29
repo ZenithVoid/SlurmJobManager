@@ -34,12 +34,12 @@
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <CheckBox x:Name="AutoConnectCheckBox"
                                   IsChecked="{Binding AutoConnectOnStartup, Mode=TwoWay}"
-                                  VerticalAlignment="Center"
-                                  Margin="0,0,8,0" />
+                                  Margin="0,0,10,0" />
                         <Label Target="{Binding ElementName=AutoConnectCheckBox}"
                                Content="{DynamicResource Settings.AutoConnectLabel}"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                VerticalAlignment="Center"
+                               Cursor="Hand"
                                Padding="0" />
                     </StackPanel>
                     <TextBlock Text="{DynamicResource Settings.AutoConnectDesc}"

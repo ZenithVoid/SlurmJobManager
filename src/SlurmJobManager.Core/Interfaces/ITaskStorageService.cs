@@ -18,4 +18,21 @@ public interface ITaskStorageService
 
     /// <summary>Returns the full local path for a task: Root/{TaskId}/.</summary>
     string GetTaskDirectory(string rootDirectory, string taskId);
+
+    // ── Multi-task workspace ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Saves <paramref name="workspace"/> as <c>tasks.manifest.json</c> under
+    /// Root/{TaskId}/. Creates the directory if it does not exist.
+    /// Uses a temporary-file + replace strategy to guard against partial writes.
+    /// </summary>
+    Task SaveWorkspaceAsync(TaskWorkspace workspace, CancellationToken ct = default);
+
+    /// <summary>
+    /// Loads the workspace manifest from Root/{TaskId}/tasks.manifest.json.
+    /// Falls back to migrating a legacy <c>task.json</c> when the manifest is absent.
+    /// Returns <c>null</c> when neither file exists.
+    /// </summary>
+    Task<TaskWorkspace?> LoadWorkspaceAsync(string rootDirectory, string taskId, CancellationToken ct = default);
 }
+
