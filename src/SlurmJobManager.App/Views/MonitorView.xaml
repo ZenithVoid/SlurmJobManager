@@ -15,6 +15,7 @@
         <conv:JobStateToBrushConverter x:Key="StateToBrush" />
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
+        <conv:InverseBoolConverter x:Key="InvBool" />
     </UserControl.Resources>
 
     <DockPanel Margin="12">
@@ -30,18 +31,25 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBox Grid.Column="0"
-                         Text="{Binding WatchedUser, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Grid.Column="1" Content="{DynamicResource Btn.Refresh}"
+                         Text="{Binding WatchedUser, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="{Binding ShowAllUsers, Converter={StaticResource InvBool}}" />
+                <CheckBox Grid.Column="1"
+                          Content="{DynamicResource Monitor.ViewAll}"
+                          IsChecked="{Binding ShowAllUsers}"
+                          VerticalAlignment="Center"
+                          Margin="6,0,4,0" />
+                <Button Grid.Column="2" Content="{DynamicResource Btn.Refresh}"
                         Command="{Binding RefreshCommand}"
                         Style="{StaticResource AccentButtonStyle}"
                         Margin="4,0,0,0" Padding="8,4" />
-                <Button Grid.Column="2" Content="{DynamicResource Btn.StartPoll}"
+                <Button Grid.Column="3" Content="{DynamicResource Btn.StartPoll}"
                         Command="{Binding StartPollingCommand}"
                         Style="{StaticResource SuccessButtonStyle}"
                         Margin="4,0,0,0" Padding="8,4" />
-                <Button Grid.Column="3" Content="{DynamicResource Btn.StopPoll}"
+                <Button Grid.Column="4" Content="{DynamicResource Btn.StopPoll}"
                         Command="{Binding StopPollingCommand}"
                         Style="{StaticResource DangerButtonStyle}"
                         Margin="4,0,0,0" Padding="8,4" />

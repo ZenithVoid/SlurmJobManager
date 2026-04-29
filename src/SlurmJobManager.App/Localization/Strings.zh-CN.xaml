@@ -81,6 +81,7 @@
     <sys:String x:Key="Monitor.WatchUser">监控用户</sys:String>
     <sys:String x:Key="Monitor.PollInterval">轮询间隔 (秒)：</sys:String>
     <sys:String x:Key="Monitor.Filter">筛选：</sys:String>
+    <sys:String x:Key="Monitor.ViewAll">查看所有</sys:String>
     <sys:String x:Key="Monitor.ColJobId">作业 ID</sys:String>
     <sys:String x:Key="Monitor.ColName">名称</sys:String>
     <sys:String x:Key="Monitor.ColUser">用户</sys:String>

@@ -14,6 +14,9 @@ public interface ISlurmService
     /// <summary>Returns all currently queued/running jobs for the specified user.</summary>
     Task<IReadOnlyList<SlurmJobStatus>> GetUserJobsAsync(string username, CancellationToken ct = default);
 
+    /// <summary>Returns all currently queued/running jobs across all users.</summary>
+    Task<IReadOnlyList<SlurmJobStatus>> GetAllJobsAsync(CancellationToken ct = default);
+
     /// <summary>Cancels a running or pending job.</summary>
     Task CancelJobAsync(long jobId, CancellationToken ct = default);
 }

@@ -101,6 +101,13 @@ public sealed class AsyncRelayCommand : ICommand
         {
             await _execute(CancellationToken.None);
         }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            // Prevent unhandled exceptions from async void crashing the process.
+            // Individual command handlers are expected to handle their own errors and
+            // display them in the UI; this is a last-resort safety net.
+            System.Diagnostics.Debug.WriteLine($"[AsyncRelayCommand] Unhandled exception: {ex}");
+        }
         finally
         {
             _isExecuting = false;
