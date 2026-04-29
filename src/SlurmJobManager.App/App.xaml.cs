@@ -160,17 +160,24 @@ public partial class App : Application
         finally
         {
             try
+        {
+            var dispatcher = Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.HasShutdownStarted)
             {
-                var dispatcher = Current?.Dispatcher;
-                if (dispatcher != null && !dispatcher.HasShutdownStarted)
-                    dispatcher.BeginInvoke(() => Current?.Shutdown(1));
+                if (dispatcher.CheckAccess())
+                    Current?.Shutdown(1);           // Already on UI thread — call directly
                 else
-                    Environment.Exit(1);
+                    dispatcher.BeginInvoke(() => Current?.Shutdown(1));  // Schedule from background
             }
-            catch
+            else
             {
                 Environment.Exit(1);
             }
+        }
+        catch
+        {
+            Environment.Exit(1);
+        }
         }
     }
 }

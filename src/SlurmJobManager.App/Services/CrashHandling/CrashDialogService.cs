@@ -28,7 +28,8 @@ internal sealed class CrashDialogService
 
         if (dispatcher == null || dispatcher.HasShutdownStarted)
         {
-            // No UI available — best-effort exit
+            // No UI available — log to stderr as last resort before exiting
+            try { Console.Error.WriteLine($"[FATAL] Crash dialog unavailable. Exception: {ex}"); } catch { }
             _shutdownAction();
             return;
         }
