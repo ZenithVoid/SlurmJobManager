@@ -805,7 +805,8 @@ public sealed class TaskEditorViewModel : ViewModelBase
             return;
         }
 
-        var up = current == "/" ? "/" : current[..current.LastIndexOf('/')];
+        var slashIndex = current.LastIndexOf('/');
+        var up = current == "/" || slashIndex <= 0 ? "/" : current[..slashIndex];
         CurrentTaskFilesPath = string.IsNullOrWhiteSpace(up) ? "/" : up;
         await RefreshTaskFilesAsync(ct);
     }
