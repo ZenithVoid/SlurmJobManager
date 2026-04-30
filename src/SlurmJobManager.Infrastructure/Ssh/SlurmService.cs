@@ -223,7 +223,9 @@ public sealed class SlurmService : ISlurmService
     private static bool TryParsePrimaryJobId(string rawJobId, out long jobId)
     {
         jobId = 0;
-        var primary = rawJobId.Split('.', StringSplitOptions.RemoveEmptyEntries)[0];
+        var parts = rawJobId.Split('.', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return false;
+        var primary = parts[0];
         return long.TryParse(primary, NumberStyles.Integer, CultureInfo.InvariantCulture, out jobId);
     }
 
