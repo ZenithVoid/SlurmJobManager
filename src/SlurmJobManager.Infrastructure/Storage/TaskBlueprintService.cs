@@ -6,7 +6,7 @@ using SlurmJobManager.Core.Services;
 namespace SlurmJobManager.Infrastructure.Storage;
 
 /// <summary>
-/// Stores task blueprints under &lt;AppBaseDirectory&gt;/Data/Blueprints with one JSON file per blueprint.
+/// Stores task blueprints under &lt;AppBaseDirectory&gt;/Data/blueprints with one JSON file per blueprint.
 /// </summary>
 public sealed class TaskBlueprintService : ITaskBlueprintService
 {
