@@ -33,14 +33,17 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private bool _isPolling;
     private bool _showAllUsers;
     private string _statusMessage = string.Empty;
+    private string _statusStyleKey = "InfoTextStyle";
     private JobRow? _selectedJob;
-    private string _statusFilter = "All";
+    private string _allStatusFilter = string.Empty;
+    private string _statusFilter = string.Empty;
     private string _searchText = string.Empty;
 
     public string WatchedUser      { get => _watchedUser;         set { if (SetField(ref _watchedUser, value)) OnPropertyChanged(nameof(IsEmptyState)); } }
     public int PollIntervalSeconds { get => _pollIntervalSeconds; set { SetField(ref _pollIntervalSeconds, value); UpdateTimerInterval(); } }
     public bool IsPolling          { get => _isPolling;           private set => SetField(ref _isPolling, value); }
     public string StatusMessage    { get => _statusMessage;       set => SetField(ref _statusMessage, value); }
+    public string StatusStyleKey   { get => _statusStyleKey;      private set => SetField(ref _statusStyleKey, value); }
     public JobRow? SelectedJob     { get => _selectedJob;         set => SetField(ref _selectedJob, value); }
 
     /// <summary>When true, squeue is queried without a user filter (all users).</summary>
@@ -74,9 +77,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Available status filter options.</summary>
-    public IReadOnlyList<string> StatusFilterOptions { get; } =
-        new[] { "All", SlurmJobState.Pending, SlurmJobState.Running, SlurmJobState.Completed,
-                SlurmJobState.Failed, SlurmJobState.Cancelled };
+    public ObservableCollection<string> StatusFilterOptions { get; } = new();
 
     /// <summary>Filtered view displayed in the DataGrid.</summary>
     public ObservableCollection<JobRow> Jobs { get; } = new();
@@ -96,6 +97,8 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         _settings   = settings   ?? new AppSettings();
         _logger     = logger;
         _connection = connection;
+        ResetFilterOptions();
+        _statusFilter = _allStatusFilter;
 
         RefreshCommand      = new AsyncRelayCommand(RefreshAsync);
         StartPollingCommand = new RelayCommand(StartPolling, () => !IsPolling);
@@ -112,7 +115,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         }
 
         // Show a friendly empty-state hint until the user configures a watched user
-        StatusMessage = "请先输入监控用户名以开始监控";
+        SetStatus("Monitor.EmptyState", "InfoTextStyle");
     }
 
     // ── Refresh ──────────────────────────────────────────────────────────────
@@ -121,11 +124,11 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     {
         if (!ShowAllUsers && string.IsNullOrWhiteSpace(WatchedUser))
         {
-            StatusMessage = "请先输入监控用户名以开始监控";
+            SetStatus("Monitor.EmptyState", "InfoTextStyle");
             return;
         }
 
-        StatusMessage = "Refreshing…";
+        SetStatus("Monitor.Refreshing", "InfoTextStyle");
         try
         {
             IReadOnlyList<SlurmJobStatus> jobs;
@@ -150,7 +153,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             });
             _consecutiveFailures = 0;
             var scope = ShowAllUsers ? "all users" : $"'{WatchedUser}'";
-            StatusMessage = $"Updated: {DateTime.Now:HH:mm:ss}  ({jobs.Count} job(s))";
+            SetStatus(string.Format(L("Monitor.Updated"), DateTime.Now, jobs.Count), "SuccessTextStyle", localize: false);
             _logger?.Debug($"Monitor refreshed: {jobs.Count} job(s) for {scope}");
         }
         catch (OperationCanceledException) { throw; }
@@ -158,7 +161,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         {
             _consecutiveFailures++;
             var msg = ConnectionViewModel.ClassifyError(ex);
-            StatusMessage = $"Refresh failed: {msg}";
+            SetStatus(string.Format(L("Monitor.RefreshFailed"), msg), "ErrorTextStyle", localize: false);
             _logger?.Warning($"Monitor refresh failed ({_consecutiveFailures}× consecutive): {ex.Message}");
         }
     }
@@ -173,7 +176,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         _timer.Tick += OnPollTick;
         _timer.Start();
         IsPolling = true;
-        StatusMessage = $"Polling every {_pollIntervalSeconds}s…";
+        SetStatus(string.Format(L("Monitor.PollingEvery"), _pollIntervalSeconds), "InfoTextStyle", localize: false);
         _logger?.Info($"Monitor polling started for user '{WatchedUser}'");
     }
 
@@ -182,7 +185,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         _timer?.Stop();
         _timer = null;
         IsPolling = false;
-        StatusMessage = "Polling stopped.";
+        SetStatus("Monitor.PollingStopped", "InfoTextStyle");
         _logger?.Info("Monitor polling stopped.");
     }
 
@@ -197,8 +200,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             if (_consecutiveFailures >= _settings.MaxReconnectAttempts)
             {
                 StopPolling();
-                StatusMessage = $"Polling stopped after {_consecutiveFailures} consecutive failures. "
-                              + "Check connection and restart polling manually.";
+                SetStatus(string.Format(L("Monitor.PollingHalted"), _consecutiveFailures), "ErrorTextStyle", localize: false);
                 _logger?.Error($"Polling halted: {_consecutiveFailures} consecutive failures.");
                 if (_connection is not null)
                     _connection.Status = ConnectionStatus.Error;
@@ -216,7 +218,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
                 if (!reconnected)
                 {
                     _consecutiveFailures++;
-                    StatusMessage = $"Reconnect failed ({_consecutiveFailures}/{_settings.MaxReconnectAttempts})…";
+                    SetStatus(string.Format(L("Monitor.ReconnectFailed"), _consecutiveFailures, _settings.MaxReconnectAttempts), "WarningTextStyle", localize: false);
                     _logger?.Warning($"Reconnect attempt failed ({_consecutiveFailures}).");
                     return;
                 }
@@ -235,7 +237,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     {
         var filtered = _allJobs.AsEnumerable();
 
-        if (StatusFilter != "All")
+        if (StatusFilter != _allStatusFilter)
             filtered = filtered.Where(j => j.State.Equals(StatusFilter, StringComparison.OrdinalIgnoreCase));
 
         if (!string.IsNullOrWhiteSpace(SearchText))
@@ -263,13 +265,13 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     {
         if (SelectedJob == null)
         {
-            StatusMessage = L("Err.NoJobSelected", "未选择作业。");
+            SetStatus("Err.NoJobSelected", "WarningTextStyle");
             return;
         }
 
         var jobId = SelectedJob.JobId;
-        var confirmTemplate = L("Monitor.CancelConfirm", "确认要取消作业 {0} 吗？");
-        var confirmTitle = L("Monitor.CancelConfirmTitle", "取消确认");
+        var confirmTemplate = L("Monitor.CancelConfirm");
+        var confirmTitle = L("Monitor.CancelConfirmTitle");
         var confirm = MessageBox.Show(
             string.Format(confirmTemplate, jobId),
             confirmTitle,
@@ -277,26 +279,55 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             MessageBoxImage.Warning);
         if (confirm != MessageBoxResult.Yes)
         {
-            StatusMessage = L("Monitor.CancelAborted", "已取消作业取消操作。");
+            SetStatus("Monitor.CancelAborted", "InfoTextStyle");
             return;
         }
 
-        StatusMessage = string.Format(L("Monitor.Cancelling", "正在取消作业 {0}…"), jobId);
+        SetStatus(string.Format(L("Monitor.Cancelling"), jobId), "InfoTextStyle", localize: false);
         try
         {
             await _slurm.CancelJobAsync(jobId, ct);
-            StatusMessage = string.Format(L("Monitor.CancelSucceeded", "作业 {0} 已取消。"), jobId);
+            SetStatus(string.Format(L("Monitor.CancelSucceeded"), jobId), "SuccessTextStyle", localize: false);
             _logger?.Info($"Job {jobId} cancelled by user.");
             await RefreshAsync(ct);
         }
         catch (Exception ex)
         {
-            StatusMessage = string.Format(L("Monitor.CancelFailed", "取消作业 {0} 失败：{1}"), jobId, ex.Message);
+            SetStatus(string.Format(L("Monitor.CancelFailed"), jobId, ex.Message), "ErrorTextStyle", localize: false);
         }
     }
 
-    private static string L(string key, string fallback)
-        => Application.Current?.TryFindResource(key) as string ?? fallback;
+    private static string L(string key)
+        => Application.Current?.TryFindResource(key) as string ?? key;
+
+    internal void NotifyLocaleChanged()
+    {
+        var previousAll = _allStatusFilter;
+        var wasAll = string.Equals(StatusFilter, previousAll, StringComparison.Ordinal);
+        ResetFilterOptions();
+        if (wasAll)
+            StatusFilter = _allStatusFilter;
+        OnPropertyChanged(nameof(StatusFilterOptions));
+        OnPropertyChanged(nameof(StatusMessage));
+    }
+
+    private void ResetFilterOptions()
+    {
+        _allStatusFilter = L("Monitor.FilterAll");
+        StatusFilterOptions.Clear();
+        StatusFilterOptions.Add(_allStatusFilter);
+        StatusFilterOptions.Add(SlurmJobState.Pending);
+        StatusFilterOptions.Add(SlurmJobState.Running);
+        StatusFilterOptions.Add(SlurmJobState.Completed);
+        StatusFilterOptions.Add(SlurmJobState.Failed);
+        StatusFilterOptions.Add(SlurmJobState.Cancelled);
+    }
+
+    private void SetStatus(string messageOrKey, string styleKey, bool localize = true)
+    {
+        StatusStyleKey = styleKey;
+        StatusMessage = localize ? L(messageOrKey) : messageOrKey;
+    }
 
     private void UpdateTimerInterval()
     {

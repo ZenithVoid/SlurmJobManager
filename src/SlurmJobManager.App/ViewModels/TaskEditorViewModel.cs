@@ -51,6 +51,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private string _sbatchTemplate = DefaultSbatchTemplate;
     private bool _isBusy;
     private string _statusMessage = string.Empty;
+    private string _statusStyleKey = "InfoTextStyle";
     private long? _lastJobId;
     private TaskFileEntry? _selectedTaskFile;
     private string _currentTaskFilesPath = string.Empty;
@@ -156,8 +157,9 @@ public sealed class TaskEditorViewModel : ViewModelBase
     public string SbatchTemplate    { get => _sbatchTemplate;    set => SetField(ref _sbatchTemplate, value); }
     public bool IsBusy              { get => _isBusy;            set => SetField(ref _isBusy, value); }
     public string StatusMessage     { get => _statusMessage;     set => SetField(ref _statusMessage, value); }
+    public string StatusStyleKey    { get => _statusStyleKey;    private set => SetField(ref _statusStyleKey, value); }
     public long? LastJobId          { get => _lastJobId;         set { SetField(ref _lastJobId, value); OnPropertyChanged(nameof(LastJobIdText)); } }
-    public string LastJobIdText     => _lastJobId.HasValue ? $"Last Job ID: {_lastJobId}" : string.Empty;
+    public string LastJobIdText     => _lastJobId.HasValue ? string.Format(L("Task.LastJobId"), _lastJobId) : string.Empty;
 
     public string TaskIdDirectoryStatus
     {
@@ -318,7 +320,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         if (unit == null || TaskUnits.Count <= 1)
         {
-            StatusMessage = "至少需要保留一个任务单元。";
+            SetStatus("Task.UnitMinimumOne", "WarningTextStyle");
             return;
         }
         var idx = TaskUnits.IndexOf(unit);
@@ -435,7 +437,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"连接后初始化失败：{ex.Message}";
+            SetStatus(string.Format(L("Task.InitAfterConnectFailed"), ex.Message), "ErrorTextStyle", localize: false);
         }
     }
 
@@ -443,7 +445,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         if (!_ssh.IsConnected)
         {
-            StatusMessage = "请先建立 SSH 连接后再浏览远程目录。";
+            SetStatus("Task.RequireConnectionForBrowse", "WarningTextStyle");
             return;
         }
 
@@ -549,8 +551,8 @@ public sealed class TaskEditorViewModel : ViewModelBase
                     if (cts.IsCancellationRequested) return;
                     _taskIdDirectoryExists = exists;
                     TaskIdDirectoryStatus  = exists
-                        ? L("Task.TaskIdDirExists", "⚠ 目录已存在")
-                        : L("Task.TaskIdDirNotExists", "✓ 目录不存在，可新建");
+                        ? L("Task.TaskIdDirExists")
+                        : L("Task.TaskIdDirNotExists");
                     CommandManager.InvalidateRequerySuggested();
                 });
             }
@@ -561,7 +563,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
                 {
                     if (cts.IsCancellationRequested) return;
                     _taskIdDirectoryExists = null;
-                    TaskIdDirectoryStatus  = L("Task.TaskIdDirCheckFailed", "目录校验失败，请检查连接状态。");
+                    TaskIdDirectoryStatus  = L("Task.TaskIdDirCheckFailed");
                     System.Diagnostics.Debug.WriteLine($"[TaskIdValidation] {ex.Message}");
                     CommandManager.InvalidateRequerySuggested();
                 });
@@ -588,7 +590,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             }
             RebuildAppDisplayList(all);
         }
-        catch (Exception ex) { StatusMessage = $"刷新应用路径失败：{ex.Message}"; }
+        catch (Exception ex) { SetStatus(string.Format(L("Task.RefreshAppCandidatesFailed"), ex.Message), "ErrorTextStyle", localize: false); }
         finally { IsBusy = false; }
     }
 
@@ -656,7 +658,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             var files = await _ssh.ListFilesAsync(RemoteTemplateDir, ct);
             RebuildTemplateDisplayList(files);
         }
-        catch (Exception ex) { StatusMessage = $"刷新模板列表失败：{ex.Message}"; }
+        catch (Exception ex) { SetStatus(string.Format(L("Task.RefreshTemplateCandidatesFailed"), ex.Message), "ErrorTextStyle", localize: false); }
         finally { IsBusy = false; }
     }
 
@@ -693,7 +695,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             catch (Exception ex)
             {
                 Application.Current.Dispatcher.Invoke(() =>
-                    StatusMessage = $"加载模板失败：{ex.Message}");
+                    SetStatus(string.Format(L("Task.LoadTemplateFailed"), ex.Message), "ErrorTextStyle", localize: false));
             }
         });
     }
@@ -735,13 +737,13 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         if (!ValidateRootAndId() || string.IsNullOrWhiteSpace(SaveAsFileName))
         {
-            StatusMessage = "请先完成必填项后再保存参数文件（根目录、TaskId 和文件名不可为空）。";
+            SetStatus("Task.SaveParamMissingRequired", "WarningTextStyle");
             return;
         }
 
         if (!_ssh.IsConnected)
         {
-            StatusMessage = "请先建立 SSH 连接后再保存参数文件。";
+            SetStatus("Task.RequireConnectionForSaveParam", "WarningTextStyle");
             return;
         }
 
@@ -756,21 +758,21 @@ public sealed class TaskEditorViewModel : ViewModelBase
             if (await _ssh.RemoteFileExistsAsync(remoteDest, ct))
             {
                 var msgText  = Application.Current?.TryFindResource("Task.OverwritePrompt") as string
-                               ?? $"远程文件 {remoteDest} 已存在，是否覆盖？";
-                var msgTitle = Application.Current?.TryFindResource("Task.OverwriteTitle") as string ?? "覆盖确认";
+                               ?? L("Task.OverwritePrompt");
+                var msgTitle = Application.Current?.TryFindResource("Task.OverwriteTitle") as string ?? L("Task.OverwriteTitle");
                 var result   = MessageBox.Show(
                     string.Format(msgText, remoteDest), msgTitle,
                     MessageBoxButton.OKCancel, MessageBoxImage.Question);
                 if (result != MessageBoxResult.OK)
                 {
-                    StatusMessage = Application.Current?.TryFindResource("Task.SaveCancelled") as string ?? "保存已取消。";
+                    SetStatus("Task.SaveCancelled", "InfoTextStyle");
                     return;
                 }
             }
 
             await _ssh.WriteTextFileAsync(remoteDest, TemplateContent, ct);
-            LastSavedTime = $"已保存：{DateTime.Now:HH:mm:ss}";
-            StatusMessage = $"参数文件已保存：{remoteDest}";
+            LastSavedTime = string.Format(L("Task.SavedAt"), DateTime.Now);
+            SetStatus(string.Format(L("Task.ParamFileSaved"), remoteDest), "SuccessTextStyle", localize: false);
 
             // Register the saved file in the selected unit's param file list
             if (_selectedTaskUnit != null &&
@@ -780,7 +782,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
                     new ParameterFileEntryViewModel(new ParameterFileEntry { FilePath = remoteDest, Alias = SaveAsFileName }));
             }
         }
-        catch (Exception ex) { StatusMessage = $"保存参数文件失败：{ex.Message}"; }
+        catch (Exception ex) { SetStatus(string.Format(L("Task.SaveParamFailed"), ex.Message), "ErrorTextStyle", localize: false); }
         finally { IsBusy = false; }
     }
 
@@ -790,7 +792,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         if (!_ssh.IsConnected)
         {
-            StatusMessage = "请先建立 SSH 连接。";
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
             return;
         }
 
@@ -799,7 +801,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             targetPath = NormalizeRemotePath(RemoteWorkDir);
         if (string.IsNullOrWhiteSpace(targetPath))
         {
-            StatusMessage = "请先设置任务目录或输入浏览路径。";
+            SetStatus("Task.RequireTaskPath", "WarningTextStyle");
             return;
         }
 
@@ -814,12 +816,12 @@ public sealed class TaskEditorViewModel : ViewModelBase
             var kind = kindStdOut.Trim();
             if (kindExitCode != 0 || kind == "MISSING")
             {
-                StatusMessage = "路径不存在：请检查输入目录。";
+                SetStatus("Task.PathMissing", "ErrorTextStyle");
                 return;
             }
             if (kind == "FILE")
             {
-                StatusMessage = "该路径是文件而非目录，请输入目录路径。";
+                SetStatus("Task.PathIsFile", "ErrorTextStyle");
                 return;
             }
 
@@ -832,9 +834,9 @@ public sealed class TaskEditorViewModel : ViewModelBase
             if (exitCode != 0)
             {
                 var errDetail = stderr.Trim();
-                StatusMessage = string.IsNullOrEmpty(errDetail)
-                    ? "无法读取目录，请检查权限。"
-                    : $"无法读取目录：{errDetail}";
+                SetStatus(string.IsNullOrEmpty(errDetail)
+                    ? L("Task.DirReadFailedNoDetail")
+                    : string.Format(L("Task.DirReadFailed"), errDetail), "ErrorTextStyle", localize: false);
                 return;
             }
 
@@ -848,9 +850,11 @@ public sealed class TaskEditorViewModel : ViewModelBase
                 TaskFiles.Add(new TaskFileEntry(name, isDirectory, BuildRemotePath(targetPath, name)));
             }
 
-            StatusMessage = TaskFiles.Count == 0 ? "任务目录为空。" : $"已加载 {TaskFiles.Count} 个条目。";
+            SetStatus(TaskFiles.Count == 0
+                ? L("Task.DirEmpty")
+                : string.Format(L("Task.DirLoadedCount"), TaskFiles.Count), "InfoTextStyle", localize: false);
         }
-        catch (Exception ex) { StatusMessage = $"刷新文件列表失败：{ex.Message}"; }
+        catch (Exception ex) { SetStatus(string.Format(L("Task.RefreshFilesFailed"), ex.Message), "ErrorTextStyle", localize: false); }
         finally { IsBusy = false; }
     }
 
@@ -859,7 +863,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
         var current = NormalizeRemotePath(CurrentTaskFilesPath);
         if (string.IsNullOrWhiteSpace(current))
         {
-            StatusMessage = "当前路径为空，无法返回上级。";
+            SetStatus("Task.GoUpPathEmpty", "WarningTextStyle");
             return;
         }
 
@@ -872,7 +876,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private async Task OpenTaskFileAsync(TaskFileEntry? fileEntry, CancellationToken ct)
     {
         if (fileEntry == null) return;
-        if (!_ssh.IsConnected) { StatusMessage = "请先建立 SSH 连接。"; return; }
+        if (!_ssh.IsConnected) { SetStatus("Task.RequireConnection", "WarningTextStyle"); return; }
 
         if (fileEntry.IsDirectory)
         {
@@ -884,7 +888,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
         var remotePath = fileEntry.RemotePath;
         if (await IsLikelyBinaryFileAsync(remotePath, ct))
         {
-            StatusMessage = $"文件 {fileEntry.Name} 可能是二进制文件，已阻止打开。";
+            SetStatus(string.Format(L("Task.BinaryFileBlocked"), fileEntry.Name), "WarningTextStyle", localize: false);
             return;
         }
 
@@ -896,6 +900,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
         if (vm.IsBinaryFile)
         {
             StatusMessage = vm.StatusMessage;
+            StatusStyleKey = vm.StatusStyleKey;
             return;
         }
 
@@ -941,7 +946,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             // Persist the user-edited sbatch content on the unit
             unit.SbatchTemplate = dlgVm.GetResultSbatch();
 
-            StatusMessage = Application.Current?.TryFindResource("Task.CommandUpdated") as string ?? "命令已更新，请记得保存任务。";
+            SetStatus("Task.CommandUpdated", "SuccessTextStyle");
             CommandManager.InvalidateRequerySuggested();
         }
     }
@@ -954,7 +959,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         if (!ValidateRootAndId()) return;
         IsBusy = true;
-        StatusMessage = "保存任务…";
+        SetStatus("Task.Saving", "InfoTextStyle");
         try
         {
             Directory.CreateDirectory(GetLocalTaskDir());
@@ -966,10 +971,10 @@ public sealed class TaskEditorViewModel : ViewModelBase
             // Also persist legacy task.json for tooling that reads only that
             await _storage.SaveAsync(BuildTaskRecord(), ct);
 
-            StatusMessage = $"任务已保存：{GetLocalTaskDir()}";
-            LastSavedTime = $"最近保存：{DateTime.Now:HH:mm:ss}";
+            SetStatus(string.Format(L("Task.SavedPath"), GetLocalTaskDir()), "SuccessTextStyle", localize: false);
+            LastSavedTime = string.Format(L("Task.LastSavedAt"), DateTime.Now);
         }
-        catch (Exception ex) { StatusMessage = $"保存失败：{ex.Message}"; }
+        catch (Exception ex) { SetStatus(string.Format(L("Task.SaveFailed"), ex.Message), "ErrorTextStyle", localize: false); }
         finally { IsBusy = false; }
     }
 
@@ -977,7 +982,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         if (!ValidateRootAndId()) return;
         IsBusy = true;
-        StatusMessage = "加载任务…";
+        SetStatus("Task.Loading", "InfoTextStyle");
         try
         {
             var workspace = await _storage.LoadWorkspaceAsync(LocalDataRoot, TaskId, ct);
@@ -985,16 +990,16 @@ public sealed class TaskEditorViewModel : ViewModelBase
             {
                 // Try legacy path
                 var record = await _storage.LoadAsync(LocalDataRoot, TaskId, ct);
-                if (record == null) { StatusMessage = L("Task.LoadNotFound", "未找到任务数据（task.json / tasks.manifest.json）。"); return; }
+                if (record == null) { SetStatus("Task.LoadNotFound", "WarningTextStyle"); return; }
                 ApplyTaskRecord(record);
-                StatusMessage = $"任务已加载（旧格式）：{TaskId}";
+                SetStatus(string.Format(L("Task.LoadedLegacy"), TaskId), "SuccessTextStyle", localize: false);
                 return;
             }
 
             ApplyWorkspace(workspace);
-            StatusMessage = $"任务工作区已加载：{TaskId}（{workspace.Tasks.Count} 个任务单元）";
+            SetStatus(string.Format(L("Task.WorkspaceLoaded"), TaskId, workspace.Tasks.Count), "SuccessTextStyle", localize: false);
         }
-        catch (Exception ex) { StatusMessage = $"加载失败：{ex.Message}"; }
+        catch (Exception ex) { SetStatus(string.Format(L("Task.LoadFailed"), ex.Message), "ErrorTextStyle", localize: false); }
         finally { IsBusy = false; }
     }
 
@@ -1024,8 +1029,8 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
         var names   = TaskUnits.Select((u, i) => $"{i + 1}. {u.TaskName}").ToArray();
         var prompt  = Application.Current?.TryFindResource("Task.MultiUnitPrompt") as string
-                      ?? "检测到多个任务单元（旧数据）。本次将仅使用第一个单元作为活动单元。\n\n单元列表：\n{0}\n\n提交时只提交活动单元。";
-        StatusMessage = string.Format(prompt, string.Join("\n", names));
+                      ?? L("Task.MultiUnitPrompt");
+        SetStatus(string.Format(prompt, string.Join("\n", names)), "InfoTextStyle", localize: false);
 
         // Default: use the first unit
         SelectedTaskUnit = TaskUnits[0];
@@ -1046,19 +1051,19 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
         if (_selectedTaskUnit == null)
         {
-            StatusMessage = "没有活动任务单元可提交，请先保存任务配置。";
+            SetStatus("Task.NoActiveUnit", "WarningTextStyle");
             return;
         }
 
         IsBusy = true;
-        StatusMessage = "准备提交…";
+        SetStatus("Task.SubmitPreparing", "InfoTextStyle");
         try
         {
             var jobId = await SubmitUnitAsync(_selectedTaskUnit, ct);
             LastJobId = jobId;
-            StatusMessage = $"作业已提交！Job ID = {jobId}";
+            SetStatus(string.Format(L("Task.SubmitSucceeded"), jobId), "SuccessTextStyle", localize: false);
         }
-        catch (Exception ex) { StatusMessage = $"提交失败：{ex.Message}"; }
+        catch (Exception ex) { SetStatus(string.Format(L("Task.SubmitFailed"), ex.Message), "ErrorTextStyle", localize: false); }
         finally { IsBusy = false; }
     }
 
@@ -1066,7 +1071,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         var workDir = ResolveWorkDirForSubmit(unit);
         if (string.IsNullOrWhiteSpace(workDir))
-            throw new InvalidOperationException(L("Task.InvalidRemoteWorkDir", "请先设置有效的远程工作目录后再提交。"));
+            throw new InvalidOperationException(L("Task.InvalidRemoteWorkDir"));
 
         var appPath = unit.Programs.FirstOrDefault()?.ProgramPath ?? AppPath;
 
@@ -1095,7 +1100,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
         var localScript = Path.Combine(scriptsDir, "submit.sbatch");
         await File.WriteAllTextAsync(localScript, rendered, ct);
 
-        StatusMessage = $"提交 {unit.TaskName}…";
+        SetStatus(string.Format(L("Task.SubmittingUnit"), unit.TaskName), "InfoTextStyle", localize: false);
         var jobId = await _slurm.SubmitSbatchAsync(localScript, workDir, ct);
 
         unit.SlurmJobId = jobId;
@@ -1137,8 +1142,8 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
     private bool ValidateRootAndId()
     {
-        if (string.IsNullOrWhiteSpace(RootDirectory)) { StatusMessage = "请先配置任务根目录"; return false; }
-        if (string.IsNullOrWhiteSpace(TaskId))         { StatusMessage = "请先填写 TaskId";    return false; }
+        if (string.IsNullOrWhiteSpace(RootDirectory)) { SetStatus("Task.RequireRootDirectory", "WarningTextStyle"); return false; }
+        if (string.IsNullOrWhiteSpace(TaskId))         { SetStatus("Task.RequireTaskId", "WarningTextStyle");    return false; }
         return true;
     }
 
@@ -1148,13 +1153,13 @@ public sealed class TaskEditorViewModel : ViewModelBase
         var workDir = ResolveWorkDirForSubmit(_selectedTaskUnit);
         if (string.IsNullOrWhiteSpace(workDir))
         {
-            StatusMessage = L("Task.InvalidRemoteWorkDir", "请先设置有效的远程工作目录后再提交。");
+            SetStatus("Task.InvalidRemoteWorkDir", "WarningTextStyle");
             return false;
         }
 
         var hasApp = !string.IsNullOrWhiteSpace(AppPath)
             || (_selectedTaskUnit?.Programs.Any(p => !string.IsNullOrWhiteSpace(p.ProgramPath)) == true);
-        if (!hasApp) { StatusMessage = "请先选择应用程序路径"; return false; }
+        if (!hasApp) { SetStatus("Task.RequireAppPath", "WarningTextStyle"); return false; }
         return true;
     }
 
@@ -1188,8 +1193,20 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private string ResolveWorkDirForSubmit(TaskUnitViewModel? unit)
         => ResolveWorkDirWithFallback(unit, RemoteWorkDir);
 
-    private static string L(string key, string fallback)
-        => Application.Current?.TryFindResource(key) as string ?? fallback;
+    private static string L(string key)
+        => Application.Current?.TryFindResource(key) as string ?? key;
+
+    private void SetStatus(string messageOrKey, string styleKey, bool localize = true)
+    {
+        StatusStyleKey = styleKey;
+        StatusMessage = localize ? L(messageOrKey) : messageOrKey;
+    }
+
+    internal void NotifyLocaleChanged()
+    {
+        OnPropertyChanged(nameof(LastJobIdText));
+        OnPropertyChanged(nameof(TaskIdDirectoryStatus));
+    }
 
     private TaskRecord BuildTaskRecord() => new()
     {

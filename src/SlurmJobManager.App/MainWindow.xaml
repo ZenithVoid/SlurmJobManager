@@ -30,78 +30,7 @@
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
         <conv:ZeroCountToVisibilityConverter x:Key="ZeroCountToVis" />
-
-        <!-- Title-bar window control button style -->
-        <Style x:Key="TitleBarButtonStyle" TargetType="Button">
-            <Setter Property="Width"               Value="46" />
-            <Setter Property="Height"              Value="36" />
-            <Setter Property="BorderThickness"     Value="0" />
-            <Setter Property="Background"          Value="Transparent" />
-            <Setter Property="Foreground"          Value="{DynamicResource TextSecondaryBrush}" />
-            <Setter Property="FontSize"            Value="12" />
-            <Setter Property="FocusVisualStyle"    Value="{x:Null}" />
-            <Setter Property="VerticalAlignment"   Value="Stretch" />
-            <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd"
-                                Background="{TemplateBinding Background}"
-                                Width="{TemplateBinding Width}">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <EventTrigger RoutedEvent="MouseEnter">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Bd"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0.80" Duration="0:0:0.12"
-                                                         FillBehavior="HoldEnd" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                            <EventTrigger RoutedEvent="MouseLeave">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Bd"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1.0" Duration="0:0:0.12"
-                                                         FillBehavior="HoldEnd" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background"
-                                        Value="{DynamicResource BgSurface0Brush}" />
-                                <Setter Property="Foreground"
-                                        Value="{DynamicResource TextPrimaryBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background"
-                                        Value="{DynamicResource BgSurface1Brush}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Close button has a red hover background -->
-        <Style x:Key="TitleBarCloseButtonStyle" TargetType="Button"
-               BasedOn="{StaticResource TitleBarButtonStyle}">
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background"  Value="#C42B1C" />
-                    <Setter Property="Foreground"  Value="#FFFFFF" />
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background"  Value="#9E2115" />
-                    <Setter Property="Foreground"  Value="#FFFFFF" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
+        <conv:ConnectionStatusToBrushConverter x:Key="ConnStatusToBrush" />
     </Window.Resources>
 
     <Grid>
@@ -199,9 +128,9 @@
                             BorderThickness="1"
                             CornerRadius="6">
                         <TextBlock Text="{Binding Connection.StatusText}"
-                                   Foreground="{DynamicResource AccentGreenBrush}"
-                                   FontSize="11"
-                                   TextTrimming="CharacterEllipsis" />
+                                   Foreground="{Binding Connection.Status, Converter={StaticResource ConnStatusToBrush}}"
+                                    FontSize="11"
+                                    TextTrimming="CharacterEllipsis" />
                     </Border>
 
                     <!-- Status bar at bottom -->

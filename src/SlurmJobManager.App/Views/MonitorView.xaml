@@ -16,6 +16,7 @@
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
         <conv:InverseBoolConverter x:Key="InvBool" />
+        <conv:StyleKeyToStyleConverter x:Key="StyleKeyToStyle" />
     </UserControl.Resources>
 
     <DockPanel Margin="12">
@@ -60,7 +61,7 @@
                 <TextBlock Text="{DynamicResource Monitor.PollInterval}"
                            Style="{StaticResource MutedTextStyle}"
                            VerticalAlignment="Center" />
-                <Slider Minimum="2" Maximum="10"
+                <Slider Minimum="2" Maximum="60"
                         Value="{Binding PollIntervalSeconds}"
                         Width="100" VerticalAlignment="Center" Margin="4,0,4,0" />
                 <TextBlock Text="{Binding PollIntervalSeconds}"
@@ -99,7 +100,7 @@
                     Padding="8,4"
                     HorizontalAlignment="Left" />
             <TextBlock Text="{Binding StatusMessage}"
-                       Style="{StaticResource StatusTextStyle}"
+                       Style="{Binding StatusStyleKey, Converter={StaticResource StyleKeyToStyle}}"
                        Margin="0,4,0,0" />
         </StackPanel>
 
@@ -137,7 +138,7 @@
                                         <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                                             <DoubleAnimation
                                                 Storyboard.TargetProperty="Opacity"
-                                                From="1.0" To="0.7"
+                                                From="1.0" To="0.85"
                                                 Duration="0:0:1.5" />
                                         </Storyboard>
                                     </BeginStoryboard>

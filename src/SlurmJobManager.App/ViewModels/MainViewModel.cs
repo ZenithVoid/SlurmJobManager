@@ -10,7 +10,7 @@ public sealed record NavItem(string TabId, string Icon, string LocalizationKey);
 /// <summary>Root view-model: owns all child VMs, sidebar navigation, and theme toggle.</summary>
 public sealed class MainViewModel : ViewModelBase
 {
-    private string   _statusMessage  = "Ready";
+    private string   _statusMessage  = string.Empty;
     private bool     _isDarkTheme    = true;
     private string   _activeTab      = "Dashboard";
     private NavItem? _activeNavItem;
@@ -114,6 +114,9 @@ public sealed class MainViewModel : ViewModelBase
         if (existing != null) dicts.Remove(existing);
 
         dicts.Add(new ResourceDictionary { Source = locUri });
+        Connection.NotifyLocaleChanged();
+        Monitor.NotifyLocaleChanged();
+        TaskEditor.NotifyLocaleChanged();
         Settings?.NotifyLocaleChanged();
     }
 
@@ -150,6 +153,7 @@ public sealed class MainViewModel : ViewModelBase
 
         Dashboard = new DashboardViewModel(connection, monitor, tab => ActiveTab = tab);
         Settings  = new SettingsViewModel(this, prefs);
+        StatusMessage = Application.Current?.TryFindResource("Status.Ready") as string ?? "Status.Ready";
     }
 
     private static void ApplyTheme(bool dark)
@@ -167,4 +171,3 @@ public sealed class MainViewModel : ViewModelBase
         dicts.Insert(0, new ResourceDictionary { Source = themeUri });
     }
 }
-

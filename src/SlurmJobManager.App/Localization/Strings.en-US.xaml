@@ -53,6 +53,7 @@
     <sys:String x:Key="Btn.SubmitSbatch">Submit sbatch Job</sys:String>
     <sys:String x:Key="Btn.Run">Run</sys:String>
     <sys:String x:Key="Btn.CancelCmd">✕ Cancel</sys:String>
+    <sys:String x:Key="Btn.StopCmd">⏹ Stop</sys:String>
     <sys:String x:Key="Btn.Copy">Copy</sys:String>
     <sys:String x:Key="Btn.Clear">Clear</sys:String>
 
@@ -63,6 +64,7 @@
     <sys:String x:Key="Status.Connecting">Connecting…</sys:String>
     <sys:String x:Key="Status.Loading">⏳ Loading…</sys:String>
     <sys:String x:Key="Status.Error">Error</sys:String>
+    <sys:String x:Key="Units.SecondShort">s</sys:String>
 
     <!-- ── Dashboard ────────────────────────────────────────────────────── -->
     <sys:String x:Key="Dashboard.Title">Dashboard</sys:String>
@@ -136,6 +138,19 @@
     <sys:String x:Key="Tooltip.LoadProfile">Load previously saved connection settings</sys:String>
     <sys:String x:Key="Conn.ProfileLoaded">Saved profile loaded.</sys:String>
     <sys:String x:Key="Conn.ProfileLoadFailed">Failed to load profile. Please re-enter and save credentials ({0}).</sys:String>
+    <sys:String x:Key="Conn.StatusReconnecting">Reconnecting…</sys:String>
+    <sys:String x:Key="Conn.ConnectedTo">Connected to {0}:{1}</sys:String>
+    <sys:String x:Key="Conn.Testing">Testing…</sys:String>
+    <sys:String x:Key="Conn.TestSuccess">Test successful and connected.</sys:String>
+    <sys:String x:Key="Conn.TestUnexpectedResponse">Test failed: unexpected response (exit {0}).</sys:String>
+    <sys:String x:Key="Conn.ProfileSaved">Profile saved (credentials encrypted).</sys:String>
+    <sys:String x:Key="Conn.SaveProfileFailed">Save profile failed: {0}</sys:String>
+    <sys:String x:Key="Conn.NoSavedProfile">No saved profile found.</sys:String>
+    <sys:String x:Key="Conn.LoadProfileFailed">Load profile failed: {0}</sys:String>
+    <sys:String x:Key="Conn.ErrAuth">Authentication failed — check username/password or key. ({0})</sys:String>
+    <sys:String x:Key="Conn.ErrNetwork">Network unreachable — check host/port and firewall. ({0})</sys:String>
+    <sys:String x:Key="Conn.ErrTimeout">Connection timed out — server may be slow or unreachable.</sys:String>
+    <sys:String x:Key="Conn.ErrGeneric">Error: {0}</sys:String>
 
     <!-- ── Task editor ──────────────────────────────────────────────────── -->
     <sys:String x:Key="Task.Setup">Task Setup</sys:String>
@@ -195,6 +210,45 @@
     <sys:String x:Key="Task.TaskIdDirCheckFailed">Directory validation failed. Please check connection state.</sys:String>
     <sys:String x:Key="Task.LoadNotFound">Task data not found (task.json / tasks.manifest.json).</sys:String>
     <sys:String x:Key="Task.InvalidRemoteWorkDir">Please set a valid remote work directory before submitting.</sys:String>
+    <sys:String x:Key="Task.LastJobId">Last Job ID: {0}</sys:String>
+    <sys:String x:Key="Task.UnitMinimumOne">At least one task unit must be kept.</sys:String>
+    <sys:String x:Key="Task.InitAfterConnectFailed">Post-connection initialization failed: {0}</sys:String>
+    <sys:String x:Key="Task.RequireConnectionForBrowse">Please establish an SSH connection before browsing remote directories.</sys:String>
+    <sys:String x:Key="Task.RefreshAppCandidatesFailed">Failed to refresh app paths: {0}</sys:String>
+    <sys:String x:Key="Task.RefreshTemplateCandidatesFailed">Failed to refresh template list: {0}</sys:String>
+    <sys:String x:Key="Task.LoadTemplateFailed">Failed to load template: {0}</sys:String>
+    <sys:String x:Key="Task.SaveParamMissingRequired">Please fill required fields before saving parameter file (root dir, TaskId, filename).</sys:String>
+    <sys:String x:Key="Task.RequireConnectionForSaveParam">Please establish an SSH connection before saving parameter file.</sys:String>
+    <sys:String x:Key="Task.SavedAt">Saved: {0:HH:mm:ss}</sys:String>
+    <sys:String x:Key="Task.ParamFileSaved">Parameter file saved: {0}</sys:String>
+    <sys:String x:Key="Task.SaveParamFailed">Save parameter file failed: {0}</sys:String>
+    <sys:String x:Key="Task.RequireConnection">Please establish an SSH connection first.</sys:String>
+    <sys:String x:Key="Task.RequireTaskPath">Please set a task directory or enter a browse path first.</sys:String>
+    <sys:String x:Key="Task.PathMissing">Path does not exist: please check the directory.</sys:String>
+    <sys:String x:Key="Task.PathIsFile">The path is a file, not a directory. Please enter a directory path.</sys:String>
+    <sys:String x:Key="Task.DirReadFailedNoDetail">Unable to read directory. Please check permissions.</sys:String>
+    <sys:String x:Key="Task.DirReadFailed">Unable to read directory: {0}</sys:String>
+    <sys:String x:Key="Task.DirEmpty">Task directory is empty.</sys:String>
+    <sys:String x:Key="Task.DirLoadedCount">Loaded {0} entries.</sys:String>
+    <sys:String x:Key="Task.RefreshFilesFailed">Failed to refresh file list: {0}</sys:String>
+    <sys:String x:Key="Task.GoUpPathEmpty">Current path is empty and cannot go up.</sys:String>
+    <sys:String x:Key="Task.BinaryFileBlocked">File {0} appears to be binary and was blocked.</sys:String>
+    <sys:String x:Key="Task.Saving">Saving task…</sys:String>
+    <sys:String x:Key="Task.SavedPath">Task saved: {0}</sys:String>
+    <sys:String x:Key="Task.LastSavedAt">Last saved: {0:HH:mm:ss}</sys:String>
+    <sys:String x:Key="Task.SaveFailed">Save failed: {0}</sys:String>
+    <sys:String x:Key="Task.Loading">Loading task…</sys:String>
+    <sys:String x:Key="Task.LoadedLegacy">Task loaded (legacy format): {0}</sys:String>
+    <sys:String x:Key="Task.WorkspaceLoaded">Task workspace loaded: {0} ({1} task units)</sys:String>
+    <sys:String x:Key="Task.LoadFailed">Load failed: {0}</sys:String>
+    <sys:String x:Key="Task.NoActiveUnit">No active task unit to submit. Save the task configuration first.</sys:String>
+    <sys:String x:Key="Task.SubmitPreparing">Preparing submission…</sys:String>
+    <sys:String x:Key="Task.SubmitSucceeded">Job submitted! Job ID = {0}</sys:String>
+    <sys:String x:Key="Task.SubmitFailed">Submit failed: {0}</sys:String>
+    <sys:String x:Key="Task.SubmittingUnit">Submitting {0}…</sys:String>
+    <sys:String x:Key="Task.RequireRootDirectory">Please configure task root directory first</sys:String>
+    <sys:String x:Key="Task.RequireTaskId">Please enter TaskId first</sys:String>
+    <sys:String x:Key="Task.RequireAppPath">Please select an application path first</sys:String>
     <sys:String x:Key="Btn.AddProgram">+ Add program</sys:String>
     <sys:String x:Key="Btn.RemoveProgram">- Remove program</sys:String>
     <sys:String x:Key="Btn.AddParamFile">+ Add param file</sys:String>
@@ -241,12 +295,17 @@
     <sys:String x:Key="CmdBuilder.SbatchMissingShebangError">sbatch script must include a shebang (e.g. #!/bin/bash) or an explicit TODO hint before Save &amp; Apply.</sys:String>
 
     <!-- ── Remote directory picker ──────────────────────────────────────── -->
-    <sys:String x:Key="RemotePicker.Title">Select Remote Directory</sys:String>
+    <sys:String x:Key="RemotePicker.TitleWindow">Select Remote Directory</sys:String>
+    <sys:String x:Key="RemotePicker.Title">Remote Directory Picker</sys:String>
     <sys:String x:Key="RemotePicker.GoUp">⬆ Up</sys:String>
     <sys:String x:Key="RemotePicker.Refresh">⟳ Refresh</sys:String>
     <sys:String x:Key="RemotePicker.Hint">Select the current directory or double-click to enter a subdirectory, then click [Select]</sys:String>
     <sys:String x:Key="RemotePicker.Select">Select</sys:String>
     <sys:String x:Key="RemotePicker.Cancel">Cancel</sys:String>
+    <sys:String x:Key="RemotePicker.GoUpEnabledTip">Go to parent directory</sys:String>
+    <sys:String x:Key="RemotePicker.GoUpDisabledTip">Already at root; cannot go up further</sys:String>
+    <sys:String x:Key="RemotePicker.StatusLoading">Loading…</sys:String>
+    <sys:String x:Key="RemotePicker.StatusLoadFailed">Unable to load directory: {0}</sys:String>
 
     <!-- ── Remote file editor ───────────────────────────────────────────── -->
     <sys:String x:Key="RemoteEditor.Title">Edit File:</sys:String>
@@ -259,11 +318,18 @@
     <sys:String x:Key="RemoteEditor.Close">Close</sys:String>
     <sys:String x:Key="RemoteEditor.BinaryRejected">Binary-like file detected, opening as text is blocked.</sys:String>
     <sys:String x:Key="RemoteEditor.EncodingUnknown">Encoding cannot be identified reliably, opened as UTF-8.</sys:String>
+    <sys:String x:Key="RemoteEditor.EncodingTip">Detected file encoding (best effort).</sys:String>
     <sys:String x:Key="RemoteEditor.UnsavedTitle">Unsaved Changes</sys:String>
     <sys:String x:Key="RemoteEditor.UnsavedPrompt">There are unsaved changes. Save before closing?</sys:String>
 
     <!-- ── Console view ─────────────────────────────────────────────────── -->
+    <sys:String x:Key="Console.Title">Remote Console</sys:String>
     <sys:String x:Key="Console.NotConnected">⚠ You can browse this page freely. To execute commands, please establish an SSH connection first.</sys:String>
+    <sys:String x:Key="Console.ErrInvalidCommand">[error] Command contains illegal characters and was blocked.</sys:String>
+    <sys:String x:Key="Console.ErrNotConnected">SSH connection is not established. Connect first in the connection page.</sys:String>
+    <sys:String x:Key="Console.Timeout">[timeout] Command timed out ({0:0}s) and was canceled.</sys:String>
+    <sys:String x:Key="Console.Cancelling">[cancelling…]</sys:String>
+    <sys:String x:Key="Console.JumpToBottom">Jump to bottom</sys:String>
 
     <!-- ── Crash dialog ─────────────────────────────────────────────────── -->
     <sys:String x:Key="Crash.Title">Fatal Application Error</sys:String>
@@ -286,6 +352,14 @@
     <sys:String x:Key="Monitor.Cancelling">Cancelling job {0}…</sys:String>
     <sys:String x:Key="Monitor.CancelSucceeded">Job {0} was cancelled.</sys:String>
     <sys:String x:Key="Monitor.CancelFailed">Failed to cancel job {0}: {1}</sys:String>
+    <sys:String x:Key="Monitor.FilterAll">All</sys:String>
+    <sys:String x:Key="Monitor.Refreshing">Refreshing…</sys:String>
+    <sys:String x:Key="Monitor.Updated">Updated: {0:HH:mm:ss} ({1} job(s))</sys:String>
+    <sys:String x:Key="Monitor.RefreshFailed">Refresh failed: {0}</sys:String>
+    <sys:String x:Key="Monitor.PollingEvery">Polling every {0}s…</sys:String>
+    <sys:String x:Key="Monitor.PollingStopped">Polling stopped.</sys:String>
+    <sys:String x:Key="Monitor.PollingHalted">Polling stopped after {0} consecutive failures. Check connection and restart polling manually.</sys:String>
+    <sys:String x:Key="Monitor.ReconnectFailed">Reconnect failed ({0}/{1})…</sys:String>
     <sys:String x:Key="Log.EmptyState">No log data loaded. Submit a job or enter a remote file path above to load logs.</sys:String>
     <sys:String x:Key="Log.EmptyTitle">No Log Content</sys:String>
     <sys:String x:Key="Log.EmptyHint">Enter a remote log file path above and click Load.</sys:String>

@@ -19,6 +19,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     private string _encodingName = "UTF-8";
     private bool _isBinaryFile;
     private bool _isDirty;
+    private string _statusStyleKey = "InfoTextStyle";
     private string _lastSavedContent = string.Empty;
     private bool _suppressDirtyTracking;
     private TextEncodingDetectionResult _encodingDetection = new()
@@ -34,7 +35,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     public string FileName   => RemotePath.Contains('/') ? RemotePath[(RemotePath.LastIndexOf('/') + 1)..] : RemotePath;
 
     /// <summary>Formatted window title including the filename, resolved from localization resources at runtime.</summary>
-    public string WindowTitle => $"{Application.Current?.TryFindResource("RemoteEditor.Title") as string ?? "编辑文件："} {FileName}";
+    public string WindowTitle => $"{L("RemoteEditor.Title")} {FileName}";
 
     public string Content
     {
@@ -48,6 +49,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
 
     public bool IsBusy { get => _isBusy; private set => SetField(ref _isBusy, value); }
     public string StatusMessage { get => _statusMessage; set => SetField(ref _statusMessage, value); }
+    public string StatusStyleKey { get => _statusStyleKey; private set => SetField(ref _statusStyleKey, value); }
     public string EncodingName { get => _encodingName; private set => SetField(ref _encodingName, value); }
     public bool IsBinaryFile { get => _isBinaryFile; private set => SetField(ref _isBinaryFile, value); }
     public bool IsDirty { get => _isDirty; private set => SetField(ref _isDirty, value); }
@@ -67,7 +69,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     public async Task LoadAsync(CancellationToken ct = default)
     {
         IsBusy = true;
-        StatusMessage = Application.Current?.TryFindResource("RemoteEditor.Loading") as string ?? "加载文件…";
+        SetStatus("RemoteEditor.Loading", "InfoTextStyle");
         try
         {
             var bytes = await _ssh.ReadFileBytesAsync(RemotePath, ct);
@@ -79,8 +81,8 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
                 IsBinaryFile = true;
                 Content = string.Empty;
                 StatusMessage = _encodingDetection.WarningMessage
-                                ?? (Application.Current?.TryFindResource("RemoteEditor.BinaryRejected") as string
-                                    ?? "检测到二进制文件，已阻止打开。");
+                                ?? L("RemoteEditor.BinaryRejected");
+                StatusStyleKey = "ErrorTextStyle";
                 return;
             }
 
@@ -93,17 +95,17 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
             if (!_encodingDetection.IsReliable)
             {
                 StatusMessage = _encodingDetection.WarningMessage
-                                ?? (Application.Current?.TryFindResource("RemoteEditor.EncodingUnknown") as string
-                                    ?? "编码无法可靠识别，当前按 UTF-8 打开。");
+                                ?? L("RemoteEditor.EncodingUnknown");
+                StatusStyleKey = "WarningTextStyle";
             }
             else
             {
-                StatusMessage = string.Empty;
+                SetStatus(string.Empty, "InfoTextStyle");
             }
         }
         catch (Exception ex)
         {
-            StatusMessage = $"{Application.Current?.TryFindResource("RemoteEditor.LoadFailed") as string ?? "加载失败："}{ex.Message}";
+            SetStatus($"{L("RemoteEditor.LoadFailed")}{ex.Message}", "ErrorTextStyle", localize: false);
         }
         finally { IsBusy = false; }
     }
@@ -114,18 +116,17 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     {
         if (IsBinaryFile)
         {
-            StatusMessage = Application.Current?.TryFindResource("RemoteEditor.BinaryRejected") as string
-                            ?? "检测到二进制文件，已阻止保存。";
+            SetStatus("RemoteEditor.BinaryRejected", "ErrorTextStyle");
             return false;
         }
 
         IsBusy = true;
-        StatusMessage = Application.Current?.TryFindResource("RemoteEditor.Saving") as string ?? "保存中…";
+        SetStatus("RemoteEditor.Saving", "InfoTextStyle");
         try
         {
             var bytes = TextEncodingDetector.Encode(Content, _encodingDetection);
             await _ssh.WriteFileBytesAsync(RemotePath, bytes, ct);
-            StatusMessage = $"{Application.Current?.TryFindResource("RemoteEditor.Saved") as string ?? "已保存："}{DateTime.Now:HH:mm:ss}";
+            SetStatus($"{L("RemoteEditor.Saved")}{DateTime.Now:HH:mm:ss}", "SuccessTextStyle", localize: false);
             _lastSavedContent = Content;
             IsDirty = false;
             SaveCompleted = true;
@@ -133,9 +134,20 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"{Application.Current?.TryFindResource("RemoteEditor.SaveFailed") as string ?? "保存失败："}{ex.Message}";
+            SetStatus($"{L("RemoteEditor.SaveFailed")}{ex.Message}", "ErrorTextStyle", localize: false);
             return false;
         }
         finally { IsBusy = false; }
+    }
+
+    private static string L(string key)
+        => Application.Current?.TryFindResource(key) as string ?? key;
+
+    private void SetStatus(string messageOrKey, string styleKey, bool localize = true)
+    {
+        StatusStyleKey = styleKey;
+        StatusMessage = string.IsNullOrEmpty(messageOrKey)
+            ? string.Empty
+            : (localize ? L(messageOrKey) : messageOrKey);
     }
 }

@@ -9,6 +9,24 @@
     mc:Ignorable="d"
     d:DesignHeight="800" d:DesignWidth="700"
     Background="{DynamicResource BgBaseBrush}">
+    <UserControl.Resources>
+        <Style x:Key="LocaleZhButtonStyle" TargetType="Button" BasedOn="{StaticResource NeutralButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CurrentLocale}" Value="zh-CN">
+                    <Setter Property="Background" Value="{DynamicResource AccentBlueBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="LocaleEnButtonStyle" TargetType="Button" BasedOn="{StaticResource NeutralButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CurrentLocale}" Value="en-US">
+                    <Setter Property="Background" Value="{DynamicResource AccentBlueBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0"
                   b:SmoothScrollBehavior.IsEnabled="True">
@@ -86,12 +104,12 @@
                         <Button Content="{DynamicResource Settings.LangZhCN}"
                                 Command="{Binding SwitchLocaleCommand}"
                                 CommandParameter="zh-CN"
-                                Style="{StaticResource AccentButtonStyle}"
+                                Style="{StaticResource LocaleZhButtonStyle}"
                                 Padding="10,5" Margin="0,0,6,0" />
                         <Button Content="{DynamicResource Settings.LangEnUS}"
                                 Command="{Binding SwitchLocaleCommand}"
                                 CommandParameter="en-US"
-                                Style="{StaticResource NeutralButtonStyle}"
+                                Style="{StaticResource LocaleEnButtonStyle}"
                                 Padding="10,5" />
                     </StackPanel>
                 </StackPanel>
@@ -115,9 +133,9 @@
                                    Foreground="{DynamicResource TextPrimaryBrush}"
                                    VerticalAlignment="Center"
                                    MinWidth="28" />
-                        <TextBlock Text="s"
-                                   Style="{StaticResource MutedTextStyle}"
-                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{DynamicResource Units.SecondShort}"
+                                    Style="{StaticResource MutedTextStyle}"
+                                    VerticalAlignment="Center" />
                     </StackPanel>
                     <TextBlock Text="{DynamicResource Settings.PollIntervalDesc}"
                                Style="{StaticResource MutedTextStyle}"
