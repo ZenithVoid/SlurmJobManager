@@ -9,54 +9,166 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     Title="{DynamicResource CmdBuilder.Title}"
-    Height="580" Width="820"
-    MinHeight="420" MinWidth="640"
+    Height="820" Width="1280"
+    MinHeight="560" MinWidth="900"
     WindowStartupLocation="CenterOwner"
+    WindowStyle="None"
+    AllowsTransparency="False"
+    ResizeMode="CanResize"
     Background="{DynamicResource BgBaseBrush}"
     Foreground="{DynamicResource TextPrimaryBrush}">
 
+    <!-- WindowChrome: enables resize + custom caption without AllowsTransparency -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome
+            CaptionHeight="36"
+            ResizeBorderThickness="5"
+            GlassFrameThickness="0,0,0,1"
+            CornerRadius="0" />
+    </WindowChrome.WindowChrome>
+
     <Window.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- Title-bar button style (mirrors MainWindow) -->
+        <Style x:Key="TitleBarButtonStyle" TargetType="Button">
+            <Setter Property="Width"               Value="46" />
+            <Setter Property="Height"              Value="36" />
+            <Setter Property="BorderThickness"     Value="0" />
+            <Setter Property="Background"          Value="Transparent" />
+            <Setter Property="Foreground"          Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="FontSize"            Value="12" />
+            <Setter Property="FocusVisualStyle"    Value="{x:Null}" />
+            <Setter Property="VerticalAlignment"   Value="Stretch" />
+            <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" Width="{TemplateBinding Width}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BgSurface0Brush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BgSurface1Brush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TitleBarCloseButtonStyle" TargetType="Button"
+               BasedOn="{StaticResource TitleBarButtonStyle}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#C42B1C" />
+                    <Setter Property="Foreground" Value="#FFFFFF" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#9E2115" />
+                    <Setter Property="Foreground" Value="#FFFFFF" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
-    <Grid Margin="12">
+    <Grid>
         <Grid.RowDefinitions>
+            <!-- Custom title bar -->
+            <RowDefinition Height="36" />
+            <!-- Main content -->
             <RowDefinition Height="*" />
+            <!-- Status bar -->
             <RowDefinition Height="Auto" />
+            <!-- Bottom buttons -->
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- ── Main two-panel layout ───────────────────────────────────── -->
-        <Grid Grid.Row="0">
+        <!-- ── Custom title bar ──────────────────────────────────────── -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource BgPanelBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Border x:Name="TitleBarDragArea"
+                        Background="Transparent"
+                        HorizontalAlignment="Stretch"
+                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown" />
+
+                <TextBlock Text="{DynamicResource CmdBuilder.Title}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontSize="13" FontWeight="SemiBold"
+                           IsHitTestVisible="False" />
+
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top">
+                    <Button x:Name="BtnMinimize"
+                            Style="{StaticResource TitleBarButtonStyle}"
+                            ToolTip="{DynamicResource TitleBar.Minimize}"
+                            Click="BtnMinimize_Click">
+                        <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+                    </Button>
+                    <Button x:Name="BtnMaximize"
+                            Style="{StaticResource TitleBarButtonStyle}"
+                            ToolTip="{DynamicResource TitleBar.Maximize}"
+                            Click="BtnMaximize_Click">
+                        <TextBlock x:Name="MaximizeIcon"
+                                   Text="&#xE922;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+                    </Button>
+                    <Button x:Name="BtnClose"
+                            Style="{StaticResource TitleBarCloseButtonStyle}"
+                            ToolTip="{DynamicResource TitleBar.Close}"
+                            Click="BtnClose_Click">
+                        <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ── Main content: three columns ──────────────────────────── -->
+        <Grid Grid.Row="1" Margin="8,6,8,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="8" />
-                <ColumnDefinition Width="*" />
+                <!-- Left: file browser (programs + params) -->
+                <ColumnDefinition Width="280" MinWidth="180" />
+                <ColumnDefinition Width="6" />
+                <!-- Centre: command list + detail editor -->
+                <ColumnDefinition Width="*" MinWidth="340" />
+                <ColumnDefinition Width="6" />
+                <!-- Right: sbatch editor -->
+                <ColumnDefinition Width="360" MinWidth="240" />
             </Grid.ColumnDefinitions>
 
-            <!-- ── LEFT: available programs + available param files ───── -->
+            <!-- ── LEFT: file browser ───────────────────────────────── -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="8" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
                 <!-- Available programs -->
-                <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="0,0,0,4" Padding="6">
+                <Border Grid.Row="0" Style="{StaticResource CardStyle}" Padding="6">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top"
                                    Text="{DynamicResource CmdBuilder.AvailablePrograms}"
                                    Style="{StaticResource SectionHeaderStyle}" />
                         <TextBox DockPanel.Dock="Top"
                                  Text="{Binding ProgramFilter, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,0,0,4"
-                                 FontSize="11"
+                                 Margin="0,0,0,4" FontSize="11"
                                  ToolTip="{DynamicResource CmdBuilder.FilterHint}" />
                         <ListBox ItemsSource="{Binding FilteredPrograms}"
-                                 SelectedItem="{Binding SelectedProgram, Mode=TwoWay}"
+                                 SelectedItem="{Binding SelectedCommand.ProgramPath, Mode=OneWayToSource}"
                                  Background="Transparent" BorderThickness="0"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 FontFamily="Consolas" FontSize="11">
+                                 FontFamily="Consolas" FontSize="11"
+                                 MouseDoubleClick="ProgramList_DoubleClick">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
                                     <Setter Property="Padding" Value="4,2" />
@@ -70,21 +182,20 @@
                 </Border>
 
                 <!-- Available param files -->
-                <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,4,0,0" Padding="6">
+                <Border Grid.Row="2" Style="{StaticResource CardStyle}" Padding="6">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top"
                                    Text="{DynamicResource CmdBuilder.AvailableParamFiles}"
                                    Style="{StaticResource SectionHeaderStyle}" />
                         <TextBox DockPanel.Dock="Top"
                                  Text="{Binding ParamFilter, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,0,0,4"
-                                 FontSize="11"
+                                 Margin="0,0,0,4" FontSize="11"
                                  ToolTip="{DynamicResource CmdBuilder.FilterHint}" />
                         <DockPanel DockPanel.Dock="Bottom" Margin="0,4,0,0" LastChildFill="False">
                             <Button Content="{DynamicResource CmdBuilder.AddParam}"
                                     Command="{Binding AddParamFileCommand}"
                                     Style="{StaticResource AccentButtonStyle}"
-                                    Padding="8,3" />
+                                    Padding="8,3" FontSize="11" />
                         </DockPanel>
                         <ListBox ItemsSource="{Binding FilteredParamFiles}"
                                  SelectedItem="{Binding SelectedAvailableParamFile, Mode=TwoWay}"
@@ -104,54 +215,54 @@
                 </Border>
             </Grid>
 
-            <!-- ── Splitter ──────────────────────────────────────────── -->
-            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center"
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center"
                           VerticalAlignment="Stretch"
                           Background="{DynamicResource BgPanelBrush}" />
 
-            <!-- ── RIGHT: chosen program + chosen param files + preview ─ -->
+            <!-- ── CENTRE: command list + detail ────────────────────── -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" MinHeight="140" />
+                    <RowDefinition Height="8" />
                     <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="120" />
                 </Grid.RowDefinitions>
 
-                <!-- Selected program display -->
-                <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="0,0,0,4" Padding="6">
-                    <StackPanel>
-                        <TextBlock Text="{DynamicResource CmdBuilder.SelectedProgram}"
-                                   Style="{StaticResource SectionHeaderStyle}" />
-                        <TextBox Text="{Binding SelectedProgram, UpdateSourceTrigger=PropertyChanged}"
-                                 FontFamily="Consolas" FontSize="11"
-                                 ToolTip="{DynamicResource CmdBuilder.ProgramPathHint}" />
-                    </StackPanel>
-                </Border>
-
-                <!-- Chosen parameter files -->
-                <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,0,0,4" Padding="6">
+                <!-- Command list with Add/Remove/Order -->
+                <Border Grid.Row="0" Style="{StaticResource CardStyle}" Padding="6">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top"
-                                   Text="{DynamicResource CmdBuilder.ChosenParamFiles}"
+                                   Text="{DynamicResource CmdBuilder.CommandList}"
                                    Style="{StaticResource SectionHeaderStyle}" />
-                        <TextBlock DockPanel.Dock="Top"
-                                   Text="{DynamicResource CmdBuilder.DoubleClickHint}"
-                                   Style="{StaticResource MutedTextStyle}"
-                                   FontSize="10" Margin="0,0,0,4" />
-                        <DockPanel DockPanel.Dock="Bottom" Margin="0,4,0,0" LastChildFill="False">
-                            <Button Content="{DynamicResource CmdBuilder.RemoveParam}"
-                                    Command="{Binding RemoveParamFileCommand}"
-                                    CommandParameter="{Binding SelectedChosenParamFile}"
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                                    Margin="0,4,0,0" HorizontalAlignment="Left">
+                            <Button Content="{DynamicResource CmdBuilder.AddCmd}"
+                                    Command="{Binding AddCommandCommand}"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Padding="8,3" Margin="0,0,4,0" FontSize="11" />
+                            <Button Content="{DynamicResource CmdBuilder.RemoveCmd}"
+                                    Command="{Binding RemoveCommandCommand}"
+                                    CommandParameter="{Binding SelectedCommand}"
                                     Style="{StaticResource NeutralButtonStyle}"
-                                    Padding="8,3" />
-                        </DockPanel>
-                        <ListBox x:Name="ChosenParamList"
-                                 ItemsSource="{Binding ChosenParamFiles}"
+                                    Padding="8,3" Margin="0,0,4,0" FontSize="11" />
+                            <Button Content="▲"
+                                    Command="{Binding MoveUpCommand}"
+                                    CommandParameter="{Binding SelectedCommand}"
+                                    Style="{StaticResource NeutralButtonStyle}"
+                                    Padding="8,3" Margin="0,0,4,0" FontSize="11"
+                                    ToolTip="{DynamicResource CmdBuilder.MoveUp}" />
+                            <Button Content="▼"
+                                    Command="{Binding MoveDownCommand}"
+                                    CommandParameter="{Binding SelectedCommand}"
+                                    Style="{StaticResource NeutralButtonStyle}"
+                                    Padding="8,3" FontSize="11"
+                                    ToolTip="{DynamicResource CmdBuilder.MoveDown}" />
+                        </StackPanel>
+                        <ListBox ItemsSource="{Binding Commands}"
+                                 SelectedItem="{Binding SelectedCommand, Mode=TwoWay}"
                                  Background="Transparent" BorderThickness="0"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 FontFamily="Consolas" FontSize="11"
-                                 MouseDoubleClick="ChosenParamList_MouseDoubleClick">
+                                 MaxHeight="100"
+                                 FontFamily="Consolas" FontSize="11">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
                                     <Setter Property="Padding" Value="4,2" />
@@ -161,13 +272,12 @@
                                 </Style>
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:ParameterFileEntryViewModel}">
-                                    <StackPanel Orientation="Horizontal" ToolTip="{Binding FilePath}">
-                                        <TextBlock Text="{Binding Alias}"
-                                                   Foreground="{DynamicResource AccentGreenBrush}"
-                                                   Margin="0,0,6,0" />
-                                        <TextBlock Text="{Binding FilePath}"
-                                                   Foreground="{DynamicResource TextMutedBrush}"
+                                <DataTemplate DataType="{x:Type vm:CommandEntryViewModel}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Order}" Width="22"
+                                                   Foreground="{DynamicResource TextMutedBrush}" />
+                                        <TextBlock Text="{Binding DisplaySummary}"
+                                                   Foreground="{DynamicResource AccentYellowBrush}"
                                                    TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                 </DataTemplate>
@@ -176,35 +286,167 @@
                     </DockPanel>
                 </Border>
 
-                <!-- Command preview label -->
-                <TextBlock Grid.Row="2"
-                           Text="{DynamicResource CmdBuilder.CommandPreview}"
-                           Style="{StaticResource SectionHeaderStyle}"
-                           Margin="0,0,0,2" />
+                <!-- Selected command detail editor -->
+                <Border Grid.Row="2" Style="{StaticResource CardStyle}" Padding="6">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  b:SmoothScrollBehavior.IsEnabled="True"
+                                  b:SmoothScrollBehavior.ScrollAmount="40">
+                        <StackPanel IsEnabled="{Binding HasSelectedCommand}">
 
-                <!-- Command preview text -->
-                <Border Grid.Row="3" Style="{StaticResource CardStyle}" Padding="6">
-                    <TextBox Text="{Binding CommandPreview, Mode=OneWay}"
-                             IsReadOnly="True"
-                             FontFamily="Consolas" FontSize="11"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             AcceptsReturn="True" TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto"
-                             Foreground="{DynamicResource AccentYellowBrush}" />
+                            <!-- Program path -->
+                            <TextBlock Text="{DynamicResource CmdBuilder.SelectedProgram}"
+                                       Style="{StaticResource SectionHeaderStyle}" />
+                            <TextBox Text="{Binding SelectedCommand.ProgramPath, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Consolas" FontSize="11"
+                                     Margin="0,0,0,2"
+                                     ToolTip="{DynamicResource CmdBuilder.ProgramPathHint}" />
+
+                            <!-- MPI path row -->
+                            <Grid Margin="0,2,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{DynamicResource CmdBuilder.MpirunPath}"
+                                               Style="{StaticResource FieldLabelStyle}" />
+                                    <TextBox Text="{Binding SelectedCommand.MpirunPath, UpdateSourceTrigger=PropertyChanged}"
+                                             FontFamily="Consolas" FontSize="11"
+                                             ToolTip="{DynamicResource CmdBuilder.MpirunHint}" />
+                                </StackPanel>
+                                <Button Grid.Column="1"
+                                        Content="{DynamicResource CmdBuilder.DetectMpi}"
+                                        Command="{Binding DetectMpiCommand}"
+                                        Style="{StaticResource NeutralButtonStyle}"
+                                        Padding="8,4" Margin="4,18,0,0" FontSize="11"
+                                        VerticalAlignment="Bottom" />
+                            </Grid>
+
+                            <!-- Attached parameter files -->
+                            <TextBlock Text="{DynamicResource CmdBuilder.ChosenParamFiles}"
+                                       Style="{StaticResource SectionHeaderStyle}" />
+                            <TextBlock Text="{DynamicResource CmdBuilder.DoubleClickHint}"
+                                       Style="{StaticResource MutedTextStyle}"
+                                       FontSize="10" Margin="0,0,0,2" />
+                            <ListBox x:Name="ChosenParamList"
+                                     ItemsSource="{Binding SelectedCommand.ParameterFiles}"
+                                     MaxHeight="90"
+                                     Background="Transparent" BorderThickness="0"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     FontFamily="Consolas" FontSize="11"
+                                     MouseDoubleClick="ChosenParamList_MouseDoubleClick">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Padding" Value="4,2" />
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                            </ListBox>
+                            <Button Content="{DynamicResource CmdBuilder.RemoveParam}"
+                                    Command="{Binding RemoveParamFileCommand}"
+                                    CommandParameter="{Binding ElementName=ChosenParamList, Path=SelectedItem}"
+                                    Style="{StaticResource NeutralButtonStyle}"
+                                    Padding="8,3" Margin="0,2,0,6"
+                                    HorizontalAlignment="Left" FontSize="11" />
+
+                            <!-- Extra args -->
+                            <TextBlock Text="{DynamicResource CmdBuilder.ExtraArgs}"
+                                       Style="{StaticResource SectionHeaderStyle}" />
+                            <TextBlock Text="{DynamicResource CmdBuilder.ExtraArgsHint}"
+                                       Style="{StaticResource MutedTextStyle}"
+                                       FontSize="10" Margin="0,0,0,2" />
+                            <ItemsControl ItemsSource="{Binding SelectedCommand.ExtraArgs}"
+                                          Margin="0,0,0,2">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:ExtraArgViewModel}">
+                                        <Grid Margin="0,1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0"
+                                                     Text="{Binding Arg, UpdateSourceTrigger=PropertyChanged}"
+                                                     FontFamily="Consolas" FontSize="11" />
+                                            <Button Grid.Column="1"
+                                                    Content="✕"
+                                                    Command="{Binding DataContext.RemoveExtraArgCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{StaticResource NeutralButtonStyle}"
+                                                    Padding="6,2" Margin="4,0,0,0" FontSize="10" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="{DynamicResource CmdBuilder.AddExtraArg}"
+                                    Command="{Binding AddExtraArgCommand}"
+                                    Style="{StaticResource NeutralButtonStyle}"
+                                    Padding="8,3" HorizontalAlignment="Left" FontSize="11" />
+
+                            <!-- Command preview -->
+                            <TextBlock Text="{DynamicResource CmdBuilder.CommandPreview}"
+                                       Style="{StaticResource SectionHeaderStyle}"
+                                       Margin="0,8,0,2" />
+                            <Border Style="{StaticResource CardStyle}" Padding="6" Margin="0,0,0,2"
+                                    Background="{DynamicResource BgCrustBrush}">
+                                <TextBox Text="{Binding SelectedCommand.CommandLine, Mode=OneWay}"
+                                         IsReadOnly="True"
+                                         FontFamily="Consolas" FontSize="11"
+                                         Background="Transparent" BorderThickness="0"
+                                         AcceptsReturn="True" TextWrapping="Wrap"
+                                         Height="52" VerticalScrollBarVisibility="Auto"
+                                         Foreground="{DynamicResource AccentYellowBrush}" />
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
                 </Border>
             </Grid>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="3" Width="4" HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch"
+                          Background="{DynamicResource BgPanelBrush}" />
+
+            <!-- ── RIGHT: sbatch editor ──────────────────────────────── -->
+            <Border Grid.Column="4" Style="{StaticResource CardStyle}" Padding="6">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="{DynamicResource CmdBuilder.SbatchScript}"
+                               Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="{DynamicResource CmdBuilder.SbatchHint}"
+                               Style="{StaticResource MutedTextStyle}"
+                               FontSize="10" Margin="0,0,0,4"
+                               TextWrapping="Wrap" />
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                                Margin="0,4,0,0" HorizontalAlignment="Left">
+                        <Button Content="{DynamicResource CmdBuilder.RegenSbatch}"
+                                Click="BtnRegenSbatch_Click"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="8,3" FontSize="11" />
+                    </StackPanel>
+                    <TextBox Text="{Binding SbatchContent, UpdateSourceTrigger=PropertyChanged}"
+                             FontFamily="Consolas" FontSize="11"
+                             Background="{DynamicResource BgCrustBrush}"
+                             Foreground="{DynamicResource AccentGreenBrush}"
+                             AcceptsReturn="True" TextWrapping="NoWrap"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Auto"
+                             Padding="6,4" />
+                </DockPanel>
+            </Border>
         </Grid>
 
-        <!-- ── Status message ──────────────────────────────────────────── -->
-        <TextBlock Grid.Row="1"
+        <!-- ── Status bar ────────────────────────────────────────────── -->
+        <TextBlock Grid.Row="2"
                    Text="{Binding StatusMessage}"
                    Style="{StaticResource StatusTextStyle}"
-                   Margin="0,6,0,0"
+                   Margin="8,4,8,0"
                    TextWrapping="Wrap" />
 
-        <!-- ── Bottom buttons ──────────────────────────────────────────── -->
-        <Grid Grid.Row="2" Margin="0,8,0,0">
+        <!-- ── Bottom buttons ─────────────────────────────────────────── -->
+        <Grid Grid.Row="3" Margin="8,6,8,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -221,16 +463,15 @@
 
             <Button Grid.Column="2"
                     Content="{DynamicResource CmdBuilder.Test}"
-                    Command="{Binding TestCommand}"
+                    Command="{Binding TestCommandCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Padding="10,5" Margin="0,0,8,0" />
 
             <Button Grid.Column="3"
-                    Content="{DynamicResource CmdBuilder.Confirm}"
-                    Command="{Binding ConfirmCommand}"
+                    Content="{DynamicResource CmdBuilder.SaveApply}"
+                    Click="BtnSaveApply_Click"
                     Style="{StaticResource SuccessButtonStyle}"
-                    Padding="14,5" Margin="0,0,8,0"
-                    Click="BtnConfirm_Click" />
+                    Padding="14,5" Margin="0,0,8,0" />
 
             <Button Grid.Column="4"
                     Content="{DynamicResource CmdBuilder.Cancel}"
@@ -240,3 +481,4 @@
         </Grid>
     </Grid>
 </Window>
+

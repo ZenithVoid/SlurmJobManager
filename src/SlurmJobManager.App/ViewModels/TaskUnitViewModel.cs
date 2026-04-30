@@ -139,24 +139,99 @@ public sealed class CommandEntryViewModel : ViewModelBase
     private string  _commandLine;
     private string? _description;
     private int     _order;
+    private string  _programPath;
+    private string? _mpirunPath;
 
     public CommandEntryViewModel(CommandEntry m)
     {
         _commandLine = m.CommandLine;
         _description = m.Description;
         _order       = m.Order;
+        _programPath = m.ProgramPath;
+        _mpirunPath  = m.MpirunPath;
+
+        foreach (var pf in m.ParameterFiles)
+            ParameterFiles.Add(pf);
+
+        foreach (var ea in m.ExtraArgs)
+            ExtraArgs.Add(new ExtraArgViewModel(ea));
     }
 
-    public CommandEntryViewModel() { _commandLine = string.Empty; }
+    public CommandEntryViewModel() { _commandLine = string.Empty; _programPath = string.Empty; }
 
-    public string  CommandLine  { get => _commandLine;  set => SetField(ref _commandLine,  value); }
+    public string  CommandLine  { get => _commandLine;  set { if (SetField(ref _commandLine, value)) OnPropertyChanged(nameof(DisplaySummary)); } }
     public string? Description  { get => _description;  set => SetField(ref _description,  value); }
     public int     Order        { get => _order;        set => SetField(ref _order,        value); }
 
+    public string ProgramPath
+    {
+        get => _programPath;
+        set { if (SetField(ref _programPath, value)) { RebuildCommandLine(); OnPropertyChanged(nameof(DisplaySummary)); } }
+    }
+
+    public string? MpirunPath
+    {
+        get => _mpirunPath;
+        set { if (SetField(ref _mpirunPath, value)) RebuildCommandLine(); }
+    }
+
+    public ObservableCollection<string>         ParameterFiles { get; } = new();
+    public ObservableCollection<ExtraArgViewModel> ExtraArgs   { get; } = new();
+
+    /// <summary>Short label shown in the command list (program file name or raw command line).</summary>
+    public string DisplaySummary
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(_programPath))
+            {
+                var slashIdx = _programPath.LastIndexOf('/');
+                var name = slashIdx >= 0 ? _programPath[(slashIdx + 1)..] : _programPath;
+                return string.IsNullOrWhiteSpace(name) ? _programPath : name;
+            }
+            return string.IsNullOrWhiteSpace(_commandLine) ? "(empty)" : _commandLine;
+        }
+    }
+
+    /// <summary>Rebuild <see cref="CommandLine"/> from rich structured fields.</summary>
+    public void RebuildCommandLine()
+    {
+        if (string.IsNullOrWhiteSpace(_programPath)) return;
+
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_mpirunPath))
+            parts.Add(_mpirunPath);
+        parts.Add(_programPath);
+        foreach (var pf in ParameterFiles.Where(p => !string.IsNullOrWhiteSpace(p)))
+            parts.Add(pf);
+        foreach (var ea in ExtraArgs.Where(a => !string.IsNullOrWhiteSpace(a.Arg)))
+            parts.Add(ea.Arg);
+
+        CommandLine = string.Join(" ", parts);
+    }
+
     public CommandEntry ToModel() => new()
     {
-        CommandLine = CommandLine,
-        Description = Description,
-        Order       = Order,
+        CommandLine    = CommandLine,
+        Description    = Description,
+        Order          = Order,
+        ProgramPath    = ProgramPath,
+        ParameterFiles = ParameterFiles.ToList(),
+        ExtraArgs      = ExtraArgs.Select(a => a.Arg).ToList(),
+        MpirunPath     = MpirunPath,
     };
+}
+
+/// <summary>A single extra command-line argument entry within a command.</summary>
+public sealed class ExtraArgViewModel : ViewModelBase
+{
+    private string _arg;
+
+    public ExtraArgViewModel(string arg = "") { _arg = arg; }
+
+    public string Arg
+    {
+        get => _arg;
+        set => SetField(ref _arg, value);
+    }
 }
