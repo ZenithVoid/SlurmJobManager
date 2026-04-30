@@ -151,6 +151,16 @@
                 <Button Grid.Column="1" Content="{DynamicResource Btn.LoadTask}" Command="{Binding LoadTaskCommand}"
                         Style="{StaticResource NeutralButtonStyle}" Padding="8,4" />
             </Grid>
+            <Grid Margin="0,0,0,2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="{DynamicResource Btn.SaveAsBlueprint}" Command="{Binding SaveAsBlueprintCommand}"
+                        Style="{StaticResource NeutralButtonStyle}" Margin="0,0,4,0" Padding="8,4" />
+                <Button Grid.Column="1" Content="{DynamicResource Btn.CreateFromBlueprint}" Command="{Binding CreateFromBlueprintCommand}"
+                        Style="{StaticResource NeutralButtonStyle}" Padding="8,4" />
+            </Grid>
             <TextBlock Text="{Binding LastSavedTime}"
                        Style="{StaticResource MutedTextStyle}" Margin="0,0,0,8" FontSize="11" />
 
