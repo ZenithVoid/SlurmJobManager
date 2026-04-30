@@ -1,5 +1,6 @@
 using System.Windows;
 using System.ComponentModel;
+using System.Windows.Input;
 using SlurmJobManager.App.ViewModels;
 
 namespace SlurmJobManager.App.Views;
@@ -22,6 +23,29 @@ public partial class RemoteFileEditorView : Window
             Editor.Options.HighlightCurrentLine = true;
         };
     }
+
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            return;
+        }
+
+        if (WindowState == WindowState.Maximized)
+            WindowState = WindowState.Normal;
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            try { DragMove(); }
+            catch (InvalidOperationException) { }
+        }
+    }
+
+    private void BtnMinimize_Click(object sender, RoutedEventArgs e)
+        => WindowState = WindowState.Minimized;
+
+    private void BtnCloseChrome_Click(object sender, RoutedEventArgs e)
+        => Close();
 
     private void BtnClose_Click(object sender, RoutedEventArgs e)
     {

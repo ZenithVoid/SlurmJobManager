@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
+using SlurmJobManager.App.ViewModels;
 
 namespace SlurmJobManager.App.Converters;
 
@@ -87,6 +88,47 @@ public sealed class LocalizationKeyConverter : IValueConverter
             if (res is string s) return s;
         }
         return value?.ToString() ?? string.Empty;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => DependencyProperty.UnsetValue;
+}
+
+/// <summary>Converts a style key string to a Style resource.</summary>
+[ValueConversion(typeof(string), typeof(Style))]
+public sealed class StyleKeyToStyleConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not string key || string.IsNullOrWhiteSpace(key))
+            return DependencyProperty.UnsetValue;
+
+        var style = Application.Current?.TryFindResource(key) as Style;
+        return style ?? DependencyProperty.UnsetValue;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => DependencyProperty.UnsetValue;
+}
+
+/// <summary>Converts connection status enum values to semantic themed brushes.</summary>
+[ValueConversion(typeof(ConnectionStatus), typeof(Brush))]
+public sealed class ConnectionStatusToBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        var key = value is ConnectionStatus status
+            ? status switch
+            {
+                ConnectionStatus.Connected                  => "AccentGreenBrush",
+                ConnectionStatus.Disconnected               => "TextMutedBrush",
+                ConnectionStatus.Error                      => "AccentRedBrush",
+                ConnectionStatus.Connecting or ConnectionStatus.Reconnecting => "AccentYellowBrush",
+                _                                           => "TextMutedBrush",
+            }
+            : "TextMutedBrush";
+
+        return Application.Current?.TryFindResource(key) as Brush ?? Brushes.Gray;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

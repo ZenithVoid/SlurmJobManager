@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using System.Windows;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
 
@@ -19,7 +20,7 @@ public sealed class ConnectionViewModel : ViewModelBase
     private string _privateKeyPath = string.Empty;
     private string _privateKeyPassphrase = string.Empty;
     private ConnectionStatus _status = ConnectionStatus.Disconnected;
-    private string _statusMessage = "Disconnected";
+    private string _statusMessage = string.Empty;
     private bool _isBusy;
 
     public string Host               { get => _host;                  set => SetField(ref _host, value); }
@@ -44,11 +45,11 @@ public sealed class ConnectionViewModel : ViewModelBase
 
     public string StatusText => Status switch
     {
-        ConnectionStatus.Connected    => "● Connected",
-        ConnectionStatus.Connecting   => "◎ Connecting…",
-        ConnectionStatus.Reconnecting => "↺ Reconnecting…",
-        ConnectionStatus.Error        => "✗ Error",
-        _                             => "○ Disconnected",
+        ConnectionStatus.Connected    => $"● {L("Status.Connected")}",
+        ConnectionStatus.Connecting   => $"◎ {L("Status.Connecting")}",
+        ConnectionStatus.Reconnecting => $"↺ {L("Conn.StatusReconnecting")}",
+        ConnectionStatus.Error        => $"✗ {L("Status.Error")}",
+        _                             => $"○ {L("Status.Disconnected")}",
     };
 
     public string StatusMessage { get => _statusMessage; set => SetField(ref _statusMessage, value); }
@@ -76,6 +77,7 @@ public sealed class ConnectionViewModel : ViewModelBase
         BrowseKeyCommand      = new RelayCommand(BrowseKey);
         SaveProfileCommand    = new AsyncRelayCommand(SaveProfileAsync,  () => _profileStore != null && !IsBusy);
         LoadProfileCommand    = new AsyncRelayCommand(LoadProfileAsync,  () => _profileStore != null && !IsBusy);
+        _statusMessage = L("Status.Disconnected");
     }
 
     // ── Public API for reconnect logic ───────────────────────────────────────
@@ -101,12 +103,12 @@ public sealed class ConnectionViewModel : ViewModelBase
     {
         IsBusy = true;
         Status = ConnectionStatus.Connecting;
-        StatusMessage = "Connecting…";
+        StatusMessage = L("Status.Connecting");
         try
         {
             await _ssh.ConnectAsync(BuildProfile(), ct);
             Status = ConnectionStatus.Connected;
-            StatusMessage = $"Connected to {_host}:{_port}";
+            StatusMessage = string.Format(L("Conn.ConnectedTo"), _host, _port);
             ConnectionEstablished?.Invoke(_username);
         }
         catch (Exception ex)
@@ -121,13 +123,14 @@ public sealed class ConnectionViewModel : ViewModelBase
     {
         await _ssh.DisconnectAsync();
         Status = ConnectionStatus.Disconnected;
-        StatusMessage = "Disconnected";
+        StatusMessage = L("Status.Disconnected");
     }
 
     private async Task TestAsync(CancellationToken ct)
     {
         IsBusy = true;
-        StatusMessage = "Testing…";
+        Status = ConnectionStatus.Connecting;
+        StatusMessage = L("Conn.Testing");
         try
         {
             await _ssh.ConnectAsync(BuildProfile(), ct);
@@ -135,13 +138,13 @@ public sealed class ConnectionViewModel : ViewModelBase
             if (code == 0 && stdout.Contains("SLURM_TEST_OK"))
             {
                 Status = ConnectionStatus.Connected;
-                StatusMessage = "Test successful and connected.";
+                StatusMessage = L("Conn.TestSuccess");
                 ConnectionEstablished?.Invoke(_username);
             }
             else
             {
                 Status = ConnectionStatus.Error;
-                StatusMessage = $"Test failed: unexpected response (exit {code}).";
+                StatusMessage = string.Format(L("Conn.TestUnexpectedResponse"), code);
             }
         }
         catch (Exception ex)
@@ -161,11 +164,11 @@ public sealed class ConnectionViewModel : ViewModelBase
         try
         {
             await _profileStore.SaveAsync(BuildProfile(), ct);
-            StatusMessage = "Profile saved (credentials encrypted).";
+            StatusMessage = L("Conn.ProfileSaved");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Save profile failed: {ex.Message}";
+            StatusMessage = string.Format(L("Conn.SaveProfileFailed"), ex.Message);
         }
         finally { IsBusy = false; }
     }
@@ -177,7 +180,7 @@ public sealed class ConnectionViewModel : ViewModelBase
         try
         {
             var profile = await _profileStore.LoadAsync(ct);
-            if (profile is null) { StatusMessage = "No saved profile found."; return; }
+            if (profile is null) { StatusMessage = L("Conn.NoSavedProfile"); return; }
 
             Host                 = profile.Host;
             Port                 = profile.Port;
@@ -185,11 +188,11 @@ public sealed class ConnectionViewModel : ViewModelBase
             PrivateKeyPath       = profile.PrivateKeyPath ?? string.Empty;
             Password             = profile.Password             ?? string.Empty;
             PrivateKeyPassphrase = profile.PrivateKeyPassphrase ?? string.Empty;
-            StatusMessage = "Profile loaded.";
+            StatusMessage = L("Conn.ProfileLoaded");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Load profile failed: {ex.Message}";
+            StatusMessage = string.Format(L("Conn.LoadProfileFailed"), ex.Message);
         }
         finally { IsBusy = false; }
     }
@@ -221,11 +224,20 @@ public sealed class ConnectionViewModel : ViewModelBase
     internal static string ClassifyError(Exception ex)
     {
         if (ex is Renci.SshNet.Common.SshAuthenticationException)
-            return $"Authentication failed — check username/password or key. ({ex.Message})";
+            return string.Format(L("Conn.ErrAuth"), ex.Message);
         if (ex is System.Net.Sockets.SocketException)
-            return $"Network unreachable — check host/port and firewall. ({ex.Message})";
+            return string.Format(L("Conn.ErrNetwork"), ex.Message);
         if (ex is TimeoutException || ex is OperationCanceledException)
-            return $"Connection timed out — server may be slow or unreachable.";
-        return $"Error: {ex.Message}";
+            return L("Conn.ErrTimeout");
+        return string.Format(L("Conn.ErrGeneric"), ex.Message);
+    }
+
+    private static string L(string key)
+        => Application.Current?.TryFindResource(key) as string ?? key;
+
+    internal void NotifyLocaleChanged()
+    {
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(StatusMessage));
     }
 }

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.Core.Interfaces;
 
@@ -17,6 +18,7 @@ public sealed class RemoteDirectoryPickerViewModel : ViewModelBase
     private string? _selectedEntry;
     private bool _isBusy;
     private string _statusMessage = string.Empty;
+    private string _statusStyleKey = "InfoTextStyle";
 
     public string HomeDirectory { get; }
 
@@ -42,6 +44,7 @@ public sealed class RemoteDirectoryPickerViewModel : ViewModelBase
 
     public bool IsBusy { get => _isBusy; private set => SetField(ref _isBusy, value); }
     public string StatusMessage { get => _statusMessage; set => SetField(ref _statusMessage, value); }
+    public string StatusStyleKey { get => _statusStyleKey; private set => SetField(ref _statusStyleKey, value); }
 
     /// <summary>
     /// The full remote path the user has confirmed (set when the user clicks OK or double-clicks).
@@ -94,7 +97,7 @@ public sealed class RemoteDirectoryPickerViewModel : ViewModelBase
     private async Task LoadEntriesAsync(string path, CancellationToken ct)
     {
         IsBusy = true;
-        StatusMessage = "加载中…";
+        SetStatus("RemotePicker.StatusLoading", "InfoTextStyle");
         try
         {
             var dirs = await _ssh.ListDirectoriesAsync(path, ct);
@@ -103,11 +106,11 @@ public sealed class RemoteDirectoryPickerViewModel : ViewModelBase
                 Entries.Add(d);
             CurrentPath = path;
             SelectedEntry = null;
-            StatusMessage = string.Empty;
+            SetStatus(string.Empty, "InfoTextStyle");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"无法加载目录：{ex.Message}";
+            SetStatus(string.Format(L("RemotePicker.StatusLoadFailed"), ex.Message), "ErrorTextStyle", localize: false);
         }
         finally
         {
@@ -126,5 +129,16 @@ public sealed class RemoteDirectoryPickerViewModel : ViewModelBase
     {
         var idx = path.TrimEnd('/').LastIndexOf('/');
         return idx > 0 ? path[..idx] : null;
+    }
+
+    private static string L(string key)
+        => Application.Current?.TryFindResource(key) as string ?? key;
+
+    private void SetStatus(string messageOrKey, string styleKey, bool localize = true)
+    {
+        StatusStyleKey = styleKey;
+        StatusMessage = string.IsNullOrEmpty(messageOrKey)
+            ? string.Empty
+            : (localize ? L(messageOrKey) : messageOrKey);
     }
 }

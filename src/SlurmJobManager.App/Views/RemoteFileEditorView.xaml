@@ -11,115 +11,167 @@
     Height="540" Width="680"
     MinHeight="320" MinWidth="440"
     WindowStartupLocation="CenterOwner"
+    WindowStyle="None"
+    AllowsTransparency="False"
+    ResizeMode="CanResize"
     Background="{DynamicResource BgBaseBrush}"
     Foreground="{DynamicResource TextPrimaryBrush}">
 
+    <WindowChrome.WindowChrome>
+        <WindowChrome
+            CaptionHeight="36"
+            ResizeBorderThickness="5"
+            GlassFrameThickness="0,0,0,1"
+            CornerRadius="0" />
+    </WindowChrome.WindowChrome>
+
     <Window.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <conv:StyleKeyToStyleConverter x:Key="StyleKeyToStyle" />
     </Window.Resources>
 
-    <Grid Margin="12">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="36" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="0,0,0,6">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel>
-                <TextBlock Text="{Binding FileName}"
-                           Foreground="{DynamicResource TextPrimaryBrush}"
-                           FontSize="13" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding RemotePath}"
-                           Foreground="{DynamicResource TextMutedBrush}"
-                           FontFamily="Consolas" FontSize="11"
-                           TextTrimming="CharacterEllipsis" />
-            </StackPanel>
-            <Border Grid.Column="1"
-                    Background="{DynamicResource BgSurface1Brush}"
-                    BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    Padding="8,3"
-                    VerticalAlignment="Center">
-                <TextBlock Text="{Binding EncodingName}"
-                           FontFamily="Consolas"
-                           Foreground="{DynamicResource TextPrimaryBrush}"
-                           FontSize="11" />
-            </Border>
-        </Grid>
-
-        <!-- Editor -->
-        <TextBlock Grid.Row="1"
-                   Text="{DynamicResource RemoteEditor.BinaryRejected}"
-                   Foreground="{DynamicResource AccentYellowBrush}"
-                   FontSize="12"
-                   Margin="0,0,0,6"
-                   Visibility="{Binding IsBinaryFile, Converter={StaticResource BoolToVis}}" />
-
-        <Border Grid.Row="2"
-                Background="{DynamicResource BgCrustBrush}"
+        <Border Grid.Row="0"
+                Background="{DynamicResource BgPanelBrush}"
                 BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="1"
-                CornerRadius="6">
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Setter Property="Visibility" Value="Visible" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsBinaryFile}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
-            <avalonedit:TextEditor x:Name="Editor"
-                                   Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}"
-                                   ShowLineNumbers="True"
-                                   FontFamily="Consolas"
-                                   FontSize="13"
-                                   Background="{DynamicResource BgCrustBrush}"
-                                   Foreground="{DynamicResource TextPrimaryBrush}"
-                                   IsReadOnly="{Binding IsBusy}"
-                                   WordWrap="False"
-                                   HorizontalScrollBarVisibility="Auto"
-                                   VerticalScrollBarVisibility="Auto" />
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Border Background="Transparent"
+                        HorizontalAlignment="Stretch"
+                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown" />
+                <TextBlock Text="{Binding WindowTitle}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           IsHitTestVisible="False" />
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top">
+                    <Button x:Name="BtnMinimize"
+                            Style="{StaticResource TitleBarButtonStyle}"
+                            ToolTip="{DynamicResource TitleBar.Minimize}"
+                            Click="BtnMinimize_Click">
+                        <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+                    </Button>
+                    <Button x:Name="BtnClose"
+                            Style="{StaticResource TitleBarCloseButtonStyle}"
+                            ToolTip="{DynamicResource TitleBar.Close}"
+                            Click="BtnCloseChrome_Click">
+                        <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+                    </Button>
+                </StackPanel>
+            </Grid>
         </Border>
 
-        <!-- Status -->
-        <TextBlock Grid.Row="3"
-                   Text="{Binding StatusMessage}"
-                   Foreground="{DynamicResource AccentYellowBrush}"
-                   FontSize="11" Margin="0,4,0,4"
-                   TextWrapping="Wrap" />
+        <Grid Grid.Row="1" Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <!-- Buttons -->
-        <Grid Grid.Row="4">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
+            <Grid Grid.Row="0" Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="{Binding FileName}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               FontSize="13" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding RemotePath}"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               FontFamily="Consolas" FontSize="11"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <Border Grid.Column="1"
+                        Background="{DynamicResource BgSurface1Brush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="8,3"
+                        VerticalAlignment="Center"
+                        ToolTip="{DynamicResource RemoteEditor.EncodingTip}">
+                    <TextBlock Text="{Binding EncodingName}"
+                               FontFamily="Consolas"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               FontSize="11" />
+                </Border>
+            </Grid>
 
-            <TextBlock Grid.Column="0"
-                       Text="{DynamicResource RemoteEditor.Saving}"
-                       Foreground="{DynamicResource TextMutedBrush}"
-                       FontSize="11" VerticalAlignment="Center"
-                       Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+            <!-- Editor -->
+            <TextBlock Grid.Row="1"
+                       Text="{DynamicResource RemoteEditor.BinaryRejected}"
+                       Style="{StaticResource WarningTextStyle}"
+                       FontSize="12"
+                       Margin="0,0,0,6"
+                       Visibility="{Binding IsBinaryFile, Converter={StaticResource BoolToVis}}" />
 
-            <Button Grid.Column="1" Content="{DynamicResource RemoteEditor.Save}"
-                    Command="{Binding SaveCommand}"
-                    Style="{StaticResource AccentButtonStyle}"
-                    Padding="12,5" Margin="0,0,6,0" />
-            <Button Grid.Column="2" Content="{DynamicResource RemoteEditor.Close}"
-                    Style="{StaticResource NeutralButtonStyle}"
-                    Padding="12,5"
-                    Click="BtnClose_Click" />
+            <Border Grid.Row="2"
+                    Background="{DynamicResource BgCrustBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsBinaryFile}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <avalonedit:TextEditor x:Name="Editor"
+                                       Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}"
+                                       ShowLineNumbers="True"
+                                       FontFamily="Consolas"
+                                       FontSize="13"
+                                       Background="{DynamicResource BgCrustBrush}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       IsReadOnly="{Binding IsBusy}"
+                                       WordWrap="False"
+                                       HorizontalScrollBarVisibility="Auto"
+                                       VerticalScrollBarVisibility="Auto" />
+            </Border>
+
+            <!-- Status -->
+            <TextBlock Grid.Row="3"
+                       Text="{Binding StatusMessage}"
+                       Style="{Binding StatusStyleKey, Converter={StaticResource StyleKeyToStyle}}" />
+
+            <!-- Buttons -->
+            <Grid Grid.Row="4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="{DynamicResource RemoteEditor.Saving}"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           FontSize="11" VerticalAlignment="Center"
+                           Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+
+                <Button Grid.Column="1" Content="{DynamicResource RemoteEditor.Save}"
+                        Command="{Binding SaveCommand}"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Padding="12,5" Margin="0,0,6,0" />
+                <Button Grid.Column="2" Content="{DynamicResource RemoteEditor.Close}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        Padding="12,5"
+                        Click="BtnClose_Click" />
+            </Grid>
         </Grid>
     </Grid>
 </Window>

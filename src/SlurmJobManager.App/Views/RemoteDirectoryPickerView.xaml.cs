@@ -13,6 +13,29 @@ public partial class RemoteDirectoryPickerView : Window
         InitializeComponent();
     }
 
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            return;
+        }
+
+        if (WindowState == WindowState.Maximized)
+            WindowState = WindowState.Normal;
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            try { DragMove(); }
+            catch (InvalidOperationException) { }
+        }
+    }
+
+    private void BtnMinimize_Click(object sender, RoutedEventArgs e)
+        => WindowState = WindowState.Minimized;
+
+    private void BtnClose_Click(object sender, RoutedEventArgs e)
+        => DialogResult = false;
+
     private void DirListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (Vm.SelectedEntry is not null)

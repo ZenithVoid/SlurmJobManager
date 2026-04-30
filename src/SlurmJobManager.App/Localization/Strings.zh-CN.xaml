@@ -53,6 +53,7 @@
     <sys:String x:Key="Btn.SubmitSbatch">提交 sbatch 作业</sys:String>
     <sys:String x:Key="Btn.Run">运行</sys:String>
     <sys:String x:Key="Btn.CancelCmd">✕ 取消</sys:String>
+    <sys:String x:Key="Btn.StopCmd">⏹ 停止</sys:String>
     <sys:String x:Key="Btn.Copy">复制</sys:String>
     <sys:String x:Key="Btn.Clear">清除</sys:String>
 
@@ -63,6 +64,7 @@
     <sys:String x:Key="Status.Connecting">连接中…</sys:String>
     <sys:String x:Key="Status.Loading">⏳ 加载中…</sys:String>
     <sys:String x:Key="Status.Error">错误</sys:String>
+    <sys:String x:Key="Units.SecondShort">秒</sys:String>
 
     <!-- ── 仪表盘 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Dashboard.Title">仪表盘</sys:String>
@@ -136,6 +138,19 @@
     <sys:String x:Key="Tooltip.LoadProfile">加载已保存的连接配置</sys:String>
     <sys:String x:Key="Conn.ProfileLoaded">已加载保存的配置。</sys:String>
     <sys:String x:Key="Conn.ProfileLoadFailed">加载配置失败，请重新输入并保存（{0}）。</sys:String>
+    <sys:String x:Key="Conn.StatusReconnecting">重连中…</sys:String>
+    <sys:String x:Key="Conn.ConnectedTo">已连接到 {0}:{1}</sys:String>
+    <sys:String x:Key="Conn.Testing">测试中…</sys:String>
+    <sys:String x:Key="Conn.TestSuccess">测试成功并已连接。</sys:String>
+    <sys:String x:Key="Conn.TestUnexpectedResponse">测试失败：响应异常（退出码 {0}）。</sys:String>
+    <sys:String x:Key="Conn.ProfileSaved">配置已保存（凭据已加密）。</sys:String>
+    <sys:String x:Key="Conn.SaveProfileFailed">保存配置失败：{0}</sys:String>
+    <sys:String x:Key="Conn.NoSavedProfile">未找到已保存配置。</sys:String>
+    <sys:String x:Key="Conn.LoadProfileFailed">加载配置失败：{0}</sys:String>
+    <sys:String x:Key="Conn.ErrAuth">认证失败，请检查用户名/密码或密钥。（{0}）</sys:String>
+    <sys:String x:Key="Conn.ErrNetwork">网络不可达，请检查主机/端口与防火墙。（{0}）</sys:String>
+    <sys:String x:Key="Conn.ErrTimeout">连接超时，服务器可能响应缓慢或不可达。</sys:String>
+    <sys:String x:Key="Conn.ErrGeneric">错误：{0}</sys:String>
 
     <!-- ── 任务编辑器 ────────────────────────────────────────────────────── -->
     <sys:String x:Key="Task.Setup">任务配置</sys:String>
@@ -195,6 +210,45 @@
     <sys:String x:Key="Task.TaskIdDirCheckFailed">目录校验失败，请检查连接状态。</sys:String>
     <sys:String x:Key="Task.LoadNotFound">未找到任务数据（task.json / tasks.manifest.json）。</sys:String>
     <sys:String x:Key="Task.InvalidRemoteWorkDir">请先设置有效的远程工作目录后再提交。</sys:String>
+    <sys:String x:Key="Task.LastJobId">最近作业 ID：{0}</sys:String>
+    <sys:String x:Key="Task.UnitMinimumOne">至少需要保留一个任务单元。</sys:String>
+    <sys:String x:Key="Task.InitAfterConnectFailed">连接后初始化失败：{0}</sys:String>
+    <sys:String x:Key="Task.RequireConnectionForBrowse">请先建立 SSH 连接后再浏览远程目录。</sys:String>
+    <sys:String x:Key="Task.RefreshAppCandidatesFailed">刷新应用路径失败：{0}</sys:String>
+    <sys:String x:Key="Task.RefreshTemplateCandidatesFailed">刷新模板列表失败：{0}</sys:String>
+    <sys:String x:Key="Task.LoadTemplateFailed">加载模板失败：{0}</sys:String>
+    <sys:String x:Key="Task.SaveParamMissingRequired">请先完成必填项后再保存参数文件（根目录、TaskId 和文件名不可为空）。</sys:String>
+    <sys:String x:Key="Task.RequireConnectionForSaveParam">请先建立 SSH 连接后再保存参数文件。</sys:String>
+    <sys:String x:Key="Task.SavedAt">已保存：{0:HH:mm:ss}</sys:String>
+    <sys:String x:Key="Task.ParamFileSaved">参数文件已保存：{0}</sys:String>
+    <sys:String x:Key="Task.SaveParamFailed">保存参数文件失败：{0}</sys:String>
+    <sys:String x:Key="Task.RequireConnection">请先建立 SSH 连接。</sys:String>
+    <sys:String x:Key="Task.RequireTaskPath">请先设置任务目录或输入浏览路径。</sys:String>
+    <sys:String x:Key="Task.PathMissing">路径不存在：请检查输入目录。</sys:String>
+    <sys:String x:Key="Task.PathIsFile">该路径是文件而非目录，请输入目录路径。</sys:String>
+    <sys:String x:Key="Task.DirReadFailedNoDetail">无法读取目录，请检查权限。</sys:String>
+    <sys:String x:Key="Task.DirReadFailed">无法读取目录：{0}</sys:String>
+    <sys:String x:Key="Task.DirEmpty">任务目录为空。</sys:String>
+    <sys:String x:Key="Task.DirLoadedCount">已加载 {0} 个条目。</sys:String>
+    <sys:String x:Key="Task.RefreshFilesFailed">刷新文件列表失败：{0}</sys:String>
+    <sys:String x:Key="Task.GoUpPathEmpty">当前路径为空，无法返回上级。</sys:String>
+    <sys:String x:Key="Task.BinaryFileBlocked">文件 {0} 可能是二进制文件，已阻止打开。</sys:String>
+    <sys:String x:Key="Task.Saving">保存任务…</sys:String>
+    <sys:String x:Key="Task.SavedPath">任务已保存：{0}</sys:String>
+    <sys:String x:Key="Task.LastSavedAt">最近保存：{0:HH:mm:ss}</sys:String>
+    <sys:String x:Key="Task.SaveFailed">保存失败：{0}</sys:String>
+    <sys:String x:Key="Task.Loading">加载任务…</sys:String>
+    <sys:String x:Key="Task.LoadedLegacy">任务已加载（旧格式）：{0}</sys:String>
+    <sys:String x:Key="Task.WorkspaceLoaded">任务工作区已加载：{0}（{1} 个任务单元）</sys:String>
+    <sys:String x:Key="Task.LoadFailed">加载失败：{0}</sys:String>
+    <sys:String x:Key="Task.NoActiveUnit">没有活动任务单元可提交，请先保存任务配置。</sys:String>
+    <sys:String x:Key="Task.SubmitPreparing">准备提交…</sys:String>
+    <sys:String x:Key="Task.SubmitSucceeded">作业已提交！Job ID = {0}</sys:String>
+    <sys:String x:Key="Task.SubmitFailed">提交失败：{0}</sys:String>
+    <sys:String x:Key="Task.SubmittingUnit">提交 {0}…</sys:String>
+    <sys:String x:Key="Task.RequireRootDirectory">请先配置任务根目录</sys:String>
+    <sys:String x:Key="Task.RequireTaskId">请先填写 TaskId</sys:String>
+    <sys:String x:Key="Task.RequireAppPath">请先选择应用程序路径</sys:String>
     <sys:String x:Key="Btn.AddProgram">+ 添加程序</sys:String>
     <sys:String x:Key="Btn.RemoveProgram">- 删除程序</sys:String>
     <sys:String x:Key="Btn.AddParamFile">+ 添加参数文件</sys:String>
@@ -241,12 +295,17 @@
     <sys:String x:Key="CmdBuilder.SbatchMissingShebangError">sbatch 脚本缺少 shebang（例如 #!/bin/bash）或明确 TODO 提示，请先修正后再保存应用。</sys:String>
 
     <!-- ── 远程目录选择器 ─────────────────────────────────────────────────── -->
-    <sys:String x:Key="RemotePicker.Title">选择远程目录</sys:String>
+    <sys:String x:Key="RemotePicker.TitleWindow">选择远程目录</sys:String>
+    <sys:String x:Key="RemotePicker.Title">远程目录选择器</sys:String>
     <sys:String x:Key="RemotePicker.GoUp">⬆ 上级</sys:String>
     <sys:String x:Key="RemotePicker.Refresh">⟳ 刷新</sys:String>
     <sys:String x:Key="RemotePicker.Hint">选中当前目录或双击进入子目录后点击 [选择]</sys:String>
     <sys:String x:Key="RemotePicker.Select">选择</sys:String>
     <sys:String x:Key="RemotePicker.Cancel">取消</sys:String>
+    <sys:String x:Key="RemotePicker.GoUpEnabledTip">返回上一级目录</sys:String>
+    <sys:String x:Key="RemotePicker.GoUpDisabledTip">当前已到根目录，无法继续上移</sys:String>
+    <sys:String x:Key="RemotePicker.StatusLoading">加载中…</sys:String>
+    <sys:String x:Key="RemotePicker.StatusLoadFailed">无法加载目录：{0}</sys:String>
 
     <!-- ── 远程文件编辑器 ─────────────────────────────────────────────────── -->
     <sys:String x:Key="RemoteEditor.Title">编辑文件：</sys:String>
@@ -259,11 +318,18 @@
     <sys:String x:Key="RemoteEditor.Close">关闭</sys:String>
     <sys:String x:Key="RemoteEditor.BinaryRejected">检测到二进制文件，已阻止按文本打开。</sys:String>
     <sys:String x:Key="RemoteEditor.EncodingUnknown">编码无法可靠识别，当前按 UTF-8 打开。</sys:String>
+    <sys:String x:Key="RemoteEditor.EncodingTip">显示检测到的文件编码（仅供参考）。</sys:String>
     <sys:String x:Key="RemoteEditor.UnsavedTitle">未保存更改</sys:String>
     <sys:String x:Key="RemoteEditor.UnsavedPrompt">检测到未保存修改。是否保存后关闭？</sys:String>
 
     <!-- ── 终端视图 ──────────────────────────────────────────────────────── -->
+    <sys:String x:Key="Console.Title">远程终端</sys:String>
     <sys:String x:Key="Console.NotConnected">⚠ 当前可浏览此页面，但执行命令需先建立 SSH 连接。</sys:String>
+    <sys:String x:Key="Console.ErrInvalidCommand">[error] 命令包含非法字符，已拒绝执行。</sys:String>
+    <sys:String x:Key="Console.ErrNotConnected">未建立 SSH 连接，请先在连接页面建立连接。</sys:String>
+    <sys:String x:Key="Console.Timeout">[timeout] 命令超时（{0:0}s）已取消。</sys:String>
+    <sys:String x:Key="Console.Cancelling">[cancelling…]</sys:String>
+    <sys:String x:Key="Console.JumpToBottom">跳到底部</sys:String>
 
     <!-- ── 崩溃对话框 ────────────────────────────────────────────────────── -->
     <sys:String x:Key="Crash.Title">程序发生严重错误</sys:String>
@@ -286,6 +352,14 @@
     <sys:String x:Key="Monitor.Cancelling">正在取消作业 {0}…</sys:String>
     <sys:String x:Key="Monitor.CancelSucceeded">作业 {0} 已取消。</sys:String>
     <sys:String x:Key="Monitor.CancelFailed">取消作业 {0} 失败：{1}</sys:String>
+    <sys:String x:Key="Monitor.FilterAll">全部</sys:String>
+    <sys:String x:Key="Monitor.Refreshing">刷新中…</sys:String>
+    <sys:String x:Key="Monitor.Updated">已更新：{0:HH:mm:ss}（{1} 个作业）</sys:String>
+    <sys:String x:Key="Monitor.RefreshFailed">刷新失败：{0}</sys:String>
+    <sys:String x:Key="Monitor.PollingEvery">轮询间隔 {0}s…</sys:String>
+    <sys:String x:Key="Monitor.PollingStopped">已停止轮询。</sys:String>
+    <sys:String x:Key="Monitor.PollingHalted">连续失败 {0} 次后已停止轮询。请检查连接后手动重启。</sys:String>
+    <sys:String x:Key="Monitor.ReconnectFailed">重连失败（{0}/{1}）…</sys:String>
     <sys:String x:Key="Log.EmptyState">暂无日志，请先提交任务或在上方输入远程文件路径后加载。</sys:String>
     <sys:String x:Key="Log.EmptyTitle">暂无日志内容</sys:String>
     <sys:String x:Key="Log.EmptyHint">请在上方输入远程日志文件路径，然后点击加载按钮。</sys:String>

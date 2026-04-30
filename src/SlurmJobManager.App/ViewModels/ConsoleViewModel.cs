@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
+using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
@@ -22,11 +23,14 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     private string _commandInput = string.Empty;
     private bool _isBusy;
     private bool _isConnected;
+    private bool _isAutoScrollEnabled = true;
     private int _historyIndex = -1;
+    private string _historyDraftInput = string.Empty;
     private CancellationTokenSource? _executeCts;
 
     public string CommandInput { get => _commandInput; set => SetField(ref _commandInput, value); }
     public bool IsBusy         { get => _isBusy;        private set => SetField(ref _isBusy, value); }
+    public bool IsAutoScrollEnabled { get => _isAutoScrollEnabled; set => SetField(ref _isAutoScrollEnabled, value); }
 
     /// <summary>True when the SSH connection is active — used to drive the connection-hint banner.</summary>
     public bool IsConnected    { get => _isConnected;   private set => SetField(ref _isConnected, value); }
@@ -74,18 +78,19 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         if (string.IsNullOrEmpty(cmd))
         {
             if (!string.IsNullOrWhiteSpace(CommandInput))
-                AppendLine(ConsoleLine.Error("[error] 命令包含非法字符，已拒绝执行。"));
+                AppendLine(ConsoleLine.Error(L("Console.ErrInvalidCommand")));
             return;
         }
 
         if (!_ssh.IsConnected)
         {
-            AppendLine(ConsoleLine.Error("未建立 SSH 连接，请先在连接页面建立连接。"));
+            AppendLine(ConsoleLine.Error(L("Console.ErrNotConnected")));
             return;
         }
 
         AddToHistory(cmd);
         CommandInput  = string.Empty;
+        _historyDraftInput = string.Empty;
         _historyIndex = -1;
 
         AppendLine(ConsoleLine.Command($"$ {cmd}"));
@@ -113,7 +118,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
         {
             sw.Stop();
-            AppendLine(ConsoleLine.Error($"[timeout] 命令超时（{_settings.CommandTimeout.TotalSeconds:0}s）已取消。"));
+            AppendLine(ConsoleLine.Error(string.Format(L("Console.Timeout"), _settings.CommandTimeout.TotalSeconds)));
             _logger?.Warning($"Console cmd '{cmd}' timed out after {sw.ElapsedMilliseconds} ms");
         }
         catch (OperationCanceledException)
@@ -154,7 +159,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     private void CancelExecution()
     {
         _executeCts?.Cancel();
-        AppendLine(ConsoleLine.Meta("[cancelling…]"));
+        AppendLine(ConsoleLine.Meta(L("Console.Cancelling")));
     }
 
     private void AddToHistory(string cmd)
@@ -168,13 +173,20 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     private void HistoryUp()
     {
         if (CommandHistory.Count == 0) return;
+        if (_historyIndex == -1)
+            _historyDraftInput = CommandInput;
         _historyIndex = Math.Min(_historyIndex + 1, CommandHistory.Count - 1);
         CommandInput  = CommandHistory[_historyIndex];
     }
 
     private void HistoryDown()
     {
-        if (_historyIndex <= 0) { _historyIndex = -1; CommandInput = string.Empty; return; }
+        if (_historyIndex <= 0)
+        {
+            _historyIndex = -1;
+            CommandInput = _historyDraftInput;
+            return;
+        }
         _historyIndex--;
         CommandInput = CommandHistory[_historyIndex];
     }
@@ -226,4 +238,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         else
             IsBusy = value;
     }
+
+    private static string L(string key)
+        => Application.Current?.TryFindResource(key) as string ?? key;
 }

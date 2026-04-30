@@ -3,12 +3,16 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:b="clr-namespace:SlurmJobManager.App.Behaviors"
+    xmlns:conv="clr-namespace:SlurmJobManager.App.Converters"
     xmlns:vm="clr-namespace:SlurmJobManager.App.ViewModels"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     d:DesignHeight="860" d:DesignWidth="700"
     Background="{DynamicResource BgBaseBrush}">
+    <UserControl.Resources>
+        <conv:StyleKeyToStyleConverter x:Key="StyleKeyToStyle" />
+    </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0"
                   b:SmoothScrollBehavior.IsEnabled="True"
@@ -159,10 +163,11 @@
                     Style="{StaticResource SuccessButtonStyle}"
                     Padding="10,8" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
 
-            <TextBlock Text="{Binding LastJobIdText}"
-                       Foreground="{DynamicResource AccentGreenBrush}"
+             <TextBlock Text="{Binding LastJobIdText}"
+                       Style="{StaticResource SuccessTextStyle}"
                        FontSize="12" Margin="0,0,0,4" />
-            <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource StatusTextStyle}" />
+            <TextBlock Text="{Binding StatusMessage}"
+                       Style="{Binding StatusStyleKey, Converter={StaticResource StyleKeyToStyle}}" />
 
         </StackPanel>
     </ScrollViewer>

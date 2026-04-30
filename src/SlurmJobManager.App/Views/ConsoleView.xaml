@@ -13,9 +13,14 @@
     <UserControl.Resources>
         <conv:ConsoleLineKindToBrushConverter x:Key="KindToBrush" />
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
     </UserControl.Resources>
 
     <DockPanel Margin="8">
+
+        <TextBlock DockPanel.Dock="Top"
+                   Text="{DynamicResource Console.Title}"
+                   Style="{StaticResource PageTitleStyle}" />
 
         <!-- Connection hint: shown when SSH is not connected -->
         <Border DockPanel.Dock="Top"
@@ -48,10 +53,10 @@
                     Command="{Binding ExecuteCommand}"
                     Style="{StaticResource SuccessButtonStyle}"
                     Margin="4,0,0,0" Padding="10,4" />
-            <Button Grid.Column="2" Content="{DynamicResource Btn.CancelCmd}"
-                    Command="{Binding CancelCommand}"
-                    Style="{StaticResource DangerButtonStyle}"
-                    Margin="4,0,0,0" Padding="8,4" />
+            <Button Grid.Column="2" Content="{DynamicResource Btn.StopCmd}"
+                     Command="{Binding CancelCommand}"
+                     Style="{StaticResource DangerButtonStyle}"
+                     Margin="4,0,0,0" Padding="8,4" />
             <Button Grid.Column="3" Content="{DynamicResource Btn.Copy}"
                     Command="{Binding CopyOutputCommand}"
                     Style="{StaticResource AccentButtonStyle}"
@@ -63,15 +68,17 @@
         </Grid>
 
         <!-- Output area with smooth scrolling and per-line colour -->
-        <ScrollViewer VerticalScrollBarVisibility="Auto"
+        <Grid>
+            <ScrollViewer x:Name="OutputScrollViewer"
+                      VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Auto"
                       CanContentScroll="False"
                       b:SmoothScrollBehavior.IsEnabled="True"
                       b:SmoothScrollBehavior.ScrollAmount="60">
-            <ListBox x:Name="OutputList"
-                     ItemsSource="{Binding OutputLines}"
-                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                <ListBox x:Name="OutputList"
+                      ItemsSource="{Binding OutputLines}"
+                      ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      Style="{StaticResource LogListBoxStyle}">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
@@ -90,8 +97,17 @@
                                    TextWrapping="NoWrap" />
                     </DataTemplate>
                 </ListBox.ItemTemplate>
-            </ListBox>
-        </ScrollViewer>
+                </ListBox>
+            </ScrollViewer>
+            <Button Content="{DynamicResource Console.JumpToBottom}"
+                    Click="JumpToBottom_Click"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Padding="8,4"
+                    Margin="0,0,8,8"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Visibility="{Binding IsAutoScrollEnabled, Converter={StaticResource InvBoolToVis}}" />
+        </Grid>
 
     </DockPanel>
 </UserControl>

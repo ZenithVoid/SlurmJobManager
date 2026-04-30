@@ -99,8 +99,7 @@ public partial class App : Application
                 connectionVm.Password             = profile.Password             ?? string.Empty;
                 connectionVm.PrivateKeyPath       = profile.PrivateKeyPath       ?? string.Empty;
                 connectionVm.PrivateKeyPassphrase = profile.PrivateKeyPassphrase ?? string.Empty;
-                connectionVm.StatusMessage        = Current.TryFindResource("Conn.ProfileLoaded") as string
-                                                    ?? "已加载保存的配置。";
+                connectionVm.StatusMessage        = L("Conn.ProfileLoaded");
 
                 if (prefs.AutoConnectOnStartup)
                     connectionVm.ConnectCommand.Execute(null);
@@ -112,12 +111,14 @@ public partial class App : Application
             // friendly status message so the user can re-enter and save their credentials.
             Current.Dispatcher.Invoke(() =>
             {
-                var template = Current.TryFindResource("Conn.ProfileLoadFailed") as string
-                               ?? "加载配置失败，请重新输入并保存（{0}）。";
+                var template = L("Conn.ProfileLoadFailed");
                 connectionVm.StatusMessage = string.Format(template, ex.GetType().Name);
             });
         }
     }
+
+    private static string L(string key)
+        => Current.TryFindResource(key) as string ?? key;
 
     private void OnMainWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {

@@ -1,5 +1,6 @@
 using System.Windows.Input;
 using SlurmJobManager.App.Services;
+using System.Windows;
 
 namespace SlurmJobManager.App.ViewModels;
 
@@ -46,7 +47,9 @@ public sealed class SettingsViewModel : ViewModelBase
         set => _main.IsDarkTheme = value;
     }
 
-    public string ThemeLabel => _main.IsDarkTheme ? "☀ Switch to Light" : "🌙 Switch to Dark";
+    public string ThemeLabel => _main.IsDarkTheme
+        ? L("Settings.ThemeLight")
+        : L("Settings.ThemeDark");
 
     public ICommand ToggleThemeCommand => _main.ToggleThemeCommand;
 
@@ -77,5 +80,11 @@ public sealed class SettingsViewModel : ViewModelBase
     public ICommand SwitchLocaleCommand => _main.SwitchLocaleCommand;
 
     internal void NotifyLocaleChanged()
-        => OnPropertyChanged(nameof(CurrentLocale));
+    {
+        OnPropertyChanged(nameof(CurrentLocale));
+        OnPropertyChanged(nameof(ThemeLabel));
+    }
+
+    private static string L(string key)
+        => Application.Current?.TryFindResource(key) as string ?? key;
 }
