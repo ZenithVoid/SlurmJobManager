@@ -23,7 +23,11 @@ public partial class RemoteDirectoryPickerView : Window
 
         if (WindowState == WindowState.Maximized)
             WindowState = WindowState.Normal;
-        DragMove();
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            try { DragMove(); }
+            catch (InvalidOperationException) { }
+        }
     }
 
     private void BtnMinimize_Click(object sender, RoutedEventArgs e)

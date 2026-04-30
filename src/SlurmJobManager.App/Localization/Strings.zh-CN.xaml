@@ -210,7 +210,7 @@
     <sys:String x:Key="Task.TaskIdDirCheckFailed">目录校验失败，请检查连接状态。</sys:String>
     <sys:String x:Key="Task.LoadNotFound">未找到任务数据（task.json / tasks.manifest.json）。</sys:String>
     <sys:String x:Key="Task.InvalidRemoteWorkDir">请先设置有效的远程工作目录后再提交。</sys:String>
-    <sys:String x:Key="Task.LastJobId">Last Job ID: {0}</sys:String>
+    <sys:String x:Key="Task.LastJobId">最近作业 ID：{0}</sys:String>
     <sys:String x:Key="Task.UnitMinimumOne">至少需要保留一个任务单元。</sys:String>
     <sys:String x:Key="Task.InitAfterConnectFailed">连接后初始化失败：{0}</sys:String>
     <sys:String x:Key="Task.RequireConnectionForBrowse">请先建立 SSH 连接后再浏览远程目录。</sys:String>
