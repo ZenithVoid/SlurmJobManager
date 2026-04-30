@@ -200,6 +200,17 @@ public sealed class SshClientService : ISshClientService
         return stdout.Trim() == "1";
     }
 
+    public Task<long> GetRemoteFileSizeAsync(string remotePath, CancellationToken ct = default)
+    {
+        EnsureConnected();
+        return Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            var attrs = _sftpClient!.GetAttributes(remotePath);
+            return attrs.Size;
+        }, ct);
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private void Disconnect()

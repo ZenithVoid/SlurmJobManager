@@ -344,10 +344,22 @@
 
     <!-- ── Remote file editor ───────────────────────────────────────────── -->
     <sys:String x:Key="RemoteEditor.Title">Edit File:</sys:String>
+    <sys:String x:Key="RemoteEditor.ProbingFile">Reading file metadata…</sys:String>
     <sys:String x:Key="RemoteEditor.Loading">Loading file…</sys:String>
+    <sys:String x:Key="RemoteEditor.LargeLoadHint">Large file detected ({0}), loading in responsive mode…</sys:String>
+    <sys:String x:Key="RemoteEditor.LargeMode">Large file mode enabled ({0}). Editing is supported but may be slower.</sys:String>
+    <sys:String x:Key="RemoteEditor.VeryLargeMode">Very large file mode ({0}). Save operations can take noticeably longer.</sys:String>
+    <sys:String x:Key="RemoteEditor.LargeModeReady">Large file loaded ({0}). Continue editing and save when ready.</sys:String>
+    <sys:String x:Key="RemoteEditor.VeryLargeTitle">Very Large File</sys:String>
+    <sys:String x:Key="RemoteEditor.VeryLargeConfirm">This file is very large ({0}). Opening it may impact performance. Continue?</sys:String>
+    <sys:String x:Key="RemoteEditor.OpenCancelled">Open cancelled.</sys:String>
     <sys:String x:Key="RemoteEditor.LoadFailed">Load failed: </sys:String>
     <sys:String x:Key="RemoteEditor.Saving">⏳ Saving…</sys:String>
+    <sys:String x:Key="RemoteEditor.SavingLarge">⏳ Saving large file…</sys:String>
     <sys:String x:Key="RemoteEditor.Save">💾 Save</sys:String>
+    <sys:String x:Key="RemoteEditor.VeryLargeSaveTitle">Confirm Save</sys:String>
+    <sys:String x:Key="RemoteEditor.VeryLargeSaveConfirm">You are about to overwrite a very large file ({0}). Continue saving?</sys:String>
+    <sys:String x:Key="RemoteEditor.SaveCancelled">Save cancelled.</sys:String>
     <sys:String x:Key="RemoteEditor.Saved">Saved: </sys:String>
     <sys:String x:Key="RemoteEditor.SaveFailed">Save failed: </sys:String>
     <sys:String x:Key="RemoteEditor.Close">Close</sys:String>

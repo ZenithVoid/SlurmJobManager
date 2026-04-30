@@ -344,10 +344,22 @@
 
     <!-- ── 远程文件编辑器 ─────────────────────────────────────────────────── -->
     <sys:String x:Key="RemoteEditor.Title">编辑文件：</sys:String>
+    <sys:String x:Key="RemoteEditor.ProbingFile">读取文件元信息…</sys:String>
     <sys:String x:Key="RemoteEditor.Loading">加载文件…</sys:String>
+    <sys:String x:Key="RemoteEditor.LargeLoadHint">检测到大文件（{0}），正在以可响应模式加载…</sys:String>
+    <sys:String x:Key="RemoteEditor.LargeMode">已启用大文件模式（{0}），可继续编辑但可能稍慢。</sys:String>
+    <sys:String x:Key="RemoteEditor.VeryLargeMode">超大文件模式（{0}），保存可能需要更长时间。</sys:String>
+    <sys:String x:Key="RemoteEditor.LargeModeReady">大文件已加载（{0}），可继续编辑并保存。</sys:String>
+    <sys:String x:Key="RemoteEditor.VeryLargeTitle">超大文件</sys:String>
+    <sys:String x:Key="RemoteEditor.VeryLargeConfirm">该文件体积较大（{0}），打开可能影响性能，是否继续？</sys:String>
+    <sys:String x:Key="RemoteEditor.OpenCancelled">已取消打开。</sys:String>
     <sys:String x:Key="RemoteEditor.LoadFailed">加载失败：</sys:String>
     <sys:String x:Key="RemoteEditor.Saving">⏳ 保存中…</sys:String>
+    <sys:String x:Key="RemoteEditor.SavingLarge">⏳ 大文件保存中…</sys:String>
     <sys:String x:Key="RemoteEditor.Save">💾 保存</sys:String>
+    <sys:String x:Key="RemoteEditor.VeryLargeSaveTitle">确认保存</sys:String>
+    <sys:String x:Key="RemoteEditor.VeryLargeSaveConfirm">即将覆盖超大文件（{0}），确认继续保存？</sys:String>
+    <sys:String x:Key="RemoteEditor.SaveCancelled">已取消保存。</sys:String>
     <sys:String x:Key="RemoteEditor.Saved">已保存：</sys:String>
     <sys:String x:Key="RemoteEditor.SaveFailed">保存失败：</sys:String>
     <sys:String x:Key="RemoteEditor.Close">关闭</sys:String>

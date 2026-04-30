@@ -51,4 +51,7 @@ public interface ISshClientService : IDisposable
 
     /// <summary>Returns true when the given remote path exists as a directory.</summary>
     Task<bool> RemoteDirectoryExistsAsync(string remotePath, CancellationToken ct = default);
+
+    /// <summary>Returns the byte size of a remote file.</summary>
+    Task<long> GetRemoteFileSizeAsync(string remotePath, CancellationToken ct = default);
 }
