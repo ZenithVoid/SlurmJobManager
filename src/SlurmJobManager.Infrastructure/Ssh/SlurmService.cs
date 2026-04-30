@@ -82,11 +82,12 @@ public sealed class SlurmService : ISlurmService
     public async Task<IReadOnlyList<SlurmJobStatus>> GetUserJobsAsync(
         string username, CancellationToken ct = default)
     {
+        var escapedUsername = EscapeShellArg(username);
         return await RetryHelper.ExecuteAsync(
             async token =>
             {
                 var (stdout, _, _) = await _ssh.ExecuteAsync(
-                    $"squeue --user {username} --noheader --format=\"%i|%j|%u|%T|%P|%D|%C|%N|%M|%S\"", token);
+                    $"squeue --user {escapedUsername} --noheader --format=\"%i|%j|%u|%T|%P|%D|%C|%N|%M|%S\"", token);
 
                 var results = new List<SlurmJobStatus>();
                 foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
@@ -126,12 +127,13 @@ public sealed class SlurmService : ISlurmService
         CancellationToken ct = default)
     {
         var safeMaxEntries = Math.Max(1, maxEntries);
+        var escapedUsername = EscapeShellArg(username);
         return await RetryHelper.ExecuteAsync(
             async token =>
             {
                 var command = string.Join(" ", new[]
                 {
-                    $"sacct -X -u {username}",
+                    $"sacct -X -u {escapedUsername}",
                     "--starttime now-7days",
                     "--noheader --parsable2",
                     "--format=\"JobIDRaw,JobName,User,State,Partition,NodeList,Start,End,Elapsed,ExitCode,Reason\"",
@@ -252,6 +254,7 @@ public sealed class SlurmService : ISlurmService
         var daySplit = value.Split('-', 2, StringSplitOptions.TrimEntries);
         if (daySplit.Length == 2
             && int.TryParse(daySplit[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var days)
+            && days >= 0
             && TimeSpan.TryParse(daySplit[1], CultureInfo.InvariantCulture, out var dayTime))
             return dayTime + TimeSpan.FromDays(days);
 
@@ -268,4 +271,7 @@ public sealed class SlurmService : ISlurmService
         => string.IsNullOrWhiteSpace(value) || value is "Unknown" or "N/A" or "None"
             ? null
             : value;
+
+    private static string EscapeShellArg(string value)
+        => "'" + (value ?? string.Empty).Replace("'", "'\"'\"'") + "'";
 }

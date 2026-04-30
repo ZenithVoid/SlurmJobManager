@@ -366,7 +366,10 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     {
         var now = DateTime.Now;
         foreach (var row in _allCurrentJobs)
-            row.RefreshDisplays(now);
+        {
+            if (row.State is SlurmJobState.Running or SlurmJobState.Completing)
+                row.RefreshDisplays(now);
+        }
     }
 
     private void ApplyCurrentFilter()
