@@ -470,13 +470,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             if (!string.IsNullOrEmpty(home))
             {
                 _homeDirectory = NormalizeRemotePath(home);
-                RootDirectory = RootDirectory;
-                RemoteWorkDir = RemoteWorkDir;
-                CurrentTaskFilesPath = CurrentTaskFilesPath;
-                OnPropertyChanged(nameof(RootDirectoryDisplay));
-                OnPropertyChanged(nameof(RemoteWorkDirDisplay));
-                OnPropertyChanged(nameof(CurrentTaskFilesPathDisplay));
-                OnPropertyChanged(nameof(TaskFilesRootPathDisplay));
+                RefreshPathDisplays();
             }
 
             if (!string.IsNullOrEmpty(home) && string.IsNullOrEmpty(RootDirectory))
@@ -1631,18 +1625,23 @@ public sealed class TaskEditorViewModel : ViewModelBase
                 return;
 
             _homeDirectory = NormalizeRemotePath(home);
-            RootDirectory = RootDirectory;
-            RemoteWorkDir = RemoteWorkDir;
-            CurrentTaskFilesPath = CurrentTaskFilesPath;
-            OnPropertyChanged(nameof(RootDirectoryDisplay));
-            OnPropertyChanged(nameof(RemoteWorkDirDisplay));
-            OnPropertyChanged(nameof(CurrentTaskFilesPathDisplay));
-            OnPropertyChanged(nameof(TaskFilesRootPathDisplay));
+            RefreshPathDisplays();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[TaskEditorViewModel.EnsureHomeDirectoryLoadedAsync] {ex.Message}");
         }
+    }
+
+    private void RefreshPathDisplays()
+    {
+        RootDirectory = _rootDirectory;
+        RemoteWorkDir = _remoteWorkDir;
+        CurrentTaskFilesPath = _currentTaskFilesPath;
+        OnPropertyChanged(nameof(RootDirectoryDisplay));
+        OnPropertyChanged(nameof(RemoteWorkDirDisplay));
+        OnPropertyChanged(nameof(CurrentTaskFilesPathDisplay));
+        OnPropertyChanged(nameof(TaskFilesRootPathDisplay));
     }
 
     private void SetStatus(string messageOrKey, string styleKey, bool localize = true)

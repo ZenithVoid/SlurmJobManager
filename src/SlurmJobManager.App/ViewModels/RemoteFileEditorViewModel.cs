@@ -239,10 +239,9 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     private static string FormatFileSize(long bytes)
     {
         if (bytes < 1024) return $"{bytes} B";
-        var size = bytes;
         var units = new[] { "B", "KB", "MB", "GB", "TB" };
         var unitIndex = 0;
-        double value = size;
+        double value = bytes;
         while (value >= 1024 && unitIndex < units.Length - 1)
         {
             value /= 1024d;
