@@ -8,7 +8,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    d:DesignHeight="600" d:DesignWidth="400"
+    d:DesignHeight="700" d:DesignWidth="520"
     Background="{DynamicResource BgBaseBrush}">
 
     <UserControl.Resources>
@@ -21,10 +21,7 @@
 
     <DockPanel Margin="12">
 
-        <!-- Top controls -->
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-
-            <!-- Watch user row -->
             <TextBlock Text="{DynamicResource Monitor.WatchUser}" Style="{StaticResource FieldLabelStyle}" />
             <Grid Margin="0,0,0,6">
                 <Grid.ColumnDefinitions>
@@ -32,79 +29,53 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+
                 <TextBox Grid.Column="0"
                          Text="{Binding WatchedUser, UpdateSourceTrigger=PropertyChanged}"
                          IsEnabled="{Binding ShowAllUsers, Converter={StaticResource InvBool}}" />
+
                 <CheckBox Grid.Column="1"
                           Content="{DynamicResource Monitor.ViewAll}"
                           IsChecked="{Binding ShowAllUsers}"
                           VerticalAlignment="Center"
                           Margin="6,0,4,0" />
-                <Button Grid.Column="2" Content="{DynamicResource Btn.Refresh}"
-                        Command="{Binding RefreshCommand}"
-                        Style="{StaticResource AccentButtonStyle}"
-                        Margin="4,0,0,0" Padding="8,4" />
-                <Button Grid.Column="3" Content="{DynamicResource Btn.StartPoll}"
+
+                <Button Grid.Column="2"
+                        Content="{DynamicResource Btn.StartPoll}"
                         Command="{Binding StartPollingCommand}"
                         Style="{StaticResource SuccessButtonStyle}"
-                        Margin="4,0,0,0" Padding="8,4" />
-                <Button Grid.Column="4" Content="{DynamicResource Btn.StopPoll}"
+                        Margin="4,0,0,0"
+                        Padding="8,4" />
+
+                <Button Grid.Column="3"
+                        Content="{DynamicResource Btn.StopPoll}"
                         Command="{Binding StopPollingCommand}"
                         Style="{StaticResource DangerButtonStyle}"
-                        Margin="4,0,0,0" Padding="8,4" />
+                        Margin="4,0,0,0"
+                        Padding="8,4" />
             </Grid>
 
-            <!-- Poll interval slider -->
             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                 <TextBlock Text="{DynamicResource Monitor.PollInterval}"
                            Style="{StaticResource MutedTextStyle}"
                            VerticalAlignment="Center" />
                 <Slider Minimum="2" Maximum="60"
                         Value="{Binding PollIntervalSeconds}"
-                        Width="100" VerticalAlignment="Center" Margin="4,0,4,0" />
+                        Width="100"
+                        VerticalAlignment="Center"
+                        Margin="4,0,4,0" />
                 <TextBlock Text="{Binding PollIntervalSeconds}"
                            Foreground="{DynamicResource TextPrimaryBrush}"
                            VerticalAlignment="Center" />
             </StackPanel>
-
-            <!-- Status filter + keyword search -->
-            <Grid Margin="0,0,0,4">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{DynamicResource Monitor.Filter}"
-                           Style="{StaticResource MutedTextStyle}"
-                           VerticalAlignment="Center" />
-                <ComboBox Grid.Column="1"
-                          ItemsSource="{Binding StatusFilterOptions}"
-                          SelectedItem="{Binding StatusFilter}"
-                          Margin="0,0,6,0" />
-                <TextBlock Grid.Column="2" Text="🔍 "
-                           Foreground="{DynamicResource TextMutedBrush}"
-                           VerticalAlignment="Center" />
-                <TextBox Grid.Column="3"
-                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-            </Grid>
         </StackPanel>
 
-        <!-- Bottom: cancel + status -->
-        <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-            <Button Content="{DynamicResource Btn.CancelJob}"
-                    Command="{Binding CancelJobCommand}"
-                    Style="{StaticResource DangerButtonStyle}"
-                    Padding="8,4"
-                    HorizontalAlignment="Left" />
-            <TextBlock Text="{Binding StatusMessage}"
-                       Style="{Binding StatusStyleKey, Converter={StaticResource StyleKeyToStyle}}"
-                       Margin="0,4,0,0" />
-        </StackPanel>
+        <TextBlock DockPanel.Dock="Bottom"
+                   Text="{Binding StatusMessage}"
+                   Style="{Binding StatusStyleKey, Converter={StaticResource StyleKeyToStyle}}"
+                   Margin="0,8,0,0" />
 
-        <!-- Branded empty-state: shown when no watched user is configured -->
         <shared:EmptyStateView
             DockPanel.Dock="Top"
             Icon="📊"
@@ -113,54 +84,205 @@
             Margin="0,32,0,0"
             Visibility="{Binding IsEmptyState, Converter={StaticResource BoolToVis}}" />
 
-        <!-- Jobs DataGrid with smooth scrolling ScrollViewer -->
-        <ScrollViewer VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Auto"
-                      CanContentScroll="False"
-                      Visibility="{Binding IsEmptyState, Converter={StaticResource InvBoolToVis}}"
-                      b:SmoothScrollBehavior.IsEnabled="True"
-                      b:SmoothScrollBehavior.ScrollAmount="60">
-            <DataGrid ItemsSource="{Binding Jobs}"
-                      SelectedItem="{Binding SelectedJob}"
-                      AutoGenerateColumns="False"
-                      IsReadOnly="True"
-                      ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                <DataGrid.RowStyle>
-                    <Style TargetType="DataGridRow">
-                        <Setter Property="Foreground"
-                                Value="{Binding State, Converter={StaticResource StateToBrush}}" />
-                        <Style.Triggers>
-                            <!-- Running pulse animation -->
-                            <DataTrigger Binding="{Binding State}" Value="RUNNING">
-                                <DataTrigger.EnterActions>
-                                    <BeginStoryboard x:Name="RunningPulse">
-                                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                                            <DoubleAnimation
-                                                Storyboard.TargetProperty="Opacity"
-                                                From="1.0" To="0.85"
-                                                Duration="0:0:1.5" />
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </DataTrigger.EnterActions>
-                                <DataTrigger.ExitActions>
-                                    <StopStoryboard BeginStoryboardName="RunningPulse" />
-                                </DataTrigger.ExitActions>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </DataGrid.RowStyle>
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}"    Binding="{Binding JobId}"    Width="70" />
-                    <DataGridTextColumn Header="{DynamicResource Monitor.ColName}"     Binding="{Binding JobName}"  Width="*" />
-                    <DataGridTextColumn Header="{DynamicResource Monitor.ColUser}"     Binding="{Binding User}"     Width="80" />
-                    <DataGridTextColumn Header="{DynamicResource Monitor.ColState}"    Binding="{Binding State}"    Width="90" />
-                    <DataGridTextColumn Header="{DynamicResource Monitor.ColPartition}" Binding="{Binding Partition}" Width="90" />
-                    <DataGridTextColumn Header="{DynamicResource Monitor.ColRunTime}"  Binding="{Binding RunTime}"  Width="80" />
-                    <DataGridTextColumn Header="{DynamicResource Monitor.ColNodes}"    Binding="{Binding NodeList}" Width="80" />
-                </DataGrid.Columns>
-            </DataGrid>
-        </ScrollViewer>
+        <TabControl Visibility="{Binding IsEmptyState, Converter={StaticResource InvBoolToVis}}">
+            <TabItem Header="{DynamicResource Monitor.TabCurrentJobs}">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
+                    <Grid Grid.Row="0" Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0"
+                                   Text="{DynamicResource Monitor.Filter}"
+                                   Style="{StaticResource MutedTextStyle}"
+                                   VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{Binding StatusFilterOptions}"
+                                  SelectedItem="{Binding StatusFilter}"
+                                  Margin="0,0,6,0" />
+                        <TextBlock Grid.Column="2"
+                                   Text="🔍 "
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   VerticalAlignment="Center" />
+                        <TextBox Grid.Column="3"
+                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Margin="0,0,6,0" />
+                        <Button Grid.Column="4"
+                                Content="{DynamicResource Btn.Refresh}"
+                                Command="{Binding RefreshCurrentJobsCommand}"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Padding="10,4" />
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  CanContentScroll="False"
+                                  b:SmoothScrollBehavior.IsEnabled="True"
+                                  b:SmoothScrollBehavior.ScrollAmount="60">
+                        <DataGrid ItemsSource="{Binding CurrentJobs}"
+                                  SelectedItem="{Binding SelectedCurrentJob}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  RowHeight="38"
+                                  ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="Foreground"
+                                            Value="{Binding State, Converter={StaticResource StateToBrush}}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding State}" Value="RUNNING">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard x:Name="RunningPulseCurrent">
+                                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                         From="1.0" To="0.85"
+                                                                         Duration="0:0:1.5" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <StopStoryboard BeginStoryboardName="RunningPulseCurrent" />
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="90" />
+
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="2*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding JobName}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding JobName}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColState}" Binding="{Binding State}" Width="110" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColPartition}" Binding="{Binding Partition}" Width="110" />
+
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColNodes}" Width="1.5*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding NodeList}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding NodeList}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColRunTime}" Binding="{Binding RunTimeDisplay}" Width="110" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColStartTime}" Binding="{Binding StartTimeDisplay}" Width="170" />
+
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColAction}" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="{DynamicResource Monitor.ActionCancelJob}"
+                                                    Padding="8,2"
+                                                    Style="{StaticResource DangerButtonStyle}"
+                                                    Command="{Binding DataContext.CancelCurrentJobCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="{DynamicResource Monitor.TabHistoryJobs}">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,6">
+                        <Button Content="{DynamicResource Monitor.BtnRefreshHistory}"
+                                Command="{Binding RefreshHistoryJobsCommand}"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Padding="10,4" />
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  CanContentScroll="False"
+                                  b:SmoothScrollBehavior.IsEnabled="True"
+                                  b:SmoothScrollBehavior.ScrollAmount="60">
+                        <DataGrid ItemsSource="{Binding HistoryJobs}"
+                                  SelectedItem="{Binding SelectedHistoryJob}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  RowHeight="38"
+                                  ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="Foreground"
+                                            Value="{Binding State, Converter={StaticResource StateToBrush}}" />
+                                </Style>
+                            </DataGrid.RowStyle>
+
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="90" />
+
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="2*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding JobName}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding JobName}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColState}" Binding="{Binding State}" Width="130" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColStartTime}" Binding="{Binding StartTimeDisplay}" Width="170" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColEndTime}" Binding="{Binding EndTimeDisplay}" Width="170" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColRunTime}" Binding="{Binding RunTimeDisplay}" Width="110" />
+
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColNodes}" Width="1.5*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding NodeList}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding NodeList}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColAction}" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="{DynamicResource Monitor.ActionViewDetail}"
+                                                    Padding="8,2"
+                                                    Style="{StaticResource AccentButtonStyle}"
+                                                    Command="{Binding DataContext.ViewHistoryDetailCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+        </TabControl>
     </DockPanel>
 </UserControl>
