@@ -261,17 +261,42 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
     private async Task CancelSelectedJobAsync(CancellationToken ct)
     {
-        if (SelectedJob == null) return;
-        StatusMessage = $"Cancelling job {SelectedJob.JobId}…";
+        if (SelectedJob == null)
+        {
+            StatusMessage = L("Err.NoJobSelected", "未选择作业。");
+            return;
+        }
+
+        var jobId = SelectedJob.JobId;
+        var confirmTemplate = L("Monitor.CancelConfirm", "确认要取消作业 {0} 吗？");
+        var confirmTitle = L("Monitor.CancelConfirmTitle", "取消确认");
+        var confirm = MessageBox.Show(
+            string.Format(confirmTemplate, jobId),
+            confirmTitle,
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            StatusMessage = L("Monitor.CancelAborted", "已取消作业取消操作。");
+            return;
+        }
+
+        StatusMessage = string.Format(L("Monitor.Cancelling", "正在取消作业 {0}…"), jobId);
         try
         {
-            await _slurm.CancelJobAsync(SelectedJob.JobId, ct);
-            StatusMessage = $"Job {SelectedJob.JobId} cancelled.";
-            _logger?.Info($"Job {SelectedJob.JobId} cancelled by user.");
+            await _slurm.CancelJobAsync(jobId, ct);
+            StatusMessage = string.Format(L("Monitor.CancelSucceeded", "作业 {0} 已取消。"), jobId);
+            _logger?.Info($"Job {jobId} cancelled by user.");
             await RefreshAsync(ct);
         }
-        catch (Exception ex) { StatusMessage = $"Cancel failed: {ex.Message}"; }
+        catch (Exception ex)
+        {
+            StatusMessage = string.Format(L("Monitor.CancelFailed", "取消作业 {0} 失败：{1}"), jobId, ex.Message);
+        }
     }
+
+    private static string L(string key, string fallback)
+        => Application.Current?.TryFindResource(key) as string ?? fallback;
 
     private void UpdateTimerInterval()
     {

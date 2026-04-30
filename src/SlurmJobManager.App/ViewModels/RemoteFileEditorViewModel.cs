@@ -18,6 +18,9 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     private string _statusMessage = string.Empty;
     private string _encodingName = "UTF-8";
     private bool _isBinaryFile;
+    private bool _isDirty;
+    private string _lastSavedContent = string.Empty;
+    private bool _suppressDirtyTracking;
     private TextEncodingDetectionResult _encodingDetection = new()
     {
         Encoding = new System.Text.UTF8Encoding(false),
@@ -36,13 +39,18 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     public string Content
     {
         get => _content;
-        set => SetField(ref _content, value);
+        set
+        {
+            if (SetField(ref _content, value) && !_suppressDirtyTracking)
+                IsDirty = !string.Equals(_content, _lastSavedContent, StringComparison.Ordinal);
+        }
     }
 
     public bool IsBusy { get => _isBusy; private set => SetField(ref _isBusy, value); }
     public string StatusMessage { get => _statusMessage; set => SetField(ref _statusMessage, value); }
     public string EncodingName { get => _encodingName; private set => SetField(ref _encodingName, value); }
     public bool IsBinaryFile { get => _isBinaryFile; private set => SetField(ref _isBinaryFile, value); }
+    public bool IsDirty { get => _isDirty; private set => SetField(ref _isDirty, value); }
 
     /// <summary>Set to <c>true</c> after a successful save so the view can close.</summary>
     public bool SaveCompleted { get; private set; }
@@ -77,7 +85,11 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
             }
 
             IsBinaryFile = false;
+            _suppressDirtyTracking = true;
             Content = _encodingDetection.Encoding.GetString(bytes);
+            _suppressDirtyTracking = false;
+            _lastSavedContent = Content;
+            IsDirty = false;
             if (!_encodingDetection.IsReliable)
             {
                 StatusMessage = _encodingDetection.WarningMessage
@@ -96,13 +108,15 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         finally { IsBusy = false; }
     }
 
-    private async Task SaveAsync(CancellationToken ct)
+    public Task<bool> SaveChangesAsync(CancellationToken ct = default) => SaveAsync(ct);
+
+    private async Task<bool> SaveAsync(CancellationToken ct)
     {
         if (IsBinaryFile)
         {
             StatusMessage = Application.Current?.TryFindResource("RemoteEditor.BinaryRejected") as string
                             ?? "检测到二进制文件，已阻止保存。";
-            return;
+            return false;
         }
 
         IsBusy = true;
@@ -112,11 +126,15 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
             var bytes = TextEncodingDetector.Encode(Content, _encodingDetection);
             await _ssh.WriteFileBytesAsync(RemotePath, bytes, ct);
             StatusMessage = $"{Application.Current?.TryFindResource("RemoteEditor.Saved") as string ?? "已保存："}{DateTime.Now:HH:mm:ss}";
+            _lastSavedContent = Content;
+            IsDirty = false;
             SaveCompleted = true;
+            return true;
         }
         catch (Exception ex)
         {
             StatusMessage = $"{Application.Current?.TryFindResource("RemoteEditor.SaveFailed") as string ?? "保存失败："}{ex.Message}";
+            return false;
         }
         finally { IsBusy = false; }
     }

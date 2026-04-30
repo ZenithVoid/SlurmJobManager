@@ -134,6 +134,8 @@
     <sys:String x:Key="Conn.Passphrase">Key Passphrase (optional)</sys:String>
     <sys:String x:Key="Tooltip.SaveProfile">Save connection settings (password encrypted with DPAPI)</sys:String>
     <sys:String x:Key="Tooltip.LoadProfile">Load previously saved connection settings</sys:String>
+    <sys:String x:Key="Conn.ProfileLoaded">Saved profile loaded.</sys:String>
+    <sys:String x:Key="Conn.ProfileLoadFailed">Failed to load profile. Please re-enter and save credentials ({0}).</sys:String>
 
     <!-- ── Task editor ──────────────────────────────────────────────────── -->
     <sys:String x:Key="Task.Setup">Task Setup</sys:String>
@@ -186,6 +188,11 @@
     <sys:String x:Key="Task.CommandUpdated">Command updated. Remember to save the task.</sys:String>
     <sys:String x:Key="Task.CommandsSummary">Configured commands (preview)</sys:String>
     <sys:String x:Key="Task.TaskUnitSelectorDesc">Each TaskId can have multiple task units. Each unit independently maintains its own command set and sbatch script.</sys:String>
+    <sys:String x:Key="Task.TaskIdDirExists">⚠ Directory already exists</sys:String>
+    <sys:String x:Key="Task.TaskIdDirNotExists">✓ Directory does not exist and can be created</sys:String>
+    <sys:String x:Key="Task.TaskIdDirCheckFailed">Directory validation failed. Please check connection state.</sys:String>
+    <sys:String x:Key="Task.LoadNotFound">Task data not found (task.json / tasks.manifest.json).</sys:String>
+    <sys:String x:Key="Task.InvalidRemoteWorkDir">Please set a valid remote work directory before submitting.</sys:String>
     <sys:String x:Key="Btn.AddProgram">+ Add program</sys:String>
     <sys:String x:Key="Btn.RemoveProgram">- Remove program</sys:String>
     <sys:String x:Key="Btn.AddParamFile">+ Add param file</sys:String>
@@ -246,6 +253,8 @@
     <sys:String x:Key="RemoteEditor.Close">Close</sys:String>
     <sys:String x:Key="RemoteEditor.BinaryRejected">Binary-like file detected, opening as text is blocked.</sys:String>
     <sys:String x:Key="RemoteEditor.EncodingUnknown">Encoding cannot be identified reliably, opened as UTF-8.</sys:String>
+    <sys:String x:Key="RemoteEditor.UnsavedTitle">Unsaved Changes</sys:String>
+    <sys:String x:Key="RemoteEditor.UnsavedPrompt">There are unsaved changes. Save before closing?</sys:String>
 
     <!-- ── Console view ─────────────────────────────────────────────────── -->
     <sys:String x:Key="Console.NotConnected">⚠ You can browse this page freely. To execute commands, please establish an SSH connection first.</sys:String>
@@ -265,6 +274,12 @@
     <sys:String x:Key="Monitor.EmptyState">Enter a username above to start monitoring jobs.</sys:String>
     <sys:String x:Key="Monitor.EmptyTitle">No Monitor Data</sys:String>
     <sys:String x:Key="Monitor.EmptyHint">Enter the username to monitor above, then click Refresh or Start Polling.</sys:String>
+    <sys:String x:Key="Monitor.CancelConfirmTitle">Cancel Job Confirmation</sys:String>
+    <sys:String x:Key="Monitor.CancelConfirm">Are you sure you want to cancel job {0}?</sys:String>
+    <sys:String x:Key="Monitor.CancelAborted">Job cancellation was aborted.</sys:String>
+    <sys:String x:Key="Monitor.Cancelling">Cancelling job {0}…</sys:String>
+    <sys:String x:Key="Monitor.CancelSucceeded">Job {0} was cancelled.</sys:String>
+    <sys:String x:Key="Monitor.CancelFailed">Failed to cancel job {0}: {1}</sys:String>
     <sys:String x:Key="Log.EmptyState">No log data loaded. Submit a job or enter a remote file path above to load logs.</sys:String>
     <sys:String x:Key="Log.EmptyTitle">No Log Content</sys:String>
     <sys:String x:Key="Log.EmptyHint">Enter a remote log file path above and click Load.</sys:String>
