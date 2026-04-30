@@ -93,6 +93,14 @@
     <sys:String x:Key="Monitor.ColPartition">分区</sys:String>
     <sys:String x:Key="Monitor.ColRunTime">运行时长</sys:String>
     <sys:String x:Key="Monitor.ColNodes">节点</sys:String>
+    <sys:String x:Key="Monitor.ColStartTime">开始时间</sys:String>
+    <sys:String x:Key="Monitor.ColEndTime">结束时间</sys:String>
+    <sys:String x:Key="Monitor.ColAction">操作</sys:String>
+    <sys:String x:Key="Monitor.TabCurrentJobs">当前任务</sys:String>
+    <sys:String x:Key="Monitor.TabHistoryJobs">历史任务</sys:String>
+    <sys:String x:Key="Monitor.BtnRefreshHistory">查询历史</sys:String>
+    <sys:String x:Key="Monitor.ActionCancelJob">取消任务</sys:String>
+    <sys:String x:Key="Monitor.ActionViewDetail">查看详情</sys:String>
 
     <!-- ── 日志视图 ─────────────────────────────────────────────────────── -->
     <sys:String x:Key="Log.Title">日志查看器</sys:String>
@@ -394,15 +402,23 @@
     <sys:String x:Key="Monitor.EmptyTitle">暂无监控数据</sys:String>
     <sys:String x:Key="Monitor.EmptyHint">请在上方输入要监控的用户名，然后点击刷新或启动轮询。</sys:String>
     <sys:String x:Key="Monitor.CancelConfirmTitle">取消确认</sys:String>
-    <sys:String x:Key="Monitor.CancelConfirm">确认要取消作业 {0} 吗？</sys:String>
+    <sys:String x:Key="Monitor.CancelConfirm">确认要取消作业 {0}（{1}）吗？</sys:String>
     <sys:String x:Key="Monitor.CancelAborted">已取消作业取消操作。</sys:String>
     <sys:String x:Key="Monitor.Cancelling">正在取消作业 {0}…</sys:String>
     <sys:String x:Key="Monitor.CancelSucceeded">作业 {0} 已取消。</sys:String>
     <sys:String x:Key="Monitor.CancelFailed">取消作业 {0} 失败：{1}</sys:String>
+    <sys:String x:Key="Monitor.CancelStale">作业 {0} 已不可取消（可能已结束）。</sys:String>
     <sys:String x:Key="Monitor.FilterAll">全部</sys:String>
-    <sys:String x:Key="Monitor.Refreshing">刷新中…</sys:String>
-    <sys:String x:Key="Monitor.Updated">已更新：{0:HH:mm:ss}（{1} 个作业）</sys:String>
-    <sys:String x:Key="Monitor.RefreshFailed">刷新失败：{0}</sys:String>
+    <sys:String x:Key="Monitor.CurrentRefreshing">正在刷新当前任务…</sys:String>
+    <sys:String x:Key="Monitor.CurrentUpdated">当前任务已更新：{0:HH:mm:ss}（{1} 个作业）</sys:String>
+    <sys:String x:Key="Monitor.CurrentRefreshFailed">当前任务刷新失败：{0}</sys:String>
+    <sys:String x:Key="Monitor.HistoryNeedUser">请先指定用户名再查询历史任务。</sys:String>
+    <sys:String x:Key="Monitor.HistoryRefreshing">正在查询用户“{0}”的历史任务…</sys:String>
+    <sys:String x:Key="Monitor.HistoryUpdated">历史任务已更新：{0:HH:mm:ss}（{1} 个作业，用户：{2}）</sys:String>
+    <sys:String x:Key="Monitor.HistoryRefreshFailed">历史任务刷新失败：{0}</sys:String>
+    <sys:String x:Key="Monitor.HistoryDetailTitle">历史任务详情</sys:String>
+    <sys:String x:Key="Monitor.DetailExitCode">退出码</sys:String>
+    <sys:String x:Key="Monitor.DetailReason">原因</sys:String>
     <sys:String x:Key="Monitor.PollingEvery">轮询间隔 {0}s…</sys:String>
     <sys:String x:Key="Monitor.PollingStopped">已停止轮询。</sys:String>
     <sys:String x:Key="Monitor.PollingHalted">连续失败 {0} 次后已停止轮询。请检查连接后手动重启。</sys:String>

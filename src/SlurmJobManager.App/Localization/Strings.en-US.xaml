@@ -93,6 +93,14 @@
     <sys:String x:Key="Monitor.ColPartition">Partition</sys:String>
     <sys:String x:Key="Monitor.ColRunTime">Run Time</sys:String>
     <sys:String x:Key="Monitor.ColNodes">Nodes</sys:String>
+    <sys:String x:Key="Monitor.ColStartTime">Start Time</sys:String>
+    <sys:String x:Key="Monitor.ColEndTime">End Time</sys:String>
+    <sys:String x:Key="Monitor.ColAction">Action</sys:String>
+    <sys:String x:Key="Monitor.TabCurrentJobs">Current Jobs</sys:String>
+    <sys:String x:Key="Monitor.TabHistoryJobs">History Jobs</sys:String>
+    <sys:String x:Key="Monitor.BtnRefreshHistory">Query History</sys:String>
+    <sys:String x:Key="Monitor.ActionCancelJob">Cancel Job</sys:String>
+    <sys:String x:Key="Monitor.ActionViewDetail">View Detail</sys:String>
 
     <!-- ── Log viewer ───────────────────────────────────────────────────── -->
     <sys:String x:Key="Log.Title">Log Viewer</sys:String>
@@ -394,15 +402,23 @@
     <sys:String x:Key="Monitor.EmptyTitle">No Monitor Data</sys:String>
     <sys:String x:Key="Monitor.EmptyHint">Enter the username to monitor above, then click Refresh or Start Polling.</sys:String>
     <sys:String x:Key="Monitor.CancelConfirmTitle">Cancel Job Confirmation</sys:String>
-    <sys:String x:Key="Monitor.CancelConfirm">Are you sure you want to cancel job {0}?</sys:String>
+    <sys:String x:Key="Monitor.CancelConfirm">Are you sure you want to cancel job {0} ({1})?</sys:String>
     <sys:String x:Key="Monitor.CancelAborted">Job cancellation was aborted.</sys:String>
     <sys:String x:Key="Monitor.Cancelling">Cancelling job {0}…</sys:String>
     <sys:String x:Key="Monitor.CancelSucceeded">Job {0} was cancelled.</sys:String>
     <sys:String x:Key="Monitor.CancelFailed">Failed to cancel job {0}: {1}</sys:String>
+    <sys:String x:Key="Monitor.CancelStale">Job {0} is no longer cancellable (it may have already finished).</sys:String>
     <sys:String x:Key="Monitor.FilterAll">All</sys:String>
-    <sys:String x:Key="Monitor.Refreshing">Refreshing…</sys:String>
-    <sys:String x:Key="Monitor.Updated">Updated: {0:HH:mm:ss} ({1} job(s))</sys:String>
-    <sys:String x:Key="Monitor.RefreshFailed">Refresh failed: {0}</sys:String>
+    <sys:String x:Key="Monitor.CurrentRefreshing">Refreshing current jobs…</sys:String>
+    <sys:String x:Key="Monitor.CurrentUpdated">Current jobs updated: {0:HH:mm:ss} ({1} job(s))</sys:String>
+    <sys:String x:Key="Monitor.CurrentRefreshFailed">Current jobs refresh failed: {0}</sys:String>
+    <sys:String x:Key="Monitor.HistoryNeedUser">Please specify a username to query history jobs.</sys:String>
+    <sys:String x:Key="Monitor.HistoryRefreshing">Querying history jobs for '{0}'…</sys:String>
+    <sys:String x:Key="Monitor.HistoryUpdated">History jobs updated: {0:HH:mm:ss} ({1} job(s), user: {2})</sys:String>
+    <sys:String x:Key="Monitor.HistoryRefreshFailed">History jobs refresh failed: {0}</sys:String>
+    <sys:String x:Key="Monitor.HistoryDetailTitle">History Job Detail</sys:String>
+    <sys:String x:Key="Monitor.DetailExitCode">Exit Code</sys:String>
+    <sys:String x:Key="Monitor.DetailReason">Reason</sys:String>
     <sys:String x:Key="Monitor.PollingEvery">Polling every {0}s…</sys:String>
     <sys:String x:Key="Monitor.PollingStopped">Polling stopped.</sys:String>
     <sys:String x:Key="Monitor.PollingHalted">Polling stopped after {0} consecutive failures. Check connection and restart polling manually.</sys:String>

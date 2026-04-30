@@ -28,6 +28,9 @@ public class SlurmJobStatus
     public TimeSpan? RunTime { get; set; }
     public DateTime? StartTime { get; set; }
     public DateTime? EndTime { get; set; }
+    public string? ExitCode { get; set; }
+    public string? Reason { get; set; }
+    public bool IsHistorical { get; set; }
     public string? WorkDir { get; set; }
     public string? StdOut { get; set; }
     public string? StdErr { get; set; }

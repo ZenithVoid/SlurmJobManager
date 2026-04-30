@@ -82,11 +82,12 @@ public sealed class SlurmService : ISlurmService
     public async Task<IReadOnlyList<SlurmJobStatus>> GetUserJobsAsync(
         string username, CancellationToken ct = default)
     {
+        var escapedUsername = EscapeShellArg(username);
         return await RetryHelper.ExecuteAsync(
             async token =>
             {
                 var (stdout, _, _) = await _ssh.ExecuteAsync(
-                    $"squeue --user {username} --noheader --format=\"%i|%j|%u|%T|%P|%D|%C|%N|%M|%S\"", token);
+                    $"squeue --user {escapedUsername} --noheader --format=\"%i|%j|%u|%T|%P|%D|%C|%N|%M|%S\"", token);
 
                 var results = new List<SlurmJobStatus>();
                 foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
@@ -120,6 +121,40 @@ public sealed class SlurmService : ISlurmService
     }
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyList<SlurmJobStatus>> GetUserJobHistoryAsync(
+        string username,
+        int maxEntries = 100,
+        CancellationToken ct = default)
+    {
+        var safeMaxEntries = Math.Max(1, maxEntries);
+        var escapedUsername = EscapeShellArg(username);
+        return await RetryHelper.ExecuteAsync(
+            async token =>
+            {
+                var command = string.Join(" ", new[]
+                {
+                    $"sacct -X -u {escapedUsername}",
+                    "--starttime now-7days",
+                    "--noheader --parsable2",
+                    "--format=\"JobIDRaw,JobName,User,State,Partition,NodeList,Start,End,Elapsed,ExitCode,Reason\"",
+                    "--sort=-Start",
+                    $"| head -n {safeMaxEntries}"
+                });
+
+                var (stdout, _, _) = await _ssh.ExecuteAsync(command, token);
+                var results = new List<SlurmJobStatus>();
+                foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var status = ParseSacctLine(line.Trim());
+                    if (status is not null) results.Add(status);
+                }
+
+                return (IReadOnlyList<SlurmJobStatus>)results;
+            },
+            _settings, _logger, $"GetUserJobHistory({username})", ct);
+    }
+
+    /// <inheritdoc/>
     public async Task CancelJobAsync(long jobId, CancellationToken ct = default)
     {
         var (_, stderr, exitCode) = await _ssh.ExecuteAsync($"scancel {jobId}", ct);
@@ -148,6 +183,95 @@ public sealed class SlurmService : ISlurmService
             NumNodes  = int.TryParse(parts[5].Trim(), out var n) ? n : 0,
             NumCpus   = parts.Length > 6 && int.TryParse(parts[6].Trim(), out var c) ? c : 0,
             NodeList  = parts.Length > 7 ? parts[7].Trim() : null,
+            RunTime   = parts.Length > 8 ? ParseSlurmElapsed(parts[8]) : null,
+            StartTime = parts.Length > 9 ? ParseSlurmDateTime(parts[9]) : null,
+            IsHistorical = false,
         };
     }
+
+    private static SlurmJobStatus? ParseSacctLine(string line)
+    {
+        // Format: jobIdRaw|jobName|user|state|partition|nodeList|start|end|elapsed|exitCode|reason
+        var parts = line.Split('|');
+        if (parts.Length < 4) return null;
+
+        var rawJobId = parts[0].Trim();
+        if (!TryParsePrimaryJobId(rawJobId, out var jobId)) return null;
+
+        var state = GetValue(parts, 3);
+        if (state.Contains('+', StringComparison.Ordinal))
+            state = state[..state.IndexOf('+')];
+
+        return new SlurmJobStatus
+        {
+            JobId       = jobId,
+            JobName     = GetValue(parts, 1),
+            User        = GetValue(parts, 2),
+            State       = string.IsNullOrWhiteSpace(state) ? SlurmJobState.Unknown : state,
+            Partition   = GetValue(parts, 4),
+            NodeList    = NormalizeNullable(GetValue(parts, 5)),
+            StartTime   = ParseSlurmDateTime(GetValue(parts, 6)),
+            EndTime     = ParseSlurmDateTime(GetValue(parts, 7)),
+            RunTime     = ParseSlurmElapsed(GetValue(parts, 8)),
+            ExitCode    = NormalizeNullable(GetValue(parts, 9)),
+            Reason      = NormalizeNullable(GetValue(parts, 10)),
+            IsHistorical = true,
+        };
+    }
+
+    private static string GetValue(string[] parts, int index)
+        => index < parts.Length ? parts[index].Trim() : string.Empty;
+
+    private static bool TryParsePrimaryJobId(string rawJobId, out long jobId)
+    {
+        jobId = 0;
+        var parts = rawJobId.Split('.', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return false;
+        var primary = parts[0];
+        return long.TryParse(primary, NumberStyles.Integer, CultureInfo.InvariantCulture, out jobId);
+    }
+
+    private static DateTime? ParseSlurmDateTime(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var value = raw.Trim();
+        if (value is "Unknown" or "N/A" or "None" or "0") return null;
+
+        var styles = DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeLocal;
+        if (DateTime.TryParse(value, CultureInfo.InvariantCulture, styles, out var parsed) ||
+            DateTime.TryParse(value, CultureInfo.CurrentCulture, styles, out parsed))
+            return parsed;
+
+        return null;
+    }
+
+    private static TimeSpan? ParseSlurmElapsed(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var value = raw.Trim();
+        if (value is "Unknown" or "N/A" or "None" or "0") return null;
+
+        var daySplit = value.Split('-', 2, StringSplitOptions.TrimEntries);
+        if (daySplit.Length == 2
+            && int.TryParse(daySplit[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var days)
+            && days >= 0
+            && TimeSpan.TryParse(daySplit[1], CultureInfo.InvariantCulture, out var dayTime))
+            return dayTime + TimeSpan.FromDays(days);
+
+        if (TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out var elapsed))
+            return elapsed;
+
+        if (TimeSpan.TryParse(value, CultureInfo.CurrentCulture, out elapsed))
+            return elapsed;
+
+        return null;
+    }
+
+    private static string? NormalizeNullable(string value)
+        => string.IsNullOrWhiteSpace(value) || value is "Unknown" or "N/A" or "None"
+            ? null
+            : value;
+
+    private static string EscapeShellArg(string value)
+        => "'" + (value ?? string.Empty).Replace("'", "'\"'\"'") + "'";
 }
