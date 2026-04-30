@@ -17,6 +17,7 @@ public partial class ConnectionView : UserControl
         PassphraseBox.PasswordChanged += OnPassphraseChanged;
         DataContextChanged            += OnDataContextChanged;
         Loaded                        += (_, _) => SyncPasswordBoxesFromViewModel();
+        Unloaded                      += OnUnloaded;
     }
 
     private void OnPasswordChanged(object sender, RoutedEventArgs e)
@@ -67,5 +68,13 @@ public partial class ConnectionView : UserControl
         {
             _isSyncingFromViewModel = false;
         }
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (_subscribedVm != null)
+            _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
+
+        _subscribedVm = null;
     }
 }

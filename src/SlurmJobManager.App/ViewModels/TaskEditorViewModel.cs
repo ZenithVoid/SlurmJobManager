@@ -1107,6 +1107,8 @@ public sealed class TaskEditorViewModel : ViewModelBase
         var normalized = rawPath.Trim().Replace('\\', '/');
         if (normalized.StartsWith("/", StringComparison.Ordinal))
             return normalized;
+        if (string.IsNullOrWhiteSpace(workDir))
+            return string.Empty;
 
         return $"{workDir.TrimEnd('/')}/params/{normalized}";
     }
@@ -1119,7 +1121,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
         return string.Empty;
     }
 
-    private string ResolveWorkDirForSubmit(TaskUnitViewModel? unit, string fallback)
+    private string ResolveWorkDirWithFallback(TaskUnitViewModel? unit, string fallback)
     {
         var unitDir = ResolveUnitWorkDir(unit);
         if (!string.IsNullOrWhiteSpace(unitDir)) return unitDir;
@@ -1127,7 +1129,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     }
 
     private string ResolveWorkDirForSubmit(TaskUnitViewModel? unit)
-        => ResolveWorkDirForSubmit(unit, RemoteWorkDir);
+        => ResolveWorkDirWithFallback(unit, RemoteWorkDir);
 
     private static string L(string key, string fallback)
         => Application.Current?.TryFindResource(key) as string ?? fallback;

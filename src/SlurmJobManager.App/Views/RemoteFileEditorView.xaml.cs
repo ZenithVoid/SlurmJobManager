@@ -12,6 +12,7 @@ public partial class RemoteFileEditorView : Window
     {
         InitializeComponent();
         Closing += OnClosing;
+        Closed  += OnClosed;
         Loaded += (_, _) =>
         {
             Editor.TextArea.TextView.CurrentLineBackground = new System.Windows.Media.SolidColorBrush(
@@ -61,5 +62,11 @@ public partial class RemoteFileEditorView : Window
 
         _allowClose = true;
         Close();
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        Closing -= OnClosing;
+        Closed  -= OnClosed;
     }
 }
