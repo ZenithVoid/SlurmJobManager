@@ -11,7 +11,11 @@ namespace SlurmJobManager.App.ViewModels;
 /// </summary>
 public sealed class RemoteFileEditorViewModel : ViewModelBase
 {
+    private const long LargeFileThresholdBytes = 2 * 1024 * 1024;
+    private const long VeryLargeFileThresholdBytes = 16 * 1024 * 1024;
+
     private readonly ISshClientService _ssh;
+    private readonly string _homeDirectory;
 
     private string _content = string.Empty;
     private bool _isBusy;
@@ -22,6 +26,9 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     private string _statusStyleKey = "InfoTextStyle";
     private string _lastSavedContent = string.Empty;
     private bool _suppressDirtyTracking;
+    private long _fileSizeBytes;
+    private bool _isLargeFileMode;
+    private bool _isVeryLargeFileMode;
     private TextEncodingDetectionResult _encodingDetection = new()
     {
         Encoding = new System.Text.UTF8Encoding(false),
@@ -32,10 +39,11 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     };
 
     public string RemotePath { get; }
+    public string DisplayRemotePath => RemotePathDisplayHelper.CollapseHomePath(RemotePath, _homeDirectory);
     public string FileName   => RemotePath.Contains('/') ? RemotePath[(RemotePath.LastIndexOf('/') + 1)..] : RemotePath;
 
     /// <summary>Formatted window title including the filename, resolved from localization resources at runtime.</summary>
-    public string WindowTitle => $"{L("RemoteEditor.Title")} {FileName}";
+    public string WindowTitle => $"{L("RemoteEditor.Title")} {FileName} - {RemotePath}";
 
     public string Content
     {
@@ -53,25 +61,77 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     public string EncodingName { get => _encodingName; private set => SetField(ref _encodingName, value); }
     public bool IsBinaryFile { get => _isBinaryFile; private set => SetField(ref _isBinaryFile, value); }
     public bool IsDirty { get => _isDirty; private set => SetField(ref _isDirty, value); }
+    public long FileSizeBytes
+    {
+        get => _fileSizeBytes;
+        private set
+        {
+            if (SetField(ref _fileSizeBytes, value))
+                OnPropertyChanged(nameof(FileSizeText));
+        }
+    }
+
+    public string FileSizeText => FormatFileSize(FileSizeBytes);
+    public bool IsLargeFileMode { get => _isLargeFileMode; private set => SetField(ref _isLargeFileMode, value); }
+    public bool IsVeryLargeFileMode { get => _isVeryLargeFileMode; private set => SetField(ref _isVeryLargeFileMode, value); }
+    public string LargeFileModeText
+    {
+        get
+        {
+            if (IsVeryLargeFileMode)
+                return string.Format(L("RemoteEditor.VeryLargeMode"), FileSizeText);
+            if (IsLargeFileMode)
+                return string.Format(L("RemoteEditor.LargeMode"), FileSizeText);
+            return string.Empty;
+        }
+    }
 
     /// <summary>Set to <c>true</c> after a successful save so the view can close.</summary>
     public bool SaveCompleted { get; private set; }
 
     public ICommand SaveCommand { get; }
 
-    public RemoteFileEditorViewModel(ISshClientService ssh, string remotePath)
+    public RemoteFileEditorViewModel(ISshClientService ssh, string remotePath, string? homeDirectory = null)
     {
-        _ssh        = ssh ?? throw new ArgumentNullException(nameof(ssh));
-        RemotePath  = remotePath;
-        SaveCommand = new AsyncRelayCommand(SaveAsync, () => !IsBusy);
+        _ssh           = ssh ?? throw new ArgumentNullException(nameof(ssh));
+        _homeDirectory = RemotePathDisplayHelper.NormalizeRemotePath(homeDirectory);
+        RemotePath     = remotePath;
+        SaveCommand    = new AsyncRelayCommand<string>(SaveFromEditorAsync, _ => !IsBusy);
     }
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
         IsBusy = true;
-        SetStatus("RemoteEditor.Loading", "InfoTextStyle");
+        SetStatus("RemoteEditor.ProbingFile", "InfoTextStyle");
         try
         {
+            FileSizeBytes = await _ssh.GetRemoteFileSizeAsync(RemotePath, ct);
+            IsLargeFileMode = FileSizeBytes >= LargeFileThresholdBytes;
+            IsVeryLargeFileMode = FileSizeBytes >= VeryLargeFileThresholdBytes;
+            OnPropertyChanged(nameof(LargeFileModeText));
+
+            if (IsVeryLargeFileMode)
+            {
+                var confirmText = string.Format(L("RemoteEditor.VeryLargeConfirm"), FileSizeText);
+                var confirmTitle = L("RemoteEditor.VeryLargeTitle");
+                var confirm = MessageBox.Show(
+                    confirmText,
+                    confirmTitle,
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                if (confirm != MessageBoxResult.Yes)
+                {
+                    SetStatus("RemoteEditor.OpenCancelled", "WarningTextStyle");
+                    return;
+                }
+            }
+
+            SetStatus(IsLargeFileMode
+                    ? string.Format(L("RemoteEditor.LargeLoadHint"), FileSizeText)
+                    : L("RemoteEditor.Loading"),
+                "InfoTextStyle",
+                localize: false);
+
             var bytes = await _ssh.ReadFileBytesAsync(RemotePath, ct);
             _encodingDetection = TextEncodingDetector.Detect(bytes);
             EncodingName = _encodingDetection.DisplayName;
@@ -98,6 +158,10 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
                                 ?? L("RemoteEditor.EncodingUnknown");
                 StatusStyleKey = "WarningTextStyle";
             }
+            else if (IsLargeFileMode)
+            {
+                SetStatus(string.Format(L("RemoteEditor.LargeModeReady"), FileSizeText), "WarningTextStyle", localize: false);
+            }
             else
             {
                 SetStatus(string.Empty, "InfoTextStyle");
@@ -110,9 +174,12 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         finally { IsBusy = false; }
     }
 
-    public Task<bool> SaveChangesAsync(CancellationToken ct = default) => SaveAsync(ct);
+    public Task<bool> SaveChangesAsync(string? editorText = null, CancellationToken ct = default) => SaveAsync(editorText, ct);
 
-    private async Task<bool> SaveAsync(CancellationToken ct)
+    private async Task SaveFromEditorAsync(string? editorText, CancellationToken ct)
+        => _ = await SaveAsync(editorText, ct);
+
+    private async Task<bool> SaveAsync(string? editorText, CancellationToken ct)
     {
         if (IsBinaryFile)
         {
@@ -120,8 +187,26 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
             return false;
         }
 
+        if (editorText != null)
+            Content = editorText;
+
+        if (IsVeryLargeFileMode)
+        {
+            var confirmText = string.Format(L("RemoteEditor.VeryLargeSaveConfirm"), FileSizeText);
+            var confirm = MessageBox.Show(
+                confirmText,
+                L("RemoteEditor.VeryLargeSaveTitle"),
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.Yes)
+            {
+                SetStatus("RemoteEditor.SaveCancelled", "WarningTextStyle");
+                return false;
+            }
+        }
+
         IsBusy = true;
-        SetStatus("RemoteEditor.Saving", "InfoTextStyle");
+        SetStatus(IsLargeFileMode ? "RemoteEditor.SavingLarge" : "RemoteEditor.Saving", "InfoTextStyle");
         try
         {
             var bytes = TextEncodingDetector.Encode(Content, _encodingDetection);
@@ -149,5 +234,21 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         StatusMessage = string.IsNullOrEmpty(messageOrKey)
             ? string.Empty
             : (localize ? L(messageOrKey) : messageOrKey);
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        var size = bytes;
+        var units = new[] { "B", "KB", "MB", "GB", "TB" };
+        var unitIndex = 0;
+        double value = size;
+        while (value >= 1024 && unitIndex < units.Length - 1)
+        {
+            value /= 1024d;
+            unitIndex++;
+        }
+
+        return $"{value:0.##} {units[unitIndex]}";
     }
 }

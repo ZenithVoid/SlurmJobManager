@@ -30,7 +30,9 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBox Grid.Column="0" Text="{Binding RootDirectory, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox Grid.Column="0"
+                         Text="{Binding RootDirectoryDisplay, UpdateSourceTrigger=LostFocus}"
+                         ToolTip="{Binding RootDirectory}" />
                 <Button Grid.Column="1" Content="..." Command="{Binding BrowseRootDirectoryCommand}"
                         Style="{StaticResource NeutralButtonStyle}"
                         AutomationProperties.Name="Browse remote directory"
@@ -53,7 +55,9 @@
                        Style="{StaticResource MutedTextStyle}" Margin="0,0,0,4" FontSize="11" />
 
             <TextBlock Text="{DynamicResource Task.RemoteWorkDir}" Style="{StaticResource FieldLabelStyle}" />
-            <TextBox Text="{Binding RemoteWorkDir, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
+            <TextBox Text="{Binding RemoteWorkDirDisplay, UpdateSourceTrigger=LostFocus}"
+                     ToolTip="{Binding RemoteWorkDir}"
+                     Margin="0,0,0,6" />
 
             <Separator />
 
@@ -163,6 +167,88 @@
             </Grid>
             <TextBlock Text="{Binding LastSavedTime}"
                        Style="{StaticResource MutedTextStyle}" Margin="0,0,0,8" FontSize="11" />
+
+            <Separator />
+
+            <!-- Task Files -->
+            <TextBlock Text="{DynamicResource Task.TaskFiles}" Style="{StaticResource SectionHeaderStyle}" />
+            <TextBlock Text="{DynamicResource Task.TaskFilesHint}"
+                       Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,6" />
+            <TextBlock Text="{Binding TaskFilesRootPathDisplay}"
+                       Style="{StaticResource MutedTextStyle}"
+                       ToolTip="{Binding RemoteWorkDir}"
+                       Margin="0,0,0,4" />
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{DynamicResource Task.CurrentPath}"
+                           Style="{StaticResource FieldLabelStyle}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0" />
+                <TextBox Grid.Column="1"
+                         Text="{Binding CurrentTaskFilesPathDisplay, UpdateSourceTrigger=LostFocus}"
+                         ToolTip="{Binding CurrentTaskFilesPath}"
+                         VerticalAlignment="Center"
+                         Margin="0,0,4,0" />
+                <Button Grid.Column="2"
+                        Content="⬆"
+                        Command="{Binding GoUpTaskFilesPathCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        ToolTip="{DynamicResource Task.PathUp}"
+                        Padding="8,4"
+                        Margin="0,0,4,0" />
+                <Button Grid.Column="3"
+                        Content="⟳"
+                        Command="{Binding RefreshTaskFilesCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        ToolTip="{DynamicResource Task.Refresh}"
+                        Padding="8,4" />
+            </Grid>
+
+            <Border BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Background="{DynamicResource BgCrustBrush}"
+                    Margin="0,0,0,8">
+                <ListBox x:Name="TaskFilesList"
+                         ItemsSource="{Binding TaskFiles}"
+                         SelectedItem="{Binding SelectedTaskFile}"
+                         Background="{DynamicResource BgCrustBrush}"
+                         Foreground="{DynamicResource TextPrimaryBrush}"
+                         BorderThickness="0"
+                         Height="220"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         MouseDoubleClick="TaskFilesList_MouseDoubleClick">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:TaskFileEntry}">
+                            <StackPanel Orientation="Horizontal" ToolTip="{Binding RemotePath}">
+                                <TextBlock Text="📄" Margin="0,0,6,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="📄" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                                                    <Setter Property="Text" Value="📁" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding DisplayName}"
+                                           TextTrimming="CharacterEllipsis"
+                                           Width="420"
+                                           ToolTip="{Binding Name}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
 
             <Separator />
 

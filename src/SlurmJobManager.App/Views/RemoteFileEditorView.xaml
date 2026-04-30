@@ -88,24 +88,41 @@
                     <TextBlock Text="{Binding FileName}"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                FontSize="13" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding RemotePath}"
-                               Foreground="{DynamicResource TextMutedBrush}"
-                               FontFamily="Consolas" FontSize="11"
-                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding DisplayRemotePath}"
+                                Foreground="{DynamicResource TextMutedBrush}"
+                                FontFamily="Consolas" FontSize="11"
+                                ToolTip="{Binding RemotePath}"
+                                TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding LargeFileModeText}"
+                               Foreground="{DynamicResource AccentYellowBrush}"
+                               FontSize="11"
+                               TextWrapping="Wrap" />
                 </StackPanel>
-                <Border Grid.Column="1"
-                        Background="{DynamicResource BgSurface1Brush}"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="8,3"
-                        VerticalAlignment="Center"
-                        ToolTip="{DynamicResource RemoteEditor.EncodingTip}">
-                    <TextBlock Text="{Binding EncodingName}"
-                               FontFamily="Consolas"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               FontSize="11" />
-                </Border>
+                <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center">
+                    <Border Background="{DynamicResource BgSurface1Brush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8,3"
+                            Margin="0,0,0,4"
+                            ToolTip="{DynamicResource RemoteEditor.EncodingTip}">
+                        <TextBlock Text="{Binding EncodingName}"
+                                   FontFamily="Consolas"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   FontSize="11" />
+                    </Border>
+                    <Border Background="{DynamicResource BgSurface1Brush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8,3"
+                            ToolTip="{Binding FileSizeBytes}">
+                        <TextBlock Text="{Binding FileSizeText}"
+                                   FontFamily="Consolas"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   FontSize="11" />
+                    </Border>
+                </StackPanel>
             </Grid>
 
             <!-- Editor -->
@@ -132,7 +149,7 @@
                     </Style>
                 </Border.Style>
                 <avalonedit:TextEditor x:Name="Editor"
-                                       Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}"
+                                       Text="{Binding Content, UpdateSourceTrigger=LostFocus}"
                                        ShowLineNumbers="True"
                                        FontFamily="Consolas"
                                        FontSize="13"
@@ -165,6 +182,7 @@
 
                 <Button Grid.Column="1" Content="{DynamicResource RemoteEditor.Save}"
                         Command="{Binding SaveCommand}"
+                        CommandParameter="{Binding Text, ElementName=Editor}"
                         Style="{StaticResource AccentButtonStyle}"
                         Padding="12,5" Margin="0,0,6,0" />
                 <Button Grid.Column="2" Content="{DynamicResource RemoteEditor.Close}"

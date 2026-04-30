@@ -55,7 +55,10 @@ public partial class RemoteFileEditorView : Window
     private void OnClosing(object? sender, CancelEventArgs e)
     {
         if (_allowClose) return;
-        if (DataContext is not RemoteFileEditorViewModel vm || !vm.IsDirty) return;
+        if (DataContext is not RemoteFileEditorViewModel vm) return;
+        if (!string.Equals(Editor.Text, vm.Content, StringComparison.Ordinal))
+            vm.Content = Editor.Text;
+        if (!vm.IsDirty) return;
 
         e.Cancel = true;
         _ = ConfirmCloseAsync(vm);
@@ -79,7 +82,7 @@ public partial class RemoteFileEditorView : Window
 
         if (result == MessageBoxResult.Yes)
         {
-            var saved = await vm.SaveChangesAsync();
+            var saved = await vm.SaveChangesAsync(Editor.Text);
             if (!saved)
                 return;
         }
