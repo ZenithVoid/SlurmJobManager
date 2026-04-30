@@ -98,11 +98,10 @@
                                 Text="{DynamicResource Task.CommandsSummary}"
                                 Style="{StaticResource SectionHeaderStyle}" />
                      <TextBlock Text="{DynamicResource Task.CommandsSummaryEmpty}"
-                                Style="{StaticResource MutedTextStyle}"
                                 TextWrapping="Wrap"
                                 Margin="0,4,0,2">
                          <TextBlock.Style>
-                             <Style TargetType="TextBlock">
+                             <Style TargetType="TextBlock" BasedOn="{StaticResource MutedTextStyle}">
                                  <Setter Property="Visibility" Value="Collapsed" />
                                  <Style.Triggers>
                                      <DataTrigger Binding="{Binding ActiveUnit.Commands.Count}" Value="0">
