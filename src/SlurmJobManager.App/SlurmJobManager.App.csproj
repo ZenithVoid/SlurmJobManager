@@ -16,6 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="Assets\AppIcon\server-palm.ico" />
   </ItemGroup>
 </Project>

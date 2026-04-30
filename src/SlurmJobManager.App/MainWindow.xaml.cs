@@ -78,10 +78,10 @@ public partial class MainWindow : Window
 
     private void TaskFileListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (sender is ListBox lb && lb.SelectedItem is string fileName
+        if (sender is ListBox lb && lb.SelectedItem is TaskFileEntry fileEntry
             && DataContext is MainViewModel vm)
         {
-            vm.TaskEditor.OpenTaskFileCommand.Execute(fileName);
+            vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
         }
     }
 

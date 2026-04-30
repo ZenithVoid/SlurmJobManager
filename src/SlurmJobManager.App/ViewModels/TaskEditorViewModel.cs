@@ -49,7 +49,8 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private bool _isBusy;
     private string _statusMessage = string.Empty;
     private long? _lastJobId;
-    private string? _selectedTaskFile;
+    private TaskFileEntry? _selectedTaskFile;
+    private string _currentTaskFilesPath = string.Empty;
 
     // ── TaskId directory validation ──────────────────────────────────────────
     private bool? _taskIdDirectoryExists;
@@ -115,7 +116,13 @@ public sealed class TaskEditorViewModel : ViewModelBase
     public string RemoteWorkDir
     {
         get => _remoteWorkDir;
-        set => SetField(ref _remoteWorkDir, value);
+        set
+        {
+            if (SetField(ref _remoteWorkDir, value) && string.IsNullOrWhiteSpace(CurrentTaskFilesPath))
+            {
+                CurrentTaskFilesPath = value;
+            }
+        }
     }
 
     public string AppPath
@@ -142,7 +149,13 @@ public sealed class TaskEditorViewModel : ViewModelBase
         set => SetField(ref _taskIdDirectoryStatus, value);
     }
 
-    public string? SelectedTaskFile
+    public string CurrentTaskFilesPath
+    {
+        get => _currentTaskFilesPath;
+        set => SetField(ref _currentTaskFilesPath, value);
+    }
+
+    public TaskFileEntry? SelectedTaskFile
     {
         get => _selectedTaskFile;
         set => SetField(ref _selectedTaskFile, value);
@@ -191,7 +204,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     /// <summary>Key/value extra parameters (bound to the active task unit).</summary>
     public ObservableCollection<ParameterEntry> Parameters { get; } = new();
 
-    public ObservableCollection<string> TaskFiles { get; } = new();
+    public ObservableCollection<TaskFileEntry> TaskFiles { get; } = new();
 
     // ── Commands ─────────────────────────────────────────────────────────────
 
@@ -209,6 +222,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     public ICommand TogglePinTemplateCommand          { get; }
     public ICommand RefreshTaskFilesCommand           { get; }
     public ICommand OpenTaskFileCommand               { get; }
+    public ICommand GoUpTaskFilesPathCommand          { get; }
 
     /// <summary>Opens the Command Builder dialog for the active task unit.</summary>
     public ICommand OpenCommandBuilderCommand { get; }
@@ -234,7 +248,8 @@ public sealed class TaskEditorViewModel : ViewModelBase
         RefreshTemplateCandidatesCommand = new AsyncRelayCommand(RefreshTemplateCandidatesAsync,   () => _ssh.IsConnected && !IsBusy);
         TogglePinTemplateCommand         = new RelayCommand(TogglePinTemplate,                     () => !string.IsNullOrWhiteSpace(SelectedTemplate));
         RefreshTaskFilesCommand          = new AsyncRelayCommand(RefreshTaskFilesAsync,             () => _ssh.IsConnected && !IsBusy);
-        OpenTaskFileCommand              = new AsyncRelayCommand<string>(OpenTaskFileAsync);
+        OpenTaskFileCommand              = new AsyncRelayCommand<TaskFileEntry>(OpenTaskFileAsync);
+        GoUpTaskFilesPathCommand         = new AsyncRelayCommand(GoUpTaskFilesPathAsync,            () => _ssh.IsConnected && !IsBusy);
         OpenCommandBuilderCommand        = new AsyncRelayCommand(OpenCommandBuilderAsync,           () => !IsBusy);
         AddTaskUnitCommand               = new RelayCommand(AddTaskUnitInternal);
         RemoveTaskUnitCommand            = new RelayCommand<TaskUnitViewModel>(RemoveTaskUnit, u => u != null && TaskUnits.Count > 1);
@@ -331,7 +346,10 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
         // Remote work dir
         if (!string.IsNullOrEmpty(_selectedTaskUnit.RemoteWorkDirectory))
+        {
             RemoteWorkDir = _selectedTaskUnit.RemoteWorkDirectory;
+            CurrentTaskFilesPath = _selectedTaskUnit.RemoteWorkDirectory;
+        }
 
         // Extra parameters
         Parameters.Clear();
@@ -424,6 +442,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             && !string.IsNullOrEmpty(TaskId))
         {
             RemoteWorkDir = $"{RootDirectory.TrimEnd('/')}/{TaskId}";
+            CurrentTaskFilesPath = RemoteWorkDir;
         }
     }
 
@@ -711,32 +730,65 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
     private async Task RefreshTaskFilesAsync(CancellationToken ct)
     {
-        if (!_ssh.IsConnected || string.IsNullOrWhiteSpace(RemoteWorkDir))
+        if (!_ssh.IsConnected)
         {
-            StatusMessage = "请先建立 SSH 连接并设置任务目录。";
+            StatusMessage = "请先建立 SSH 连接。";
+            return;
+        }
+
+        var targetPath = NormalizeRemotePath(CurrentTaskFilesPath);
+        if (string.IsNullOrWhiteSpace(targetPath))
+            targetPath = NormalizeRemotePath(RemoteWorkDir);
+        if (string.IsNullOrWhiteSpace(targetPath))
+        {
+            StatusMessage = "请先设置任务目录或输入浏览路径。";
             return;
         }
 
         IsBusy = true;
         try
         {
+            var escapedPath = EscapeShellArg(targetPath);
+            var (kindStdOut, _, kindExitCode) = await _ssh.ExecuteAsync(
+                $"if [ -d {escapedPath} ]; then echo DIR; " +
+                $"elif [ -f {escapedPath} ]; then echo FILE; else echo MISSING; fi", ct);
+
+            var kind = kindStdOut.Trim();
+            if (kindExitCode != 0 || kind == "MISSING")
+            {
+                StatusMessage = "路径不存在：请检查输入目录。";
+                return;
+            }
+            if (kind == "FILE")
+            {
+                StatusMessage = "该路径是文件而非目录，请输入目录路径。";
+                return;
+            }
+
             var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(
-                $"ls -1 {EscapeShellArg(RemoteWorkDir)}", ct);
+                $"ls -1Ap {escapedPath}", ct);
 
             TaskFiles.Clear();
+            CurrentTaskFilesPath = targetPath;
 
             if (exitCode != 0)
             {
                 var errDetail = stderr.Trim();
                 StatusMessage = string.IsNullOrEmpty(errDetail)
-                    ? "无法读取目录，请检查路径和权限。"
+                    ? "无法读取目录，请检查权限。"
                     : $"无法读取目录：{errDetail}";
                 return;
             }
 
             var entries = stdout.Split('\n',
                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (var entry in entries) TaskFiles.Add(entry);
+            foreach (var entry in entries)
+            {
+                var isDirectory = entry.EndsWith("/", StringComparison.Ordinal);
+                var name = isDirectory ? entry[..^1] : entry;
+                if (name == "." || name == "..") continue;
+                TaskFiles.Add(new TaskFileEntry(name, isDirectory, BuildRemotePath(targetPath, name)));
+            }
 
             StatusMessage = TaskFiles.Count == 0 ? "任务目录为空。" : $"已加载 {TaskFiles.Count} 个条目。";
         }
@@ -744,17 +796,51 @@ public sealed class TaskEditorViewModel : ViewModelBase
         finally { IsBusy = false; }
     }
 
-    private async Task OpenTaskFileAsync(string? fileName, CancellationToken ct)
+    private async Task GoUpTaskFilesPathAsync(CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(fileName) || string.IsNullOrWhiteSpace(RemoteWorkDir)) return;
+        var current = NormalizeRemotePath(CurrentTaskFilesPath);
+        if (string.IsNullOrWhiteSpace(current))
+        {
+            StatusMessage = "当前路径为空，无法返回上级。";
+            return;
+        }
+
+        var slashIndex = current.LastIndexOf('/');
+        var up = current == "/" || slashIndex <= 0 ? "/" : current[..slashIndex];
+        CurrentTaskFilesPath = string.IsNullOrWhiteSpace(up) ? "/" : up;
+        await RefreshTaskFilesAsync(ct);
+    }
+
+    private async Task OpenTaskFileAsync(TaskFileEntry? fileEntry, CancellationToken ct)
+    {
+        if (fileEntry == null) return;
         if (!_ssh.IsConnected) { StatusMessage = "请先建立 SSH 连接。"; return; }
 
-        var remotePath = $"{RemoteWorkDir.TrimEnd('/')}/{fileName}";
+        if (fileEntry.IsDirectory)
+        {
+            CurrentTaskFilesPath = fileEntry.RemotePath;
+            await RefreshTaskFilesAsync(ct);
+            return;
+        }
+
+        var remotePath = fileEntry.RemotePath;
+        if (await IsLikelyBinaryFileAsync(remotePath, ct))
+        {
+            StatusMessage = $"文件 {fileEntry.Name} 可能是二进制文件，已阻止打开。";
+            return;
+        }
+
         var vm  = new RemoteFileEditorViewModel(_ssh, remotePath);
         var win = new RemoteFileEditorView { DataContext = vm };
 
         if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
         await vm.LoadAsync(ct);
+        if (vm.IsBinaryFile)
+        {
+            StatusMessage = vm.StatusMessage;
+            return;
+        }
+
         win.ShowDialog();
     }
 
@@ -1020,11 +1106,47 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private void ApplyTaskRecord(TaskRecord r)
     {
         RemoteWorkDir    = r.RemoteWorkDirectory;
+        CurrentTaskFilesPath = r.RemoteWorkDirectory;
         LastJobId        = r.SlurmJobId;
         SelectedTemplate = r.TemplateFileName;
         Parameters.Clear();
         foreach (var (k, v) in r.Parameters)
             Parameters.Add(new ParameterEntry { Key = k, Value = v });
+    }
+
+    private static string NormalizeRemotePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return string.Empty;
+        var normalized = path.Trim();
+        while (normalized.Contains("//", StringComparison.Ordinal))
+            normalized = normalized.Replace("//", "/", StringComparison.Ordinal);
+        if (normalized.Length > 1 && normalized.EndsWith("/", StringComparison.Ordinal))
+            normalized = normalized[..^1];
+        return normalized;
+    }
+
+    private static string BuildRemotePath(string currentPath, string itemName)
+    {
+        var prefix = NormalizeRemotePath(currentPath);
+        if (prefix == "/") return $"/{itemName}";
+        return $"{prefix}/{itemName}";
+    }
+
+    private async Task<bool> IsLikelyBinaryFileAsync(string remotePath, CancellationToken ct)
+    {
+        var bytes = await _ssh.ReadFileBytesAsync(remotePath, ct);
+        var sampleLength = Math.Min(bytes.Length, 4096);
+        if (sampleLength == 0) return false;
+
+        var suspicious = 0;
+        for (var i = 0; i < sampleLength; i++)
+        {
+            var b = bytes[i];
+            if (b == 0) return true;
+            if (b < 0x09 || (b > 0x0D && b < 0x20)) suspicious++;
+        }
+
+        return suspicious > sampleLength / 8;
     }
 
     private static string EscapeShellArg(string arg)
@@ -1054,4 +1176,19 @@ public sealed class ParameterEntry : ViewModelBase
     private string _value = string.Empty;
     public string Key   { get => _key;   set => SetField(ref _key, value); }
     public string Value { get => _value; set => SetField(ref _value, value); }
+}
+
+public sealed class TaskFileEntry
+{
+    public TaskFileEntry(string name, bool isDirectory, string remotePath)
+    {
+        Name = name;
+        IsDirectory = isDirectory;
+        RemotePath = remotePath;
+    }
+
+    public string Name { get; }
+    public bool IsDirectory { get; }
+    public string RemotePath { get; }
+    public string DisplayName => IsDirectory ? $"{Name}/" : Name;
 }

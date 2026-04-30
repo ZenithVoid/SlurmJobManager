@@ -2,6 +2,7 @@
     x:Class="SlurmJobManager.App.Views.RemoteFileEditorView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
     xmlns:conv="clr-namespace:SlurmJobManager.App.Converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -20,43 +21,85 @@
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Remote path label -->
-        <TextBlock Grid.Row="0"
-                   Text="{Binding RemotePath}"
-                   Foreground="{DynamicResource TextMutedBrush}"
-                   FontFamily="Consolas" FontSize="11"
-                   TextTrimming="CharacterEllipsis"
-                   Margin="0,0,0,6" />
+        <Grid Grid.Row="0" Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="{Binding FileName}"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontSize="13" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding RemotePath}"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           FontFamily="Consolas" FontSize="11"
+                           TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Border Grid.Column="1"
+                    Background="{DynamicResource BgSurface1Brush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="8,3"
+                    VerticalAlignment="Center">
+                <TextBlock Text="{Binding EncodingName}"
+                           FontFamily="Consolas"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontSize="11" />
+            </Border>
+        </Grid>
 
         <!-- Editor -->
-        <TextBox Grid.Row="1"
-                 Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}"
-                 Background="{DynamicResource BgCrustBrush}"
-                 Foreground="{DynamicResource TextPrimaryBrush}"
-                 BorderBrush="{DynamicResource BorderBrush}"
-                 BorderThickness="1"
-                 Padding="8,6"
-                 FontFamily="Consolas" FontSize="12"
-                 AcceptsReturn="True" AcceptsTab="True"
-                 TextWrapping="NoWrap"
-                 HorizontalScrollBarVisibility="Auto"
-                 VerticalScrollBarVisibility="Auto"
-                 IsReadOnly="{Binding IsBusy}" />
+        <TextBlock Grid.Row="1"
+                   Text="{DynamicResource RemoteEditor.BinaryRejected}"
+                   Foreground="{DynamicResource AccentYellowBrush}"
+                   FontSize="12"
+                   Margin="0,0,0,6"
+                   Visibility="{Binding IsBinaryFile, Converter={StaticResource BoolToVis}}" />
+
+        <Border Grid.Row="2"
+                Background="{DynamicResource BgCrustBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsBinaryFile}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <avalonedit:TextEditor x:Name="Editor"
+                                   Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}"
+                                   ShowLineNumbers="True"
+                                   FontFamily="Consolas"
+                                   FontSize="13"
+                                   Background="{DynamicResource BgCrustBrush}"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   IsReadOnly="{Binding IsBusy}"
+                                   WordWrap="False"
+                                   HorizontalScrollBarVisibility="Auto"
+                                   VerticalScrollBarVisibility="Auto" />
+        </Border>
 
         <!-- Status -->
-        <TextBlock Grid.Row="2"
+        <TextBlock Grid.Row="3"
                    Text="{Binding StatusMessage}"
                    Foreground="{DynamicResource AccentYellowBrush}"
                    FontSize="11" Margin="0,4,0,4"
                    TextWrapping="Wrap" />
 
         <!-- Buttons -->
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />

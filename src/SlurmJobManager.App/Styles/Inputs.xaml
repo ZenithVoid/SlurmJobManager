@@ -32,7 +32,6 @@
                         <Trigger Property="IsFocused" Value="True">
                             <Setter TargetName="Bd" Property="BorderBrush"
                                     Value="{DynamicResource AccentBlueBrush}" />
-                            <Setter TargetName="Bd" Property="BorderThickness" Value="1.5" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="BorderBrush"
@@ -69,7 +68,6 @@
                         <Trigger Property="IsFocused" Value="True">
                             <Setter TargetName="Bd" Property="BorderBrush"
                                     Value="{DynamicResource AccentBlueBrush}" />
-                            <Setter TargetName="Bd" Property="BorderThickness" Value="1.5" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="BorderBrush"
@@ -153,7 +151,6 @@
                                         <Trigger Property="IsChecked" Value="True">
                                             <Setter TargetName="Bd" Property="BorderBrush"
                                                     Value="{DynamicResource AccentBlueBrush}" />
-                                            <Setter TargetName="Bd" Property="BorderThickness" Value="1.5" />
                                         </Trigger>
                                         <Trigger Property="IsEnabled" Value="False">
                                             <Setter TargetName="Bd" Property="Opacity" Value="0.5" />

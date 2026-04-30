@@ -279,21 +279,36 @@
                                            DockPanel.Dock="Left"
                                            VerticalAlignment="Center"
                                            Margin="0,0,0,0" />
-                                <Button Content="⟳"
-                                        Command="{Binding TaskEditor.RefreshTaskFilesCommand}"
-                                        Style="{StaticResource NeutralButtonStyle}"
-                                        HorizontalAlignment="Right"
-                                        Padding="6,3"
-                                        ToolTip="{DynamicResource Task.Refresh}" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Content="⬆"
+                                            Command="{Binding TaskEditor.GoUpTaskFilesPathCommand}"
+                                            Style="{StaticResource NeutralButtonStyle}"
+                                            Padding="6,3"
+                                            Margin="0,0,4,0"
+                                            ToolTip="{DynamicResource Task.PathUp}" />
+                                    <Button Content="⟳"
+                                            Command="{Binding TaskEditor.RefreshTaskFilesCommand}"
+                                            Style="{StaticResource NeutralButtonStyle}"
+                                            HorizontalAlignment="Right"
+                                            Padding="6,3"
+                                            ToolTip="{DynamicResource Task.Refresh}" />
+                                </StackPanel>
                             </DockPanel>
 
-                            <!-- Path hint -->
                             <TextBlock DockPanel.Dock="Top"
-                                       Text="{Binding TaskEditor.RemoteWorkDir}"
+                                       Text="{DynamicResource Task.CurrentPath}"
                                        Foreground="{DynamicResource TextMutedBrush}"
-                                       FontFamily="Consolas" FontSize="10"
-                                       TextTrimming="CharacterEllipsis"
-                                       Margin="0,0,0,4" />
+                                       FontSize="11"
+                                       Margin="0,0,0,3" />
+                            <TextBox DockPanel.Dock="Top"
+                                     Text="{Binding TaskEditor.CurrentTaskFilesPath, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Consolas"
+                                     FontSize="11"
+                                     Margin="0,0,0,6">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Enter" Command="{Binding TaskEditor.RefreshTaskFilesCommand}" />
+                                </TextBox.InputBindings>
+                            </TextBox>
 
                             <!-- Status message from TaskEditor -->
                             <TextBlock DockPanel.Dock="Top"
@@ -333,8 +348,19 @@
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="📄 " FontSize="12" />
-                                                <TextBlock Text="{Binding}" FontSize="12" />
+                                                <TextBlock Text="📄 " FontSize="12">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="📄 " />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                                                                    <Setter Property="Text" Value="📁 " />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding DisplayName}" FontSize="12" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>

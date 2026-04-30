@@ -37,8 +37,14 @@ public interface ISshClientService : IDisposable
     /// <summary>Reads a remote text file and returns its content.</summary>
     Task<string> ReadTextFileAsync(string remotePath, CancellationToken ct = default);
 
+    /// <summary>Reads a remote file as raw bytes.</summary>
+    Task<byte[]> ReadFileBytesAsync(string remotePath, CancellationToken ct = default);
+
     /// <summary>Writes <paramref name="content"/> to a remote text file (creates or overwrites).</summary>
     Task WriteTextFileAsync(string remotePath, string content, CancellationToken ct = default);
+
+    /// <summary>Writes raw bytes to a remote file (creates or overwrites).</summary>
+    Task WriteFileBytesAsync(string remotePath, byte[] content, CancellationToken ct = default);
 
     /// <summary>Returns true when the given remote path exists as a regular file.</summary>
     Task<bool> RemoteFileExistsAsync(string remotePath, CancellationToken ct = default);
