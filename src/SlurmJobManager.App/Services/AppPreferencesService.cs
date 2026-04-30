@@ -1,19 +1,17 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SlurmJobManager.Core.Services;
 
 namespace SlurmJobManager.App.Services;
 
 /// <summary>
 /// Persists application-level user preferences (e.g. startup auto-connect) to a JSON file
-/// under <c>%AppData%/SlurmJobManager/preferences.json</c>.
+/// under <c>&lt;AppBaseDirectory&gt;/Data/preferences.json</c>.
 /// </summary>
 public sealed class AppPreferencesService
 {
-    private static readonly string PrefsPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "SlurmJobManager",
-        "preferences.json");
+    private static readonly string PrefsPath = LocalDataPaths.PreferencesFilePath;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
