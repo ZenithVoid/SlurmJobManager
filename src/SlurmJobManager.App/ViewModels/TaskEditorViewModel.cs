@@ -492,7 +492,9 @@ public sealed class TaskEditorViewModel : ViewModelBase
                 {
                     if (cts.IsCancellationRequested) return;
                     _taskIdDirectoryExists = exists;
-                    TaskIdDirectoryStatus  = exists ? "⚠ 目录已存在" : "✓ 目录不存在，可新建";
+                    TaskIdDirectoryStatus  = exists
+                        ? L("Task.TaskIdDirExists", "⚠ 目录已存在")
+                        : L("Task.TaskIdDirNotExists", "✓ 目录不存在，可新建");
                     CommandManager.InvalidateRequerySuggested();
                 });
             }
@@ -503,7 +505,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
                 {
                     if (cts.IsCancellationRequested) return;
                     _taskIdDirectoryExists = null;
-                    TaskIdDirectoryStatus  = "目录校验失败，请检查连接状态。";
+                    TaskIdDirectoryStatus  = L("Task.TaskIdDirCheckFailed", "目录校验失败，请检查连接状态。");
                     System.Diagnostics.Debug.WriteLine($"[TaskIdValidation] {ex.Message}");
                     CommandManager.InvalidateRequerySuggested();
                 });
@@ -926,7 +928,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
             {
                 // Try legacy path
                 var record = await _storage.LoadAsync(LocalDataRoot, TaskId, ct);
-                if (record == null) { StatusMessage = "未找到任务数据（task.json / tasks.manifest.json）。"; return; }
+                if (record == null) { StatusMessage = L("Task.LoadNotFound", "未找到任务数据（task.json / tasks.manifest.json）。"); return; }
                 ApplyTaskRecord(record);
                 StatusMessage = $"任务已加载（旧格式）：{TaskId}";
                 return;
@@ -1005,9 +1007,9 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
     private async Task<long> SubmitUnitAsync(TaskUnitViewModel unit, CancellationToken ct)
     {
-        var workDir = !string.IsNullOrEmpty(unit.RemoteWorkDirectory)
-            ? unit.RemoteWorkDirectory
-            : RemoteWorkDir;
+        var workDir = ResolveWorkDirForSubmit(unit);
+        if (string.IsNullOrWhiteSpace(workDir))
+            throw new InvalidOperationException(L("Task.InvalidRemoteWorkDir", "请先设置有效的远程工作目录后再提交。"));
 
         var appPath = unit.Programs.FirstOrDefault()?.ProgramPath ?? AppPath;
 
@@ -1059,10 +1061,10 @@ public sealed class TaskEditorViewModel : ViewModelBase
     {
         var firstParam = unit.ParamFiles.FirstOrDefault()?.FilePath;
         if (!string.IsNullOrEmpty(firstParam))
-            return $"{workDir.TrimEnd('/')}/params/{firstParam}".Replace('\\', '/');
+            return ResolveParameterPath(firstParam, workDir);
 
         if (!string.IsNullOrEmpty(SelectedTemplate))
-            return $"{workDir.TrimEnd('/')}/params/{SelectedTemplate}".Replace('\\', '/');
+            return ResolveParameterPath(SelectedTemplate, workDir);
 
         return string.Empty;
     }
@@ -1072,6 +1074,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
         && _ssh.IsConnected
         && !string.IsNullOrWhiteSpace(RootDirectory)
         && !string.IsNullOrWhiteSpace(TaskId)
+        && !string.IsNullOrWhiteSpace(ResolveWorkDirForSubmit(_selectedTaskUnit))
         && (!string.IsNullOrWhiteSpace(AppPath)
             || (_selectedTaskUnit?.Programs.Any(p => !string.IsNullOrWhiteSpace(p.ProgramPath)) == true));
 
@@ -1085,11 +1088,51 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private bool ValidateSubmitRequirements()
     {
         if (!ValidateRootAndId()) return false;
+        var workDir = ResolveWorkDirForSubmit(_selectedTaskUnit);
+        if (string.IsNullOrWhiteSpace(workDir))
+        {
+            StatusMessage = L("Task.InvalidRemoteWorkDir", "请先设置有效的远程工作目录后再提交。");
+            return false;
+        }
+
         var hasApp = !string.IsNullOrWhiteSpace(AppPath)
             || (_selectedTaskUnit?.Programs.Any(p => !string.IsNullOrWhiteSpace(p.ProgramPath)) == true);
         if (!hasApp) { StatusMessage = "请先选择应用程序路径"; return false; }
         return true;
     }
+
+    private static string ResolveParameterPath(string? rawPath, string workDir)
+    {
+        if (string.IsNullOrWhiteSpace(rawPath)) return string.Empty;
+        var normalized = rawPath.Trim().Replace('\\', '/');
+        if (normalized.StartsWith("/", StringComparison.Ordinal))
+            return normalized;
+        if (string.IsNullOrWhiteSpace(workDir))
+            return string.Empty;
+
+        return $"{workDir.TrimEnd('/')}/params/{normalized}";
+    }
+
+    private static string ResolveUnitWorkDir(TaskUnitViewModel? unit)
+    {
+        if (unit == null) return string.Empty;
+        if (!string.IsNullOrWhiteSpace(unit.RemoteWorkDirectory))
+            return unit.RemoteWorkDirectory.Trim();
+        return string.Empty;
+    }
+
+    private string ResolveWorkDirWithFallback(TaskUnitViewModel? unit, string fallback)
+    {
+        var unitDir = ResolveUnitWorkDir(unit);
+        if (!string.IsNullOrWhiteSpace(unitDir)) return unitDir;
+        return string.IsNullOrWhiteSpace(fallback) ? string.Empty : fallback.Trim();
+    }
+
+    private string ResolveWorkDirForSubmit(TaskUnitViewModel? unit)
+        => ResolveWorkDirWithFallback(unit, RemoteWorkDir);
+
+    private static string L(string key, string fallback)
+        => Application.Current?.TryFindResource(key) as string ?? fallback;
 
     private TaskRecord BuildTaskRecord() => new()
     {

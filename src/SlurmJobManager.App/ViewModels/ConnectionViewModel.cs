@@ -132,10 +132,17 @@ public sealed class ConnectionViewModel : ViewModelBase
         {
             await _ssh.ConnectAsync(BuildProfile(), ct);
             var (stdout, _, code) = await _ssh.ExecuteAsync("echo SLURM_TEST_OK", ct);
-            StatusMessage = code == 0 && stdout.Contains("SLURM_TEST_OK")
-                ? "Test successful!"
-                : $"Unexpected response (exit {code})";
-            Status = ConnectionStatus.Connected;
+            if (code == 0 && stdout.Contains("SLURM_TEST_OK"))
+            {
+                Status = ConnectionStatus.Connected;
+                StatusMessage = "Test successful and connected.";
+                ConnectionEstablished?.Invoke(_username);
+            }
+            else
+            {
+                Status = ConnectionStatus.Error;
+                StatusMessage = $"Test failed: unexpected response (exit {code}).";
+            }
         }
         catch (Exception ex)
         {
