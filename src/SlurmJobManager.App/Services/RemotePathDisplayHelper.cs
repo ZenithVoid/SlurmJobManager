@@ -5,7 +5,7 @@ public static class RemotePathDisplayHelper
     public static string NormalizeRemotePath(string? path)
     {
         if (string.IsNullOrWhiteSpace(path)) return string.Empty;
-        var normalized = path.Trim().Replace('\\', '/');
+        var normalized = path.Trim();
         while (normalized.Contains("//", StringComparison.Ordinal))
             normalized = normalized.Replace("//", "/", StringComparison.Ordinal);
         if (normalized.Length > 1 && normalized.EndsWith("/", StringComparison.Ordinal))

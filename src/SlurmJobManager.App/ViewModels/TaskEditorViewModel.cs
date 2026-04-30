@@ -1635,9 +1635,27 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
     private void RefreshPathDisplays()
     {
-        RootDirectory = _rootDirectory;
-        RemoteWorkDir = _remoteWorkDir;
-        CurrentTaskFilesPath = _currentTaskFilesPath;
+        var expandedRoot = ExpandHomePath(_rootDirectory);
+        if (!string.Equals(_rootDirectory, expandedRoot, StringComparison.Ordinal))
+        {
+            _rootDirectory = expandedRoot;
+            OnPropertyChanged(nameof(RootDirectory));
+        }
+
+        var expandedWorkDir = ExpandHomePath(_remoteWorkDir);
+        if (!string.Equals(_remoteWorkDir, expandedWorkDir, StringComparison.Ordinal))
+        {
+            _remoteWorkDir = expandedWorkDir;
+            OnPropertyChanged(nameof(RemoteWorkDir));
+        }
+
+        var expandedCurrentPath = ExpandHomePath(_currentTaskFilesPath);
+        if (!string.Equals(_currentTaskFilesPath, expandedCurrentPath, StringComparison.Ordinal))
+        {
+            _currentTaskFilesPath = expandedCurrentPath;
+            OnPropertyChanged(nameof(CurrentTaskFilesPath));
+        }
+
         OnPropertyChanged(nameof(RootDirectoryDisplay));
         OnPropertyChanged(nameof(RemoteWorkDirDisplay));
         OnPropertyChanged(nameof(CurrentTaskFilesPathDisplay));

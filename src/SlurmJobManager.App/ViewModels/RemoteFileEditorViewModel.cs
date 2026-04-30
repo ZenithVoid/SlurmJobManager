@@ -43,7 +43,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     public string FileName   => RemotePath.Contains('/') ? RemotePath[(RemotePath.LastIndexOf('/') + 1)..] : RemotePath;
 
     /// <summary>Formatted window title including the filename, resolved from localization resources at runtime.</summary>
-    public string WindowTitle => $"{L("RemoteEditor.Title")} {FileName} - {RemotePath}";
+    public string WindowTitle => $"{L("RemoteEditor.Title")} {FileName} - {DisplayRemotePath}";
 
     public string Content
     {
@@ -177,7 +177,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     public Task<bool> SaveChangesAsync(string? editorText = null, CancellationToken ct = default) => SaveAsync(editorText, ct);
 
     private async Task SaveFromEditorAsync(string? editorText, CancellationToken ct)
-        => _ = await SaveAsync(editorText, ct);
+        => await SaveAsync(editorText, ct);
 
     private async Task<bool> SaveAsync(string? editorText, CancellationToken ct)
     {
@@ -238,7 +238,6 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
 
     private static string FormatFileSize(long bytes)
     {
-        if (bytes < 1024) return $"{bytes} B";
         var units = new[] { "B", "KB", "MB", "GB", "TB" };
         var unitIndex = 0;
         double value = bytes;
