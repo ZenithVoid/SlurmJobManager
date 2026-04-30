@@ -634,10 +634,13 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             return false;
         }
 
-        var lines = script.Split('\n');
-        var hasShebang = lines.Any(line => line.TrimStart().StartsWith("#!"));
-        var hasTodoHint = script.Contains("TODO", StringComparison.OrdinalIgnoreCase);
-        if (!hasShebang && !hasTodoHint)
+        var normalized = script.Replace("\r\n", "\n");
+        var firstNonEmptyLine = normalized
+            .Split('\n')
+            .FirstOrDefault(line => !string.IsNullOrWhiteSpace(line));
+        var hasShebang = firstNonEmptyLine != null && firstNonEmptyLine.StartsWith("#!", StringComparison.Ordinal);
+        var hasPartitionTodo = normalized.Contains("# TODO: set --partition=", StringComparison.OrdinalIgnoreCase);
+        if (!hasShebang && !hasPartitionTodo)
         {
             StatusMessage = L("CmdBuilder.SbatchMissingShebangError", "sbatch 脚本缺少 shebang（例如 #!/bin/bash）或明确 TODO 提示，请先修正后再保存应用。");
             return false;

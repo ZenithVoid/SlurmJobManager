@@ -304,14 +304,14 @@ public sealed class TaskEditorViewModel : ViewModelBase
         if (!TaskUnits.Any(u => string.Equals(u.TaskName, baseName, StringComparison.OrdinalIgnoreCase)))
             return baseName;
 
-        var suffix = 2;
-        while (true)
+        for (var suffix = 2; suffix <= 10000; suffix++)
         {
             var candidate = $"{baseName} ({suffix})";
             if (!TaskUnits.Any(u => string.Equals(u.TaskName, candidate, StringComparison.OrdinalIgnoreCase)))
                 return candidate;
-            suffix++;
         }
+
+        return $"{baseName} ({DateTime.Now:yyyyMMddHHmmss})";
     }
 
     private void RemoveTaskUnit(TaskUnitViewModel? unit)
