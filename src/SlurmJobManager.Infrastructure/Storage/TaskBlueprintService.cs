@@ -164,8 +164,9 @@ public sealed class TaskBlueprintService : ITaskBlueprintService
             var json = await File.ReadAllTextAsync(path, ct);
             return JsonSerializer.Deserialize<TaskBlueprintRecord>(json, SerializerOptions);
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Trace.TraceWarning($"[TaskBlueprintService] Failed to read blueprint '{path}': {ex.Message}");
             return null;
         }
     }
