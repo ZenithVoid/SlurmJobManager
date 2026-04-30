@@ -51,17 +51,6 @@
             <TextBlock Text="{DynamicResource Task.RemoteWorkDir}" Style="{StaticResource FieldLabelStyle}" />
             <TextBox Text="{Binding RemoteWorkDir, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
 
-            <Grid Margin="0,0,0,8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" Content="{DynamicResource Btn.SaveTask}" Command="{Binding SaveTaskCommand}"
-                        Style="{StaticResource AccentButtonStyle}" Margin="0,0,4,0" Padding="8,4" />
-                <Button Grid.Column="1" Content="{DynamicResource Btn.LoadTask}" Command="{Binding LoadTaskCommand}"
-                        Style="{StaticResource NeutralButtonStyle}" Padding="8,4" />
-            </Grid>
-
             <Separator />
 
             <!-- Task Unit Selector -->
@@ -105,13 +94,37 @@
             <!-- Commands summary (read-only preview) -->
             <Border Style="{StaticResource CardStyle}" Padding="6" Margin="0,0,0,8">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top"
-                               Text="{DynamicResource Task.CommandsSummary}"
-                               Style="{StaticResource SectionHeaderStyle}" />
-                    <ItemsControl ItemsSource="{Binding ActiveUnit.Commands}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:CommandEntryViewModel}">
-                                <TextBlock Text="{Binding CommandLine}"
+                     <TextBlock DockPanel.Dock="Top"
+                                Text="{DynamicResource Task.CommandsSummary}"
+                                Style="{StaticResource SectionHeaderStyle}" />
+                     <TextBlock Text="{DynamicResource Task.CommandsSummaryEmpty}"
+                                TextWrapping="Wrap"
+                                Margin="0,4,0,2">
+                         <TextBlock.Style>
+                             <Style TargetType="TextBlock" BasedOn="{StaticResource MutedTextStyle}">
+                                 <Setter Property="Visibility" Value="Collapsed" />
+                                 <Style.Triggers>
+                                     <DataTrigger Binding="{Binding ActiveUnit.Commands.Count}" Value="0">
+                                         <Setter Property="Visibility" Value="Visible" />
+                                     </DataTrigger>
+                                 </Style.Triggers>
+                             </Style>
+                         </TextBlock.Style>
+                     </TextBlock>
+                     <ItemsControl ItemsSource="{Binding ActiveUnit.Commands}">
+                         <ItemsControl.Style>
+                             <Style TargetType="ItemsControl">
+                                 <Setter Property="Visibility" Value="Visible" />
+                                 <Style.Triggers>
+                                     <DataTrigger Binding="{Binding ActiveUnit.Commands.Count}" Value="0">
+                                         <Setter Property="Visibility" Value="Collapsed" />
+                                     </DataTrigger>
+                                 </Style.Triggers>
+                             </Style>
+                         </ItemsControl.Style>
+                         <ItemsControl.ItemTemplate>
+                             <DataTemplate DataType="{x:Type vm:CommandEntryViewModel}">
+                                 <TextBlock Text="{Binding CommandLine}"
                                            FontFamily="Consolas" FontSize="11"
                                            Foreground="{DynamicResource AccentYellowBrush}"
                                            TextTrimming="CharacterEllipsis"
@@ -119,8 +132,23 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                </DockPanel>
-            </Border>
+                 </DockPanel>
+             </Border>
+
+            <TextBlock Text="{DynamicResource Task.SaveLoadScopeHint}"
+                       Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,4" />
+            <Grid Margin="0,0,0,2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="{DynamicResource Btn.SaveTask}" Command="{Binding SaveTaskCommand}"
+                        Style="{StaticResource AccentButtonStyle}" Margin="0,0,4,0" Padding="8,4" />
+                <Button Grid.Column="1" Content="{DynamicResource Btn.LoadTask}" Command="{Binding LoadTaskCommand}"
+                        Style="{StaticResource NeutralButtonStyle}" Padding="8,4" />
+            </Grid>
+            <TextBlock Text="{Binding LastSavedTime}"
+                       Style="{StaticResource MutedTextStyle}" Margin="0,0,0,8" FontSize="11" />
 
             <Separator />
 
@@ -139,4 +167,3 @@
         </StackPanel>
     </ScrollViewer>
 </UserControl>
-
