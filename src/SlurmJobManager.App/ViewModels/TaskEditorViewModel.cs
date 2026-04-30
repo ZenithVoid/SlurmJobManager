@@ -25,14 +25,10 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private readonly ITaskStorageService _storage;
     private readonly ITaskBlueprintService _blueprints;
 
-    // ── Local app-data storage root ──────────────────────────────────────────
-    private static readonly string LocalDataRoot = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "SlurmJobManager", "tasks");
+    // ── Local storage root (under <AppBaseDirectory>/Data) ──────────────────
+    private static readonly string LocalDataRoot = LocalDataPaths.TasksDirectory;
 
-    private static readonly string PinsFilePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "SlurmJobManager", "pins.json");
+    private static readonly string PinsFilePath = LocalDataPaths.PinsFilePath;
 
     // ── Remote source directories ────────────────────────────────────────────
     private static readonly string[] AppSourceDirs = { "/env/preprocess/out", "/env/preprocess/bin" };

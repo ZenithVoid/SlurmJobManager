@@ -2,21 +2,19 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
+using SlurmJobManager.Core.Services;
 
 namespace SlurmJobManager.Infrastructure.Security;
 
 /// <summary>
 /// Stores a <see cref="ConnectionProfile"/> as JSON under
-/// <c>%AppData%/SlurmJobManager/profile.json</c>.
+/// <c>&lt;AppBaseDirectory&gt;/Data/profile.json</c>.
 /// Sensitive fields (password and key passphrase) are encrypted via
 /// <see cref="ICredentialProtector"/> before writing and decrypted on load.
 /// </summary>
 public sealed class ConnectionProfileStore : IConnectionProfileStore
 {
-    private static readonly string ProfilePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "SlurmJobManager",
-        "profile.json");
+    private static readonly string ProfilePath = LocalDataPaths.ProfileFilePath;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

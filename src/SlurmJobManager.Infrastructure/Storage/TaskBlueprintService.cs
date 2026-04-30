@@ -1,11 +1,12 @@
 using System.Text.Json;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
+using SlurmJobManager.Core.Services;
 
 namespace SlurmJobManager.Infrastructure.Storage;
 
 /// <summary>
-/// Stores task blueprints under AppData/SlurmJobManager/Blueprints with one JSON file per blueprint.
+/// Stores task blueprints under &lt;AppBaseDirectory&gt;/Data/Blueprints with one JSON file per blueprint.
 /// </summary>
 public sealed class TaskBlueprintService : ITaskBlueprintService
 {
@@ -21,7 +22,7 @@ public sealed class TaskBlueprintService : ITaskBlueprintService
     public TaskBlueprintService(string? blueprintsDirectory = null)
     {
         _blueprintsDirectory = string.IsNullOrWhiteSpace(blueprintsDirectory)
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SlurmJobManager", "Blueprints")
+            ? LocalDataPaths.BlueprintsDirectory
             : blueprintsDirectory;
 
         Directory.CreateDirectory(_blueprintsDirectory);
