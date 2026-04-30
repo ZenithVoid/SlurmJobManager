@@ -155,6 +155,8 @@
     <sys:String x:Key="Task.Submit">提交</sys:String>
     <sys:String x:Key="Task.TaskFiles">任务目录文件</sys:String>
     <sys:String x:Key="Task.TaskFilesHint">请先建立连接并设置任务目录，然后点击 ⟳ 刷新。</sys:String>
+    <sys:String x:Key="Task.CurrentPath">当前路径</sys:String>
+    <sys:String x:Key="Task.PathUp">返回上一级目录</sys:String>
     <sys:String x:Key="Task.OverwriteTitle">覆盖确认</sys:String>
     <sys:String x:Key="Task.OverwritePrompt">远程文件 {0} 已存在，是否覆盖？</sys:String>
     <sys:String x:Key="Task.SaveCancelled">保存已取消。</sys:String>
@@ -242,6 +244,8 @@
     <sys:String x:Key="RemoteEditor.Saved">已保存：</sys:String>
     <sys:String x:Key="RemoteEditor.SaveFailed">保存失败：</sys:String>
     <sys:String x:Key="RemoteEditor.Close">关闭</sys:String>
+    <sys:String x:Key="RemoteEditor.BinaryRejected">检测到二进制文件，已阻止按文本打开。</sys:String>
+    <sys:String x:Key="RemoteEditor.EncodingUnknown">编码无法可靠识别，当前按 UTF-8 打开。</sys:String>
 
     <!-- ── 终端视图 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Console.NotConnected">⚠ 当前可浏览此页面，但执行命令需先建立 SSH 连接。</sys:String>

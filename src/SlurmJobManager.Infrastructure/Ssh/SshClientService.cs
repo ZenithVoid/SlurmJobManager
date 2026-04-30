@@ -151,6 +151,18 @@ public sealed class SshClientService : ISshClientService
         }, ct);
     }
 
+    public Task<byte[]> ReadFileBytesAsync(string remotePath, CancellationToken ct = default)
+    {
+        EnsureConnected();
+        return Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            using var ms = new MemoryStream();
+            _sftpClient!.DownloadFile(remotePath, ms);
+            return ms.ToArray();
+        }, ct);
+    }
+
     public Task WriteTextFileAsync(string remotePath, string content, CancellationToken ct = default)
     {
         EnsureConnected();
@@ -159,6 +171,17 @@ public sealed class SshClientService : ISshClientService
             ct.ThrowIfCancellationRequested();
             var bytes = Encoding.UTF8.GetBytes(content);
             using var ms = new MemoryStream(bytes);
+            _sftpClient!.UploadFile(ms, remotePath, canOverride: true);
+        }, ct);
+    }
+
+    public Task WriteFileBytesAsync(string remotePath, byte[] content, CancellationToken ct = default)
+    {
+        EnsureConnected();
+        return Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            using var ms = new MemoryStream(content, writable: false);
             _sftpClient!.UploadFile(ms, remotePath, canOverride: true);
         }, ct);
     }

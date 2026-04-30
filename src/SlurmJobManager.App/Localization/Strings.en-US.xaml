@@ -154,6 +154,9 @@
     <sys:String x:Key="Task.ParamValue">Value</sys:String>
     <sys:String x:Key="Task.Submit">Submit</sys:String>
     <sys:String x:Key="Task.TaskFiles">Task Directory Files</sys:String>
+    <sys:String x:Key="Task.TaskFilesHint">Connect and set the task directory first, then click ⟳ refresh.</sys:String>
+    <sys:String x:Key="Task.CurrentPath">Current Path</sys:String>
+    <sys:String x:Key="Task.PathUp">Go to parent directory</sys:String>
     <sys:String x:Key="Task.OverwriteTitle">Overwrite Confirmation</sys:String>
     <sys:String x:Key="Task.OverwritePrompt">Remote file {0} already exists. Overwrite?</sys:String>
     <sys:String x:Key="Task.SaveCancelled">Save cancelled.</sys:String>
@@ -241,6 +244,8 @@
     <sys:String x:Key="RemoteEditor.Saved">Saved: </sys:String>
     <sys:String x:Key="RemoteEditor.SaveFailed">Save failed: </sys:String>
     <sys:String x:Key="RemoteEditor.Close">Close</sys:String>
+    <sys:String x:Key="RemoteEditor.BinaryRejected">Binary-like file detected, opening as text is blocked.</sys:String>
+    <sys:String x:Key="RemoteEditor.EncodingUnknown">Encoding cannot be identified reliably, opened as UTF-8.</sys:String>
 
     <!-- ── Console view ─────────────────────────────────────────────────── -->
     <sys:String x:Key="Console.NotConnected">⚠ You can browse this page freely. To execute commands, please establish an SSH connection first.</sys:String>
