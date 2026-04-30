@@ -31,6 +31,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private string  _paramFilter     = string.Empty;
     private string  _sbatchContent   = string.Empty;
     private string  _statusMessage   = string.Empty;
+    private string  _selectedAvailableProgram = string.Empty;
     private bool    _isBusy;
     private CommandEntryViewModel? _selectedCommand;
     private string  _selectedAvailableParamFile = string.Empty;
@@ -77,6 +78,16 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         set { if (SetField(ref _paramFilter, value)) RebuildFilteredParamFiles(); }
     }
 
+    public string SelectedAvailableProgram
+    {
+        get => _selectedAvailableProgram;
+        set
+        {
+            if (SetField(ref _selectedAvailableProgram, value))
+                CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
     public string SelectedAvailableParamFile
     {
         get => _selectedAvailableParamFile;
@@ -110,6 +121,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     public ICommand RemoveCommandCommand    { get; }
     public ICommand MoveUpCommand           { get; }
     public ICommand MoveDownCommand         { get; }
+    public ICommand ApplySelectedProgramCommand { get; }
     public ICommand AddParamFileCommand     { get; }
     public ICommand RemoveParamFileCommand  { get; }
     public ICommand EditParamFileCommand    { get; }
@@ -161,6 +173,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         RemoveCommandCommand   = new RelayCommand<CommandEntryViewModel>(RemoveCommand, c => c != null && Commands.Count > 1);
         MoveUpCommand          = new RelayCommand<CommandEntryViewModel>(MoveUp,   c => c != null && Commands.IndexOf(c) > 0);
         MoveDownCommand        = new RelayCommand<CommandEntryViewModel>(MoveDown, c => c != null && Commands.IndexOf(c) < Commands.Count - 1);
+        ApplySelectedProgramCommand = new RelayCommand(ApplySelectedProgram, () => _selectedCommand != null && !string.IsNullOrWhiteSpace(_selectedAvailableProgram));
         AddParamFileCommand    = new RelayCommand(AddParamFile,    () => _selectedCommand != null && !string.IsNullOrWhiteSpace(_selectedAvailableParamFile));
         RemoveParamFileCommand = new RelayCommand<string>(RemoveParamFile);
         EditParamFileCommand   = new AsyncRelayCommand<string>(EditParamFileAsync);
@@ -292,6 +305,12 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         if (!_selectedCommand.ParameterFiles.Contains(path))
             _selectedCommand.ParameterFiles.Add(path);
         _selectedCommand.RebuildCommandLine();
+    }
+
+    private void ApplySelectedProgram()
+    {
+        if (_selectedCommand == null || string.IsNullOrWhiteSpace(_selectedAvailableProgram)) return;
+        _selectedCommand.ProgramPath = _selectedAvailableProgram.Trim();
     }
 
     private void RemoveParamFile(string? path)
@@ -500,6 +519,8 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
     private void SaveAndApply()
     {
+        if (!ValidateSbatchContent()) return;
+
         // Rebuild all command lines before confirming
         foreach (var cmd in Commands)
             if (!string.IsNullOrWhiteSpace(cmd.ProgramPath))
@@ -536,7 +557,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("#!/bin/bash -l");
         sb.AppendLine($"#SBATCH --job-name={jobName}");
-        sb.AppendLine("#SBATCH --partition=");
+        sb.AppendLine("# TODO: set --partition=<your_partition>");
         sb.AppendLine("#SBATCH --nodes=1");
         sb.AppendLine("#SBATCH --ntasks=1");
         sb.AppendLine("#SBATCH --cpus-per-task=1");
@@ -568,7 +589,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         return
             "#!/bin/bash -l\n" +
             $"#SBATCH --job-name={jobName}\n" +
-            "#SBATCH --partition=\n" +
+            "# TODO: set --partition=<your_partition>\n" +
             "#SBATCH --nodes=1\n" +
             "#SBATCH --ntasks=1\n" +
             "#SBATCH --cpus-per-task=1\n" +
@@ -603,4 +624,28 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         var slashIdx = path.LastIndexOf('/');
         return slashIdx >= 0 ? path[(slashIdx + 1)..] : path;
     }
+
+    private bool ValidateSbatchContent()
+    {
+        var script = SbatchContent ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(script))
+        {
+            StatusMessage = L("CmdBuilder.SbatchEmptyError", "sbatch 脚本内容不能为空，请先填写脚本后再保存应用。");
+            return false;
+        }
+
+        var lines = script.Split('\n');
+        var hasShebang = lines.Any(line => line.TrimStart().StartsWith("#!"));
+        var hasTodoHint = script.Contains("TODO", StringComparison.OrdinalIgnoreCase);
+        if (!hasShebang && !hasTodoHint)
+        {
+            StatusMessage = L("CmdBuilder.SbatchMissingShebangError", "sbatch 脚本缺少 shebang（例如 #!/bin/bash）或明确 TODO 提示，请先修正后再保存应用。");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static string L(string key, string fallback)
+        => Application.Current?.TryFindResource(key) as string ?? fallback;
 }

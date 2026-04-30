@@ -159,16 +159,22 @@
                         <TextBlock DockPanel.Dock="Top"
                                    Text="{DynamicResource CmdBuilder.AvailablePrograms}"
                                    Style="{StaticResource SectionHeaderStyle}" />
-                        <TextBox DockPanel.Dock="Top"
-                                 Text="{Binding ProgramFilter, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,0,0,4" FontSize="11"
-                                 ToolTip="{DynamicResource CmdBuilder.FilterHint}" />
+                         <TextBox DockPanel.Dock="Top"
+                                  Text="{Binding ProgramFilter, UpdateSourceTrigger=PropertyChanged}"
+                                  Margin="0,0,0,4" FontSize="11"
+                                  ToolTip="{DynamicResource CmdBuilder.FilterHint}" />
+                        <DockPanel DockPanel.Dock="Bottom" Margin="0,4,0,0" LastChildFill="False">
+                            <Button Content="{DynamicResource CmdBuilder.ApplyProgram}"
+                                    Command="{Binding ApplySelectedProgramCommand}"
+                                    Style="{StaticResource NeutralButtonStyle}"
+                                    Padding="8,3" FontSize="11" />
+                        </DockPanel>
                         <ListBox ItemsSource="{Binding FilteredPrograms}"
-                                 SelectedItem="{Binding SelectedCommand.ProgramPath, Mode=OneWayToSource}"
-                                 Background="Transparent" BorderThickness="0"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 FontFamily="Consolas" FontSize="11"
-                                 MouseDoubleClick="ProgramList_DoubleClick">
+                                 SelectedItem="{Binding SelectedAvailableProgram, Mode=TwoWay}"
+                                  Background="Transparent" BorderThickness="0"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                  FontFamily="Consolas" FontSize="11"
+                                  MouseDoubleClick="ProgramList_DoubleClick">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
                                     <Setter Property="Padding" Value="4,2" />
@@ -223,7 +229,7 @@
             <!-- ── CENTRE: command list + detail ────────────────────── -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" MinHeight="140" />
+                    <RowDefinition Height="Auto" MinHeight="220" />
                     <RowDefinition Height="8" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
@@ -261,7 +267,7 @@
                         <ListBox ItemsSource="{Binding Commands}"
                                  SelectedItem="{Binding SelectedCommand, Mode=TwoWay}"
                                  Background="Transparent" BorderThickness="0"
-                                 MaxHeight="100"
+                                 MaxHeight="240"
                                  FontFamily="Consolas" FontSize="11">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
@@ -319,7 +325,8 @@
                                         Command="{Binding DetectMpiCommand}"
                                         Style="{StaticResource NeutralButtonStyle}"
                                         Padding="8,4" Margin="4,18,0,0" FontSize="11"
-                                        VerticalAlignment="Bottom" />
+                                        VerticalAlignment="Bottom"
+                                        ToolTip="{DynamicResource CmdBuilder.DetectMpiTooltip}" />
                             </Grid>
 
                             <!-- Attached parameter files -->
@@ -481,4 +488,3 @@
         </Grid>
     </Grid>
 </Window>
-

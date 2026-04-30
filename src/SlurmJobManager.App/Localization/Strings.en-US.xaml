@@ -187,6 +187,8 @@
     <sys:String x:Key="Task.CommandBuilderHint">Click the button above to configure multiple run commands, auto-detect MPI paths, and preview/edit the sbatch script.</sys:String>
     <sys:String x:Key="Task.CommandUpdated">Command updated. Remember to save the task.</sys:String>
     <sys:String x:Key="Task.CommandsSummary">Configured commands (preview)</sys:String>
+    <sys:String x:Key="Task.CommandsSummaryEmpty">No command configured yet. Click “Configure Run Command…” above.</sys:String>
+    <sys:String x:Key="Task.SaveLoadScopeHint">Save/Load applies to the full workspace for the current TaskId (task units, commands, and sbatch config).</sys:String>
     <sys:String x:Key="Task.TaskUnitSelectorDesc">Each TaskId can have multiple task units. Each unit independently maintains its own command set and sbatch script.</sys:String>
     <sys:String x:Key="Task.TaskIdDirExists">⚠ Directory already exists</sys:String>
     <sys:String x:Key="Task.TaskIdDirNotExists">✓ Directory does not exist and can be created</sys:String>
@@ -204,6 +206,7 @@
     <!-- ── Command builder ──────────────────────────────────────────────── -->
     <sys:String x:Key="CmdBuilder.Title">Command Builder</sys:String>
     <sys:String x:Key="CmdBuilder.AvailablePrograms">Available Programs (remote)</sys:String>
+    <sys:String x:Key="CmdBuilder.ApplyProgram">Apply to current command</sys:String>
     <sys:String x:Key="CmdBuilder.AvailableParamFiles">Available Parameter Files (remote)</sys:String>
     <sys:String x:Key="CmdBuilder.SelectedProgram">Program Path</sys:String>
     <sys:String x:Key="CmdBuilder.ChosenParamFiles">Attached Parameter Files</sys:String>
@@ -226,6 +229,7 @@
     <sys:String x:Key="CmdBuilder.MpirunPath">mpirun path (auto-detected / manual)</sys:String>
     <sys:String x:Key="CmdBuilder.MpirunHint">Leave empty to omit mpirun prefix. Use the detect button to auto-infer from the program's OpenMPI dependency.</sys:String>
     <sys:String x:Key="CmdBuilder.DetectMpi">🔍 Auto-detect</sys:String>
+    <sys:String x:Key="CmdBuilder.DetectMpiTooltip">Runs ldd on the current remote program, tries to infer OpenMPI/mpirun path, and falls back to which mpirun when needed.</sys:String>
     <sys:String x:Key="CmdBuilder.ExtraArgs">Extra command-line arguments</sys:String>
     <sys:String x:Key="CmdBuilder.ExtraArgsHint">Appended after parameter files: program → param files → extra args</sys:String>
     <sys:String x:Key="CmdBuilder.AddExtraArg">+ Add argument</sys:String>
@@ -233,6 +237,8 @@
     <sys:String x:Key="CmdBuilder.SbatchScript">sbatch Script (editable)</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchHint">This script will be used on submission. Click Regenerate to refresh it from the current command list.</sys:String>
     <sys:String x:Key="CmdBuilder.RegenSbatch">⟳ Regenerate</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchEmptyError">sbatch script cannot be empty. Please fill it before Save &amp; Apply.</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchMissingShebangError">sbatch script must include a shebang (e.g. #!/bin/bash) or an explicit TODO hint before Save &amp; Apply.</sys:String>
 
     <!-- ── Remote directory picker ──────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.Title">Select Remote Directory</sys:String>

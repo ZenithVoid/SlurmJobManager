@@ -64,11 +64,10 @@ public partial class CommandBuilderView : Window
 
     private void ProgramList_DoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (sender is ListBox lb && lb.SelectedItem is string path
-            && DataContext is CommandBuilderViewModel vm
-            && vm.SelectedCommand != null)
+        if (DataContext is CommandBuilderViewModel vm
+            && vm.ApplySelectedProgramCommand.CanExecute(null))
         {
-            vm.SelectedCommand.ProgramPath = path;
+            vm.ApplySelectedProgramCommand.Execute(null);
         }
     }
 
@@ -108,4 +107,3 @@ public partial class CommandBuilderView : Window
     private void BtnCancel_Click(object sender, RoutedEventArgs e)
         => DialogResult = false;
 }
-

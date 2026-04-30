@@ -187,6 +187,8 @@
     <sys:String x:Key="Task.CommandBuilderHint">点击上方按钮可配置多个运行命令、自动推断 MPI 路径，并预览和编辑 sbatch 脚本。</sys:String>
     <sys:String x:Key="Task.CommandUpdated">命令已更新，请记得保存任务。</sys:String>
     <sys:String x:Key="Task.CommandsSummary">已配置命令（预览）</sys:String>
+    <sys:String x:Key="Task.CommandsSummaryEmpty">尚未配置命令，请点击上方“配置运行命令…”</sys:String>
+    <sys:String x:Key="Task.SaveLoadScopeHint">保存/加载的是当前 TaskId 的整个任务工作区（包含任务单元、命令与 sbatch 配置）。</sys:String>
     <sys:String x:Key="Task.TaskUnitSelectorDesc">每个 TaskId 下可有多个任务单元，每个单元独立维护命令集合和 sbatch 脚本。</sys:String>
     <sys:String x:Key="Task.TaskIdDirExists">⚠ 目录已存在</sys:String>
     <sys:String x:Key="Task.TaskIdDirNotExists">✓ 目录不存在，可新建</sys:String>
@@ -204,6 +206,7 @@
     <!-- ── 命令构建器 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="CmdBuilder.Title">命令构建器</sys:String>
     <sys:String x:Key="CmdBuilder.AvailablePrograms">可用程序（远程）</sys:String>
+    <sys:String x:Key="CmdBuilder.ApplyProgram">选择到当前命令</sys:String>
     <sys:String x:Key="CmdBuilder.AvailableParamFiles">可用参数文件（远程）</sys:String>
     <sys:String x:Key="CmdBuilder.SelectedProgram">程序路径</sys:String>
     <sys:String x:Key="CmdBuilder.ChosenParamFiles">已附加参数文件</sys:String>
@@ -226,6 +229,7 @@
     <sys:String x:Key="CmdBuilder.MpirunPath">mpirun 路径（自动推断/手动填写）</sys:String>
     <sys:String x:Key="CmdBuilder.MpirunHint">留空则不添加 mpirun 前缀；可通过右侧"自动探测"按钮推断</sys:String>
     <sys:String x:Key="CmdBuilder.DetectMpi">🔍 自动探测</sys:String>
+    <sys:String x:Key="CmdBuilder.DetectMpiTooltip">将在远程对当前程序执行 ldd，尝试推断 OpenMPI / mpirun 路径；必要时回退到 which mpirun。</sys:String>
     <sys:String x:Key="CmdBuilder.ExtraArgs">额外命令行参数</sys:String>
     <sys:String x:Key="CmdBuilder.ExtraArgsHint">追加在参数文件之后，顺序：程序 → 参数文件 → 额外参数</sys:String>
     <sys:String x:Key="CmdBuilder.AddExtraArg">+ 添加参数</sys:String>
@@ -233,6 +237,8 @@
     <sys:String x:Key="CmdBuilder.SbatchScript">sbatch 脚本（可编辑）</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchHint">此脚本将在提交时使用。点击"重新生成"可用当前命令列表刷新内容。</sys:String>
     <sys:String x:Key="CmdBuilder.RegenSbatch">⟳ 重新生成</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchEmptyError">sbatch 脚本内容不能为空，请先填写脚本后再保存应用。</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchMissingShebangError">sbatch 脚本缺少 shebang（例如 #!/bin/bash）或明确 TODO 提示，请先修正后再保存应用。</sys:String>
 
     <!-- ── 远程目录选择器 ─────────────────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.Title">选择远程目录</sys:String>
