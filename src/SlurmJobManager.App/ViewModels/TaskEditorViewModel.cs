@@ -22,6 +22,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private readonly ISshClientService _ssh;
     private readonly ISlurmService _slurm;
     private readonly ITaskStorageService _storage;
+    private readonly ITaskBlueprintService _blueprints;
 
     // ── Local app-data storage root ──────────────────────────────────────────
     private static readonly string LocalDataRoot = Path.Combine(
@@ -244,14 +245,21 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
     /// <summary>Opens the Command Builder dialog for the active task unit.</summary>
     public ICommand OpenCommandBuilderCommand { get; }
+    public ICommand SaveAsBlueprintCommand { get; }
+    public ICommand CreateFromBlueprintCommand { get; }
 
     // ── Constructor ──────────────────────────────────────────────────────────
 
-    public TaskEditorViewModel(ISshClientService ssh, ISlurmService slurm, ITaskStorageService storage)
+    public TaskEditorViewModel(
+        ISshClientService ssh,
+        ISlurmService slurm,
+        ITaskStorageService storage,
+        ITaskBlueprintService blueprints)
     {
         _ssh     = ssh     ?? throw new ArgumentNullException(nameof(ssh));
         _slurm   = slurm   ?? throw new ArgumentNullException(nameof(slurm));
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        _blueprints = blueprints ?? throw new ArgumentNullException(nameof(blueprints));
 
         BrowseRootDirectoryCommand       = new AsyncRelayCommand(BrowseRootDirectoryAsync, () => _ssh.IsConnected);
         NewTaskIdCommand                 = new RelayCommand(GenerateNewTaskId, () => _taskIdDirectoryExists != true);
@@ -269,6 +277,8 @@ public sealed class TaskEditorViewModel : ViewModelBase
         OpenTaskFileCommand              = new AsyncRelayCommand<TaskFileEntry>(OpenTaskFileAsync);
         GoUpTaskFilesPathCommand         = new AsyncRelayCommand(GoUpTaskFilesPathAsync,            () => _ssh.IsConnected && !IsBusy);
         OpenCommandBuilderCommand        = new AsyncRelayCommand(OpenCommandBuilderAsync,           () => !IsBusy);
+        SaveAsBlueprintCommand           = new AsyncRelayCommand(SaveAsBlueprintAsync,              () => !IsBusy);
+        CreateFromBlueprintCommand       = new AsyncRelayCommand(CreateFromBlueprintAsync,          () => !IsBusy);
         AddTaskUnitCommand               = new RelayCommand(AddTaskUnitInternal);
         RemoveTaskUnitCommand            = new RelayCommand<TaskUnitViewModel>(RemoveTaskUnit, u => u != null && TaskUnits.Count > 1);
 
@@ -950,6 +960,334 @@ public sealed class TaskEditorViewModel : ViewModelBase
             CommandManager.InvalidateRequerySuggested();
         }
     }
+
+    // ── Task blueprint ───────────────────────────────────────────────────────
+
+    private async Task SaveAsBlueprintAsync(CancellationToken ct)
+    {
+        EnsureAtLeastOneTaskUnit();
+        SyncToSelectedUnit();
+
+        var dialogVm = new TaskBlueprintSaveViewModel(initialName: TaskId);
+        var dialog = new TaskBlueprintSaveView { DataContext = dialogVm };
+        if (Application.Current.MainWindow is { } mainWin) dialog.Owner = mainWin;
+
+        if (dialog.ShowDialog() != true || !dialogVm.Confirmed)
+            return;
+
+        if (TaskUnits.All(u => u.Commands.Count == 0 && u.Programs.Count == 0))
+        {
+            MessageBox.Show(
+                L("Task.BlueprintIncompleteWarning"),
+                L("Task.BlueprintSaveTitle"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+
+        var overwrite = false;
+        if (await _blueprints.ExistsByNameAsync(dialogVm.BlueprintName, ct))
+        {
+            var confirm = MessageBox.Show(
+                string.Format(L("Task.BlueprintOverwriteConfirm"), dialogVm.BlueprintName),
+                L("Task.BlueprintOverwriteTitle"),
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.Yes)
+            {
+                SetStatus("Task.SaveCancelled", "InfoTextStyle");
+                return;
+            }
+
+            overwrite = true;
+        }
+
+        try
+        {
+            var blueprint = BuildBlueprintRecord(dialogVm.BlueprintName, dialogVm.BlueprintDescription);
+            await _blueprints.SaveAsync(blueprint, overwriteByName: overwrite, ct);
+            SetStatus(string.Format(L("Task.BlueprintSaveSucceeded"), blueprint.Name), "SuccessTextStyle", localize: false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.BlueprintSaveFailed"), ex.Message), "ErrorTextStyle", localize: false);
+        }
+    }
+
+    private async Task CreateFromBlueprintAsync(CancellationToken ct)
+    {
+        var dialogVm = new TaskBlueprintCreateViewModel(_blueprints)
+        {
+            NewTaskId = string.IsNullOrWhiteSpace(TaskId)
+                ? $"task_{DateTime.Now:yyyyMMdd_HHmmss}"
+                : $"{TaskId}_new",
+        };
+        await dialogVm.LoadAsync(ct);
+
+        var dialog = new TaskBlueprintCreateView { DataContext = dialogVm };
+        if (Application.Current.MainWindow is { } mainWin) dialog.Owner = mainWin;
+
+        if (dialog.ShowDialog() != true || !dialogVm.Confirmed || dialogVm.SelectedBlueprintRecord == null)
+            return;
+
+        try
+        {
+            var warnings = ApplyBlueprintToEditor(dialogVm.SelectedBlueprintRecord, dialogVm.NewTaskId.Trim());
+            var successMessage = string.Format(L("Task.BlueprintCreateSucceeded"), dialogVm.NewTaskId.Trim());
+            if (warnings.Count == 0)
+            {
+                SetStatus(successMessage, "SuccessTextStyle", localize: false);
+            }
+            else
+            {
+                SetStatus($"{successMessage}\n{string.Join("\n", warnings)}", "WarningTextStyle", localize: false);
+                MessageBox.Show(
+                    string.Join("\n", warnings),
+                    L("Task.BlueprintApplyNoticeTitle"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.BlueprintCreateFailed"), ex.Message), "ErrorTextStyle", localize: false);
+        }
+    }
+
+    private TaskBlueprintRecord BuildBlueprintRecord(string name, string description)
+    {
+        var workspace = BuildWorkspace();
+
+        return new TaskBlueprintRecord
+        {
+            BlueprintId = Guid.NewGuid().ToString("N"),
+            Name = name.Trim(),
+            Description = description.Trim(),
+            Version = TaskBlueprintRecord.CurrentVersion,
+            SourceTaskId = TaskId,
+            RootDirectory = RootDirectory,
+            RemoteWorkDirectory = RemoteWorkDir,
+            ActiveTaskUnitName = SelectedTaskUnit?.TaskName,
+            TaskUnits = workspace.Tasks.Select(CloneTaskUnit).ToList(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+    }
+
+    private List<string> ApplyBlueprintToEditor(TaskBlueprintRecord blueprint, string newTaskId)
+    {
+        var warnings = new HashSet<string>(StringComparer.Ordinal);
+
+        if (!string.IsNullOrWhiteSpace(blueprint.RootDirectory))
+            RootDirectory = blueprint.RootDirectory.Trim();
+
+        var oldTaskId = blueprint.SourceTaskId?.Trim() ?? string.Empty;
+        TaskId = newTaskId;
+
+        var blueprintRoot = blueprint.RootDirectory?.Trim();
+        var normalizedLegacyAutoDir = string.IsNullOrWhiteSpace(blueprintRoot) || string.IsNullOrWhiteSpace(oldTaskId)
+            ? string.Empty
+            : NormalizeRemotePath($"{blueprintRoot.TrimEnd('/')}/{oldTaskId}");
+
+        var normalizedNewAutoDir = NormalizeRemotePath(BuildAutoRemoteWorkDir());
+        var fallbackWorkDir = !string.IsNullOrWhiteSpace(normalizedNewAutoDir)
+            ? normalizedNewAutoDir
+            : NormalizeRemotePath(blueprint.RemoteWorkDirectory);
+
+        TaskUnits.Clear();
+        var sourceUnits = blueprint.TaskUnits.Count > 0
+            ? blueprint.TaskUnits
+            : new List<TaskUnit> { new() { TaskName = newTaskId, Enabled = true } };
+
+        foreach (var source in sourceUnits)
+        {
+            var adapted = CloneTaskUnit(source);
+            adapted.SlurmJobId = null;
+
+            AdaptTaskUnitForNewTask(
+                adapted,
+                oldTaskId,
+                newTaskId,
+                normalizedLegacyAutoDir,
+                fallbackWorkDir,
+                warnings);
+
+            if (string.IsNullOrWhiteSpace(adapted.TaskName) ||
+                (!string.IsNullOrWhiteSpace(oldTaskId)
+                    && string.Equals(adapted.TaskName, oldTaskId, StringComparison.OrdinalIgnoreCase)))
+            {
+                adapted.TaskName = newTaskId;
+            }
+
+            TaskUnits.Add(new TaskUnitViewModel(adapted));
+        }
+
+        EnsureAtLeastOneTaskUnit();
+        SelectedTaskUnit = TaskUnits.FirstOrDefault(u =>
+            string.Equals(u.TaskName, blueprint.ActiveTaskUnitName, StringComparison.OrdinalIgnoreCase))
+            ?? TaskUnits[0];
+
+        SyncFromSelectedUnit();
+        if (string.IsNullOrWhiteSpace(RemoteWorkDir) && !string.IsNullOrWhiteSpace(fallbackWorkDir))
+        {
+            RemoteWorkDir = fallbackWorkDir;
+            CurrentTaskFilesPath = fallbackWorkDir;
+        }
+
+        LastJobId = null;
+        LastSavedTime = string.Empty;
+
+        return warnings.ToList();
+    }
+
+    private void AdaptTaskUnitForNewTask(
+        TaskUnit unit,
+        string oldTaskId,
+        string newTaskId,
+        string normalizedLegacyAutoDir,
+        string fallbackWorkDir,
+        HashSet<string> warnings)
+    {
+        var sourceUnitWorkDir = NormalizeRemotePath(unit.RemoteWorkDirectory);
+        if (string.IsNullOrWhiteSpace(sourceUnitWorkDir))
+            sourceUnitWorkDir = NormalizeRemotePath(RemoteWorkDir);
+
+        if (IsAutoGeneratedWorkDir(sourceUnitWorkDir, normalizedLegacyAutoDir))
+        {
+            unit.RemoteWorkDirectory = fallbackWorkDir;
+        }
+        else if (!string.IsNullOrWhiteSpace(sourceUnitWorkDir))
+        {
+            unit.RemoteWorkDirectory = sourceUnitWorkDir;
+            warnings.Add(L("Task.BlueprintRemoteWorkDirNeedsReview"));
+        }
+        else
+        {
+            unit.RemoteWorkDirectory = fallbackWorkDir;
+        }
+
+        unit.SbatchTemplate = AdaptSbatchTemplate(unit.SbatchTemplate, oldTaskId, newTaskId, warnings);
+
+        foreach (var p in unit.ParameterFiles)
+            p.FilePath = AdaptParameterPath(p.FilePath, unit.RemoteWorkDirectory ?? fallbackWorkDir, warnings);
+
+        foreach (var c in unit.CommandEntries)
+        {
+            c.ParameterFiles = c.ParameterFiles
+                .Select(path => AdaptParameterPath(path, unit.RemoteWorkDirectory ?? fallbackWorkDir, warnings))
+                .ToList();
+        }
+    }
+
+    private string AdaptSbatchTemplate(
+        string? template,
+        string oldTaskId,
+        string newTaskId,
+        HashSet<string> warnings)
+    {
+        if (string.IsNullOrWhiteSpace(template))
+            return template ?? string.Empty;
+
+        var lines = template.Replace("\r\n", "\n").Split('\n').ToList();
+        var replacedOldTaskId = false;
+        var hasJobName = false;
+
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var line = lines[i];
+            var trimmed = line.TrimStart();
+            if (trimmed.StartsWith("#SBATCH --job-name", StringComparison.OrdinalIgnoreCase))
+            {
+                var prefix = line[..(line.Length - trimmed.Length)];
+                line = $"{prefix}#SBATCH --job-name={newTaskId}";
+                hasJobName = true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(oldTaskId)
+                && !string.Equals(oldTaskId, newTaskId, StringComparison.Ordinal)
+                && line.Contains(oldTaskId, StringComparison.Ordinal))
+            {
+                line = line.Replace(oldTaskId, newTaskId, StringComparison.Ordinal);
+                replacedOldTaskId = true;
+            }
+
+            lines[i] = line;
+        }
+
+        if (!hasJobName)
+        {
+            var insertAt = lines.Count > 0 && lines[0].StartsWith("#!", StringComparison.Ordinal) ? 1 : 0;
+            lines.Insert(insertAt, $"#SBATCH --job-name={newTaskId}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(oldTaskId) && !replacedOldTaskId)
+            warnings.Add(L("Task.BlueprintSbatchNeedsReview"));
+
+        return string.Join('\n', lines);
+    }
+
+    private string AdaptParameterPath(string? path, string unitWorkDir, HashSet<string> warnings)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        var normalized = path.Trim().Replace('\\', '/');
+        if (normalized.StartsWith("/", StringComparison.Ordinal))
+            return normalized;
+
+        var normalizedWorkDir = NormalizeRemotePath(unitWorkDir);
+        if (string.IsNullOrWhiteSpace(normalizedWorkDir))
+        {
+            warnings.Add(L("Task.BlueprintParameterPathNeedsReview"));
+            return normalized;
+        }
+
+        var mapped = $"{normalizedWorkDir.TrimEnd('/')}/params/{normalized.TrimStart('/')}";
+        warnings.Add(L("Task.BlueprintContainsOldTaskIdPathWarning"));
+        return mapped;
+    }
+
+    private static bool IsAutoGeneratedWorkDir(string candidate, string normalizedLegacyAutoDir)
+    {
+        if (string.IsNullOrWhiteSpace(candidate) || string.IsNullOrWhiteSpace(normalizedLegacyAutoDir))
+            return false;
+
+        return string.Equals(
+            NormalizeRemotePath(candidate),
+            NormalizeRemotePath(normalizedLegacyAutoDir),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static TaskUnit CloneTaskUnit(TaskUnit source) => new()
+    {
+        TaskName = source.TaskName,
+        Enabled = source.Enabled,
+        RemoteWorkDirectory = source.RemoteWorkDirectory,
+        SlurmJobId = source.SlurmJobId,
+        SbatchTemplate = source.SbatchTemplate,
+        ProgramEntries = source.ProgramEntries.Select(p => new ProgramEntry
+        {
+            ProgramPath = p.ProgramPath,
+            ArgsTemplate = p.ArgsTemplate,
+            Order = p.Order,
+        }).ToList(),
+        ParameterFiles = source.ParameterFiles.Select(f => new ParameterFileEntry
+        {
+            FilePath = f.FilePath,
+            Alias = f.Alias,
+            IsPinned = f.IsPinned,
+        }).ToList(),
+        CommandEntries = source.CommandEntries.Select(c => new CommandEntry
+        {
+            CommandLine = c.CommandLine,
+            Description = c.Description,
+            Order = c.Order,
+            ProgramPath = c.ProgramPath,
+            ParameterFiles = c.ParameterFiles.ToList(),
+            ExtraArgs = c.ExtraArgs.ToList(),
+            MpirunPath = c.MpirunPath,
+        }).ToList(),
+        ExtraParameters = new Dictionary<string, string>(source.ExtraParameters),
+    };
 
     // ── Persistence (workspace + legacy) ────────────────────────────────────
 

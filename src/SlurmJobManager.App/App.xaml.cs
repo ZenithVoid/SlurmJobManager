@@ -42,6 +42,7 @@ public partial class App : Application
         var ssh      = new SshClientService(settings);
         var slurm    = new SlurmService(ssh, settings, _logger);
         var storage  = new TaskStorageService();
+        var blueprints = new TaskBlueprintService();
         var logChunk = new SshLogChunkService(ssh, settings, _logger);
 
         // Credential protection (DPAPI, Windows-only)
@@ -54,7 +55,7 @@ public partial class App : Application
 
         // ViewModels
         var connectionVm = new ConnectionViewModel(ssh, profileStore);
-        var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage);
+        var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints);
         var monitorVm    = new MonitorViewModel(slurm, settings, _logger, connectionVm);
         var logViewerVm  = new LogViewerViewModel(logChunk, _logger);
         var consoleVm    = new ConsoleViewModel(ssh, _logger, connectionVm);
