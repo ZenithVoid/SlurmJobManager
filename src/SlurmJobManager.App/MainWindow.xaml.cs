@@ -87,6 +87,99 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void TaskFileListItem_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not ListBoxItem item)
+            return;
+
+        if (ItemsControl.ItemsControlFromItemContainer(item) is not ListBox listBox)
+            return;
+
+        if (!item.IsSelected)
+        {
+            listBox.SelectedItems.Clear();
+            item.IsSelected = true;
+        }
+
+        listBox.SelectedItem = item.DataContext;
+    }
+
+    private void TaskFileListBox_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not ListBox listBox)
+            return;
+
+        var hit = e.OriginalSource as DependencyObject;
+        if (FindAncestor<ListBoxItem>(hit) != null)
+            return;
+
+        listBox.SelectedItems.Clear();
+        listBox.SelectedItem = null;
+    }
+
+    private void TaskFileContextMenu_Opening(object sender, ContextMenuEventArgs e)
+    {
+        if (sender is not ContextMenu menu || menu.PlacementTarget is not ListBox listBox)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        var selectedCount = listBox.SelectedItems.Count;
+        if (selectedCount <= 0)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        var hasSingleSelection = selectedCount == 1 && listBox.SelectedItem is TaskFileEntry;
+        if (menu.FindName("TaskFileContextOpenMenuItem") is MenuItem openItem)
+            openItem.IsEnabled = hasSingleSelection;
+        if (menu.FindName("TaskFileContextTimeInfoMenuItem") is MenuItem timeInfoItem)
+            timeInfoItem.IsEnabled = hasSingleSelection;
+        if (menu.FindName("TaskFileContextDeleteMenuItem") is MenuItem deleteItem)
+            deleteItem.IsEnabled = selectedCount > 0;
+    }
+
+    private void TaskFileContextOpen_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || TaskFileListBox.SelectedItem is not TaskFileEntry fileEntry)
+            return;
+
+        if (!vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
+            return;
+
+        vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
+    }
+
+    private void TaskFileContextDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm)
+            return;
+
+        var selectedEntries = TaskFileListBox.SelectedItems
+            .OfType<TaskFileEntry>()
+            .ToList();
+        if (selectedEntries.Count == 0)
+            return;
+
+        if (!vm.TaskEditor.DeleteTaskFilesCommand.CanExecute(selectedEntries))
+            return;
+
+        vm.TaskEditor.DeleteTaskFilesCommand.Execute(selectedEntries);
+    }
+
+    private void TaskFileContextViewTimeInfo_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || TaskFileListBox.SelectedItem is not TaskFileEntry fileEntry)
+            return;
+
+        if (!vm.TaskEditor.ViewTaskFileTimeInfoCommand.CanExecute(fileEntry))
+            return;
+
+        vm.TaskEditor.ViewTaskFileTimeInfoCommand.Execute(fileEntry);
+    }
+
     private void ApplyTabFocus(string tabId)
     {
         Dispatcher.BeginInvoke(() =>
@@ -192,5 +285,18 @@ public partial class MainWindow : Window
         if (_subscribedVm != null)
             _subscribedVm.PropertyChanged -= OnMainViewModelPropertyChanged;
         _subscribedVm = null;
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? child) where T : DependencyObject
+    {
+        while (child != null)
+        {
+            if (child is T matched)
+                return matched;
+
+            child = VisualTreeHelper.GetParent(child);
+        }
+
+        return null;
     }
 }
