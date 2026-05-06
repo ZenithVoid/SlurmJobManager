@@ -31,6 +31,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     private static readonly Color CursorColor = Color.FromArgb(180, 0x9D, 0xCB, 0xFF);
     private static readonly Typeface MonoTypeface = new(new FontFamily("Cascadia Mono"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
     private static readonly TimeSpan MinRenderInterval = TimeSpan.FromMilliseconds(16);
+    private const double PixelsPerDipTolerance = 0.0001;
 
     private readonly Terminal _terminal;
     private readonly DispatcherTimer _renderTimer;
@@ -106,6 +107,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     {
         if (string.IsNullOrEmpty(data) || _isDisposed) return;
         _terminal.Write(data);
+        RequestRender();
     }
 
     public void Clear()
@@ -229,7 +231,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     private void EnsureCellMetrics()
     {
         var currentPixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
-        if (_cellWidth > 0 && _cellHeight > 0 && Math.Abs(_pixelsPerDip - currentPixelsPerDip) < 0.0001)
+        if (_cellWidth > 0 && _cellHeight > 0 && Math.Abs(_pixelsPerDip - currentPixelsPerDip) < PixelsPerDipTolerance)
             return;
 
         _pixelsPerDip = currentPixelsPerDip;

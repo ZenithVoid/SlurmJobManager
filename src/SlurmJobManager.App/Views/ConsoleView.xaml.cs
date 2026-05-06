@@ -102,10 +102,10 @@ public partial class ConsoleView : UserControl
 
     public void RequestTerminalFocus() => FocusTerminal();
 
-    private async void TerminalSurface_InputGenerated(object sender, string input)
+    private void TerminalSurface_InputGenerated(object sender, string input)
     {
         if (DataContext is not ConsoleViewModel vm) return;
-        _ = vm.ForwardTerminalInputAsync(input);
+        _ = ForwardTerminalInputSafelyAsync(vm, input);
     }
 
     private async void TerminalSurface_TerminalResized(object sender, TerminalResizedEventArgs e)
@@ -156,5 +156,17 @@ public partial class ConsoleView : UserControl
 
         try { TerminalSurface.Write(payload); }
         catch { /* best effort */ }
+    }
+
+    private static async Task ForwardTerminalInputSafelyAsync(ConsoleViewModel vm, string input)
+    {
+        try
+        {
+            await vm.ForwardTerminalInputAsync(input);
+        }
+        catch
+        {
+            // best effort: keep terminal input path resilient without surfacing UI exceptions
+        }
     }
 }

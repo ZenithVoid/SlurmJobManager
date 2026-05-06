@@ -212,7 +212,11 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
                 _shellStream.Write(chunk);
 
                 while (reader.TryRead(out var bufferedChunk))
+                {
+                    if (string.IsNullOrEmpty(bufferedChunk))
+                        continue;
                     _shellStream.Write(bufferedChunk);
+                }
 
                 _shellStream.Flush();
             }
