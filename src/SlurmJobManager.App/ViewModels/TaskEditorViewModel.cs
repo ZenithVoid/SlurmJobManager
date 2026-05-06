@@ -48,6 +48,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private bool _isAutoUpdatingRemoteWorkDir;
     private bool _remoteWorkDirFollowsTaskId = true;
     private string _homeDirectory = string.Empty;
+    private string _connectedHostOrAddress = string.Empty;
+    private string _connectedUsername = string.Empty;
     private string _appPath = string.Empty;
     private string _saveAsFileName = string.Empty;
     private string _sbatchTemplate = DefaultSbatchTemplate;
@@ -619,10 +621,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     // ── B1: Remote root directory + picker ───────────────────────────────────
 
-    public async void OnConnectionEstablished(string username)
+    public async void OnConnectionEstablished(string hostOrAddress, string username)
     {
         try
         {
+            _connectedHostOrAddress = hostOrAddress?.Trim() ?? string.Empty;
+            _connectedUsername = username?.Trim() ?? string.Empty;
             var home = await _ssh.GetHomeDirectoryAsync();
             if (!string.IsNullOrEmpty(home))
             {
@@ -1204,6 +1208,13 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private async Task SaveAsBlueprintAsync(CancellationToken ct)
     {
+        var scope = GetCurrentBlueprintScope();
+        if (scope == null)
+        {
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
+            return;
+        }
+
         EnsureAtLeastOneTaskUnit();
         SyncToSelectedUnit();
 
@@ -1224,7 +1235,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         }
 
         var overwrite = false;
-        if (await _blueprints.ExistsByNameAsync(dialogVm.BlueprintName, ct))
+        if (await _blueprints.ExistsByNameAsync(dialogVm.BlueprintName, scope, ct))
         {
             var confirm = MessageBox.Show(
                 string.Format(L("Task.BlueprintOverwriteConfirm"), dialogVm.BlueprintName),
@@ -1242,8 +1253,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         try
         {
-            var blueprint = BuildBlueprintRecord(dialogVm.BlueprintName, dialogVm.BlueprintDescription);
-            await _blueprints.SaveAsync(blueprint, overwriteByName: overwrite, ct);
+            var blueprint = BuildBlueprintRecord(dialogVm.BlueprintName, dialogVm.BlueprintDescription, scope);
+            await _blueprints.SaveAsync(blueprint, scope, overwriteByName: overwrite, ct);
             SetStatus(string.Format(L("Task.BlueprintSaveSucceeded"), blueprint.Name), "SuccessTextStyle", localize: false);
         }
         catch (Exception ex)
@@ -1254,7 +1265,14 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private async Task CreateFromBlueprintAsync(CancellationToken ct)
     {
-        var dialogVm = new TaskBlueprintCreateViewModel(_blueprints)
+        var scope = GetCurrentBlueprintScope();
+        if (scope == null)
+        {
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
+            return;
+        }
+
+        var dialogVm = new TaskBlueprintCreateViewModel(_blueprints, scope)
         {
             NewTaskId = string.IsNullOrWhiteSpace(TaskId)
                 ? $"task_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}"
@@ -1292,7 +1310,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private TaskBlueprintRecord BuildBlueprintRecord(string name, string description)
+    private TaskBlueprintRecord BuildBlueprintRecord(string name, string description, TaskBlueprintScope scope)
     {
         var workspace = BuildWorkspace();
 
@@ -1306,9 +1324,24 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             RootDirectory = RootDirectory,
             RemoteWorkDirectory = RemoteWorkDir,
             ActiveTaskUnitName = SelectedTaskUnit?.TaskName,
+            ScopeHostOrAddress = scope.HostOrAddress,
+            ScopeUsername = scope.Username,
+            ScopeKey = TaskBlueprintScope.BuildScopeKey(scope.HostOrAddress, scope.Username),
             TaskUnits = workspace.Tasks.Select(CloneTaskUnit).ToList(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
+        };
+    }
+
+    private TaskBlueprintScope? GetCurrentBlueprintScope()
+    {
+        if (string.IsNullOrWhiteSpace(_connectedHostOrAddress) || string.IsNullOrWhiteSpace(_connectedUsername))
+            return null;
+
+        return new TaskBlueprintScope
+        {
+            HostOrAddress = _connectedHostOrAddress,
+            Username = _connectedUsername,
         };
     }
 
