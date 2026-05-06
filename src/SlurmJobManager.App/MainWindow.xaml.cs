@@ -78,14 +78,21 @@ public partial class MainWindow : Window
         if (FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject) is not { DataContext: TaskFileEntry fileEntry })
             return;
 
-        if (!Equals(listBox.SelectedItem, fileEntry))
-            listBox.SelectedItem = fileEntry;
+        OpenTaskFileFromListItem(listBox, vm, fileEntry, e);
+    }
 
-        if (!vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
+    private void TaskFileListItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left
+            || e.ClickCount != 2
+            || sender is not ListBoxItem { DataContext: TaskFileEntry fileEntry } item
+            || DataContext is not MainViewModel vm)
             return;
 
-        vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
-        e.Handled = true;
+        if (ItemsControl.ItemsControlFromItemContainer(item) is not ListBox listBox)
+            return;
+
+        OpenTaskFileFromListItem(listBox, vm, fileEntry, e);
     }
 
     private void TaskFileListItem_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
@@ -303,5 +310,17 @@ public partial class MainWindow : Window
         }
 
         return null;
+    }
+
+    private static void OpenTaskFileFromListItem(ListBox listBox, MainViewModel vm, TaskFileEntry fileEntry, MouseButtonEventArgs e)
+    {
+        if (!Equals(listBox.SelectedItem, fileEntry))
+            listBox.SelectedItem = fileEntry;
+
+        if (!vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
+            return;
+
+        vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
+        e.Handled = true;
     }
 }
