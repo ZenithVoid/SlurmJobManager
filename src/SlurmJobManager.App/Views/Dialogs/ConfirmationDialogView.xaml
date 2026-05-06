@@ -44,10 +44,6 @@
                        TextWrapping="Wrap" />
         </Grid>
 
-        <TextBlock Grid.Row="1"
-                   Text="{Binding Details}"
-                   Visibility="Collapsed" />
-
         <Border Grid.Row="2"
                 Background="{DynamicResource BgCrustBrush}"
                 BorderBrush="{DynamicResource BorderBrush}"

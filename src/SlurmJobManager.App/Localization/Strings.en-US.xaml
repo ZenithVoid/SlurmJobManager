@@ -217,7 +217,7 @@
     <sys:String x:Key="Task.FileDeletePartialSummary">Deleted {0} item(s), {1} item(s) failed.</sys:String>
     <sys:String x:Key="Task.FileDeleteResultTitle">Delete result details</sys:String>
     <sys:String x:Key="Task.FileDeleteFailureSummaryTitle">Some items failed to delete.</sys:String>
-    <sys:String x:Key="Task.FileDeleteFailureDetail">Failed items:{0}</sys:String>
+    <sys:String x:Key="Task.FileDeleteFailureDetail">Failed items: {0}</sys:String>
     <sys:String x:Key="Task.TaskFileMissing">Remote file does not exist: {0}</sys:String>
     <sys:String x:Key="Task.RemoteFileOpenFailed">Failed to open remote file {0}: {1}</sys:String>
     <sys:String x:Key="Task.RemoteFileOpenLoadUnknownError">Unknown remote file load error.</sys:String>
