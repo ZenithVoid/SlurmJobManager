@@ -16,6 +16,12 @@ public sealed class RecentConnectionService : IRecentConnectionService
     };
 
     private readonly string _filePath = LocalDataPaths.RecentConnectionsFilePath;
+    private readonly IAppLogger? _logger;
+
+    public RecentConnectionService(IAppLogger? logger = null)
+    {
+        _logger = logger;
+    }
 
     public async Task<IReadOnlyList<RecentConnectionRecord>> GetRecentAsync(CancellationToken ct = default)
     {
@@ -75,15 +81,18 @@ public sealed class RecentConnectionService : IRecentConnectionService
 
             return JsonSerializer.Deserialize<List<RecentConnectionRecord>>(json, JsonOptions) ?? new List<RecentConnectionRecord>();
         }
-        catch
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
+            _logger?.Warning($"Failed to read recent connections file '{_filePath}': {ex.Message}");
             return new List<RecentConnectionRecord>();
         }
     }
 
     private async Task WriteAllAsync(List<RecentConnectionRecord> records, CancellationToken ct)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
+        var directory = Path.GetDirectoryName(_filePath);
+        if (!string.IsNullOrWhiteSpace(directory))
+            Directory.CreateDirectory(directory);
         var sorted = records
             .Where(x => !string.IsNullOrWhiteSpace(x.Host) && !string.IsNullOrWhiteSpace(x.Username))
             .OrderByDescending(x => x.LastUsedAt)

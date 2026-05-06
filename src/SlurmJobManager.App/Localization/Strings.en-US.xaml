@@ -172,6 +172,7 @@
     <sys:String x:Key="Conn.DeleteRecent">Delete</sys:String>
     <sys:String x:Key="Conn.RecentApplied">Filled from recent connection: {0}@{1}:{2}</sys:String>
     <sys:String x:Key="Conn.RecentDeleted">Removed recent connection: {0}@{1}:{2}</sys:String>
+    <sys:String x:Key="Conn.LoadRecentFailed">Failed to load recent connections: {0}</sys:String>
     <sys:String x:Key="Conn.RecentDeleteTitle">Delete recent connection</sys:String>
     <sys:String x:Key="Conn.RecentDeleteConfirm">Delete this recent entry: {0}@{1}:{2}?</sys:String>
     <sys:String x:Key="Conn.ProfileSaved">Profile saved (credentials encrypted).</sys:String>

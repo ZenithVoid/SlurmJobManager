@@ -131,7 +131,7 @@ public sealed class ConnectionViewModel : ViewModelBase
         _statusMessage = L("Status.Idle");
 
         if (_recentConnectionService != null)
-            _ = RefreshRecentConnectionsAsync(CancellationToken.None);
+            _ = SafeRefreshRecentConnectionsAsync();
     }
 
     /// <summary>Re-establishes the connection using the current profile fields.</summary>
@@ -317,7 +317,12 @@ public sealed class ConnectionViewModel : ViewModelBase
     private static Exception Unwrap(Exception ex)
     {
         if (ex is AggregateException aggregate)
-            return aggregate.Flatten().InnerExceptions.FirstOrDefault() ?? ex;
+        {
+            var flattened = aggregate.Flatten().InnerExceptions;
+            return flattened.FirstOrDefault(e => e is not OperationCanceledException)
+                   ?? flattened.FirstOrDefault()
+                   ?? ex;
+        }
         return ex.InnerException ?? ex;
     }
 
@@ -368,6 +373,18 @@ public sealed class ConnectionViewModel : ViewModelBase
         foreach (var record in records)
             RecentConnections.Add(record);
         OnPropertyChanged(nameof(RecentConnections));
+    }
+
+    private async Task SafeRefreshRecentConnectionsAsync()
+    {
+        try
+        {
+            await RefreshRecentConnectionsAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = string.Format(L("Conn.LoadRecentFailed"), ex.Message);
+        }
     }
 
     private void ApplyRecentConnection(RecentConnectionRecord? record)

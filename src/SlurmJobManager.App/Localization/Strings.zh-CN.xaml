@@ -172,6 +172,7 @@
     <sys:String x:Key="Conn.DeleteRecent">删除</sys:String>
     <sys:String x:Key="Conn.RecentApplied">已从最近连接填充：{0}@{1}:{2}</sys:String>
     <sys:String x:Key="Conn.RecentDeleted">已删除最近连接：{0}@{1}:{2}</sys:String>
+    <sys:String x:Key="Conn.LoadRecentFailed">加载最近连接失败：{0}</sys:String>
     <sys:String x:Key="Conn.RecentDeleteTitle">删除最近连接</sys:String>
     <sys:String x:Key="Conn.RecentDeleteConfirm">确认删除该最近连接：{0}@{1}:{2}？</sys:String>
     <sys:String x:Key="Conn.ProfileSaved">配置已保存（凭据已加密）。</sys:String>

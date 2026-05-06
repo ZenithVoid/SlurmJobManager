@@ -97,8 +97,6 @@ public sealed class SshClientService : ISshClientService
             using var testClient = new SshClient(connInfo);
             AttachFingerprintCapture(testClient);
             testClient.Connect();
-            if (!testClient.IsConnected)
-                throw new InvalidOperationException("SSH connection test failed.");
             testClient.Disconnect();
         }, ct);
     }
