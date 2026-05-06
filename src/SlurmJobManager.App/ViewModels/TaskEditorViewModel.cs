@@ -984,10 +984,11 @@ public sealed class TaskEditorViewModel : ViewModelBase
             return;
         }
 
-        var targetDirectory = string.IsNullOrWhiteSpace(CurrentTaskFilesPath)
-            ? RemoteWorkDir
-            : CurrentTaskFilesPath;
-        targetDirectory = NormalizeRemotePath(ExpandHomePath(targetDirectory));
+        var preferredDirectory = NormalizeRemotePath(ExpandHomePath(CurrentTaskFilesPath));
+        var fallbackDirectory = NormalizeRemotePath(ExpandHomePath(RemoteWorkDir));
+        var targetDirectory = string.IsNullOrWhiteSpace(preferredDirectory)
+            ? fallbackDirectory
+            : preferredDirectory;
 
         if (string.IsNullOrWhiteSpace(targetDirectory))
         {

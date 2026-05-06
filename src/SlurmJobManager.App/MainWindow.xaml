@@ -173,6 +173,7 @@
                 <!-- Tasks -->
                 <Grid x:Name="PageTasks"
                       Visibility="{Binding ShowTasks, Converter={StaticResource BoolToVis}}"
+                      Focusable="True"
                       RenderTransformOrigin="0.5,0.5">
                     <Grid.RenderTransform>
                         <ScaleTransform x:Name="ScaleTasks" ScaleX="1" ScaleY="1" />
@@ -184,7 +185,8 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- Left: task editor form (TaskEditorView owns its own ScrollViewer + behaviors) -->
-                    <views:TaskEditorView Grid.Column="0"
+                    <views:TaskEditorView x:Name="TaskPageView"
+                                          Grid.Column="0"
                                           DataContext="{Binding TaskEditor}"
                                           Margin="24,20,24,20" />
 
@@ -246,6 +248,14 @@
                                        FontSize="11"
                                        TextWrapping="Wrap"
                                        Margin="0,0,0,4" />
+
+                            <Button DockPanel.Dock="Top"
+                                    Content="{DynamicResource Btn.OpenInTerminal}"
+                                    Command="{Binding TaskEditor.OpenInConsoleCommand}"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    ToolTip="{DynamicResource Task.OpenInTerminalHint}"
+                                    Padding="8,4"
+                                    Margin="0,0,0,6" />
 
                             <!-- Empty-state hint (shown when TaskFiles list is empty) -->
                             <TextBlock DockPanel.Dock="Top"
@@ -324,11 +334,13 @@
                 <!-- Console -->
                 <Grid x:Name="PageConsole"
                       Visibility="{Binding ShowConsole, Converter={StaticResource BoolToVis}}"
+                      Focusable="True"
                       RenderTransformOrigin="0.5,0.5">
                     <Grid.RenderTransform>
                         <ScaleTransform x:Name="ScaleConsole" ScaleX="1" ScaleY="1" />
                     </Grid.RenderTransform>
-                    <views:ConsoleView DataContext="{Binding Console}"
+                    <views:ConsoleView x:Name="ConsolePageView"
+                                       DataContext="{Binding Console}"
                                        Margin="24,20,24,20" />
                 </Grid>
 
