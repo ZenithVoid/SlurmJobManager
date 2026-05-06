@@ -211,66 +211,61 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{DynamicResource Task.SideTitle}" Style="{StaticResource SectionHeaderStyle}" Margin="0" VerticalAlignment="Center" />
-                                    <Button Grid.Column="1"
-                                            Content="ⓘ"
-                                            Style="{StaticResource GhostButtonStyle}"
+                                     <Button Grid.Column="1"
+                                             Content="ⓘ"
+                                             Style="{StaticResource GhostButtonStyle}"
                                             Width="24"
                                             Height="24"
                                             Padding="0"
                                             FontSize="13"
                                             FontWeight="SemiBold"
                                             Margin="8,0,0,0"
-                                            VerticalAlignment="Center">
-                                        <Button.ToolTip>
-                                            <ToolTip MaxWidth="520" Placement="Bottom">
+                                             VerticalAlignment="Center">
+                                         <Button.ToolTip>
+                                            <ToolTip MaxWidth="560"
+                                                     Placement="Bottom"
+                                                     Style="{StaticResource AppToolTipStyle}">
                                                 <StackPanel>
                                                     <TextBlock Text="{DynamicResource Task.ContextInfoButtonHint}"
-                                                               Style="{StaticResource MutedTextStyle}"
-                                                               Margin="0,0,0,6" />
+                                                                Style="{StaticResource MutedTextStyle}"
+                                                                Margin="0,0,0,6" />
                                                     <TextBlock Text="{DynamicResource Task.ContextInfoTitle}"
-                                                               Style="{StaticResource SectionHeaderStyle}" />
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto" />
-                                                            <ColumnDefinition Width="12" />
-                                                            <ColumnDefinition Width="*" />
-                                                        </Grid.ColumnDefinitions>
-                                                        <Grid.RowDefinitions>
-                                                            <RowDefinition Height="Auto" />
-                                                            <RowDefinition Height="Auto" />
-                                                            <RowDefinition Height="Auto" />
-                                                        </Grid.RowDefinitions>
-
-                                                        <TextBlock Grid.Row="0" Grid.Column="0"
-                                                                   Text="{DynamicResource Task.ContextInfoTaskIdLabel}"
+                                                               Foreground="{DynamicResource TextPrimaryBrush}"
+                                                               FontWeight="SemiBold"
+                                                               FontSize="12"
+                                                               Margin="0,0,0,6" />
+                                                    <StackPanel>
+                                                        <TextBlock Text="{DynamicResource Task.ContextInfoTaskIdLabel}"
                                                                    Style="{StaticResource MutedTextStyle}" />
-                                                        <TextBlock Grid.Row="0" Grid.Column="2"
-                                                                   Text="{Binding TaskEditor.TaskContextTaskIdDisplay}"
-                                                                   Foreground="{DynamicResource TextPrimaryBrush}"
-                                                                   TextWrapping="Wrap" />
-
-                                                        <TextBlock Grid.Row="1" Grid.Column="0"
-                                                                   Text="{DynamicResource Task.ContextInfoWorkDirLabel}"
-                                                                   Style="{StaticResource MutedTextStyle}"
-                                                                   Margin="0,6,0,0" />
-                                                        <TextBlock Grid.Row="1" Grid.Column="2"
-                                                                   Text="{Binding TaskEditor.TaskContextWorkDirDisplay}"
-                                                                   ToolTip="{Binding TaskEditor.RemoteWorkDir}"
+                                                        <TextBlock Text="{Binding TaskEditor.TaskContextTaskIdDisplay}"
                                                                    Foreground="{DynamicResource TextPrimaryBrush}"
                                                                    TextWrapping="Wrap"
-                                                                   Margin="0,6,0,0" />
+                                                                   Margin="0,1,0,0" />
 
-                                                        <TextBlock Grid.Row="2" Grid.Column="0"
-                                                                   Text="{DynamicResource Task.ContextInfoFilePathLabel}"
+                                                        <TextBlock Text="{DynamicResource Task.ContextInfoWorkDirLabel}"
                                                                    Style="{StaticResource MutedTextStyle}"
                                                                    Margin="0,6,0,0" />
-                                                        <TextBlock Grid.Row="2" Grid.Column="2"
-                                                                   Text="{Binding TaskEditor.TaskContextFilePathDisplay}"
-                                                                   ToolTip="{Binding TaskEditor.CurrentTaskFilesPath}"
+                                                        <TextBlock Text="{Binding TaskEditor.TaskContextWorkDirDisplay}"
                                                                    Foreground="{DynamicResource TextPrimaryBrush}"
                                                                    TextWrapping="Wrap"
+                                                                   Margin="0,1,0,0" />
+                                                        <TextBlock Text="{Binding TaskEditor.RemoteWorkDir}"
+                                                                   Style="{StaticResource MutedTextStyle}"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,1,0,0" />
+
+                                                        <TextBlock Text="{DynamicResource Task.ContextInfoFilePathLabel}"
+                                                                   Style="{StaticResource MutedTextStyle}"
                                                                    Margin="0,6,0,0" />
-                                                    </Grid>
+                                                        <TextBlock Text="{Binding TaskEditor.TaskContextFilePathDisplay}"
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,1,0,0" />
+                                                        <TextBlock Text="{Binding TaskEditor.CurrentTaskFilesPath}"
+                                                                   Style="{StaticResource MutedTextStyle}"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,1,0,0" />
+                                                    </StackPanel>
                                                 </StackPanel>
                                             </ToolTip>
                                         </Button.ToolTip>
@@ -374,13 +369,15 @@
                                                 </Style.Triggers>
                                             </Style>
                                         </ListBox.Style>
-                                        <ListBox.ItemContainerStyle>
-                                            <Style TargetType="ListBoxItem">
-                                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                                <EventSetter Event="PreviewMouseRightButtonDown"
-                                                             Handler="TaskFileListItem_PreviewMouseRightButtonDown" />
-                                            </Style>
-                                        </ListBox.ItemContainerStyle>
+                                         <ListBox.ItemContainerStyle>
+                                             <Style TargetType="ListBoxItem">
+                                                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                 <EventSetter Event="PreviewMouseLeftButtonDown"
+                                                              Handler="TaskFileListItem_PreviewMouseLeftButtonDown" />
+                                                 <EventSetter Event="PreviewMouseRightButtonDown"
+                                                              Handler="TaskFileListItem_PreviewMouseRightButtonDown" />
+                                             </Style>
+                                         </ListBox.ItemContainerStyle>
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid ToolTip="{Binding RemotePath}" Background="Transparent" Margin="2,0">
