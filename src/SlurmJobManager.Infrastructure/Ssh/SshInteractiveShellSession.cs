@@ -43,6 +43,7 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
     {
         if (!IsOpen) throw new InvalidOperationException("Interactive shell session is closed.");
         if (string.IsNullOrEmpty(data)) return;
+        if (TryWrite(data)) return;
 
         while (await _writeQueue.Writer.WaitToWriteAsync(ct))
         {
@@ -51,6 +52,13 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         }
 
         throw new InvalidOperationException("Interactive shell session is closed.");
+    }
+
+    public bool TryWrite(string data)
+    {
+        if (!IsOpen || string.IsNullOrEmpty(data))
+            return false;
+        return _writeQueue.Writer.TryWrite(data);
     }
 
     public Task ResizeAsync(int cols, int rows, CancellationToken ct = default)

@@ -140,12 +140,28 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     public async Task ForwardTerminalInputAsync(string data, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(data)) return;
+        if (TryForwardTerminalInput(data)) return;
         if (!await EnsureShellSessionAsync(ct)) return;
 
         if (data.Contains('\r') || data.Contains('\n'))
             SetBusy(true);
 
         await SendRawInputAsync(data, ct);
+    }
+
+    public bool TryForwardTerminalInput(string data)
+    {
+        if (string.IsNullOrEmpty(data))
+            return false;
+
+        var session = _shellSession;
+        if (session?.IsOpen != true)
+            return false;
+
+        if (data.Contains('\r') || data.Contains('\n'))
+            SetBusy(true);
+
+        return session.TryWrite(data);
     }
 
     public async Task ResizeTerminalAsync(int cols, int rows, CancellationToken ct = default)

@@ -15,6 +15,9 @@ public interface IInteractiveShellSession : IDisposable
     bool IsOpen { get; }
 
     /// <summary>Writes raw input data to the remote shell.</summary>
+    bool TryWrite(string data);
+
+    /// <summary>Writes raw input data to the remote shell.</summary>
     Task WriteAsync(string data, CancellationToken ct = default);
 
     /// <summary>Resizes the remote terminal viewport.</summary>
