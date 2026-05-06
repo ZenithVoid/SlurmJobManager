@@ -6,7 +6,7 @@ using SlurmJobManager.Core.Services;
 namespace SlurmJobManager.Infrastructure.Storage;
 
 /// <summary>
-/// Stores task blueprints under &lt;AppBaseDirectory&gt;/Data/blueprints with one JSON file per blueprint.
+/// Stores task blueprints under &lt;AppBaseDirectory&gt;/Data/blueprints grouped by host/user scope.
 /// </summary>
 public sealed class TaskBlueprintService : ITaskBlueprintService
 {
@@ -28,16 +28,18 @@ public sealed class TaskBlueprintService : ITaskBlueprintService
         Directory.CreateDirectory(_blueprintsDirectory);
     }
 
-    public async Task SaveAsync(TaskBlueprintRecord blueprint, bool overwriteByName = false, CancellationToken ct = default)
+    public async Task SaveAsync(TaskBlueprintRecord blueprint, TaskBlueprintScope scope, bool overwriteByName = false, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(blueprint);
+        var normalizedScope = NormalizeScope(scope);
 
         if (string.IsNullOrWhiteSpace(blueprint.Name))
             throw new InvalidOperationException("Blueprint name is required.");
 
-        Directory.CreateDirectory(_blueprintsDirectory);
+        var scopeDirectory = GetScopeDirectory(normalizedScope.ScopeKey);
+        Directory.CreateDirectory(scopeDirectory);
 
-        var existingByName = await FindByNameAsync(blueprint.Name, ct);
+        var existingByName = await FindByNameAsync(blueprint.Name, scopeDirectory, ct);
         if (existingByName != null
             && !string.Equals(existingByName.BlueprintId, blueprint.BlueprintId, StringComparison.OrdinalIgnoreCase))
         {
@@ -57,9 +59,12 @@ public sealed class TaskBlueprintService : ITaskBlueprintService
         blueprint.Name = blueprint.Name.Trim();
         blueprint.Description = blueprint.Description?.Trim() ?? string.Empty;
         blueprint.Version = TaskBlueprintRecord.CurrentVersion;
+        blueprint.ScopeHostOrAddress = normalizedScope.HostOrAddress;
+        blueprint.ScopeUsername = normalizedScope.Username;
+        blueprint.ScopeKey = normalizedScope.ScopeKey;
         blueprint.UpdatedAt = DateTime.UtcNow;
 
-        var finalPath = GetBlueprintPath(blueprint.BlueprintId);
+        var finalPath = GetBlueprintPath(scopeDirectory, blueprint.BlueprintId);
         var tempPath = finalPath + ".tmp";
 
         var json = JsonSerializer.Serialize(blueprint, SerializerOptions);
@@ -67,12 +72,14 @@ public sealed class TaskBlueprintService : ITaskBlueprintService
         File.Move(tempPath, finalPath, overwrite: true);
     }
 
-    public async Task<IReadOnlyList<TaskBlueprintSummary>> ListAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<TaskBlueprintSummary>> ListAsync(TaskBlueprintScope scope, CancellationToken ct = default)
     {
-        Directory.CreateDirectory(_blueprintsDirectory);
+        var normalizedScope = NormalizeScope(scope);
+        var scopeDirectory = GetScopeDirectory(normalizedScope.ScopeKey);
+        Directory.CreateDirectory(scopeDirectory);
         var result = new List<TaskBlueprintSummary>();
 
-        foreach (var path in Directory.EnumerateFiles(_blueprintsDirectory, $"*{BlueprintFileSuffix}"))
+        foreach (var path in Directory.EnumerateFiles(scopeDirectory, $"*{BlueprintFileSuffix}"))
         {
             var record = await ReadRecordSafelyAsync(path, ct);
             if (record == null) continue;
@@ -83,6 +90,9 @@ public sealed class TaskBlueprintService : ITaskBlueprintService
                 Name = record.Name,
                 Description = record.Description,
                 Version = record.Version,
+                ScopeHostOrAddress = record.ScopeHostOrAddress,
+                ScopeUsername = record.ScopeUsername,
+                ScopeKey = record.ScopeKey,
                 CreatedAt = record.CreatedAt,
                 UpdatedAt = record.UpdatedAt,
             });
@@ -94,12 +104,13 @@ public sealed class TaskBlueprintService : ITaskBlueprintService
             .ToList();
     }
 
-    public async Task<TaskBlueprintRecord?> LoadAsync(string blueprintId, CancellationToken ct = default)
+    public async Task<TaskBlueprintRecord?> LoadAsync(string blueprintId, TaskBlueprintScope scope, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(blueprintId))
             return null;
 
-        var path = GetBlueprintPath(blueprintId);
+        var normalizedScope = NormalizeScope(scope);
+        var path = GetBlueprintPath(GetScopeDirectory(normalizedScope.ScopeKey), blueprintId);
         if (!File.Exists(path))
             return null;
 
@@ -107,12 +118,13 @@ public sealed class TaskBlueprintService : ITaskBlueprintService
         return JsonSerializer.Deserialize<TaskBlueprintRecord>(json, SerializerOptions);
     }
 
-    public Task<bool> DeleteAsync(string blueprintId, CancellationToken ct = default)
+    public Task<bool> DeleteAsync(string blueprintId, TaskBlueprintScope scope, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(blueprintId))
             return Task.FromResult(false);
 
-        var path = GetBlueprintPath(blueprintId);
+        var normalizedScope = NormalizeScope(scope);
+        var path = GetBlueprintPath(GetScopeDirectory(normalizedScope.ScopeKey), blueprintId);
         if (!File.Exists(path))
             return Task.FromResult(false);
 
@@ -120,16 +132,36 @@ public sealed class TaskBlueprintService : ITaskBlueprintService
         return Task.FromResult(true);
     }
 
-    public async Task<bool> ExistsByNameAsync(string blueprintName, CancellationToken ct = default)
+    public async Task<bool> ExistsByNameAsync(string blueprintName, TaskBlueprintScope scope, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(blueprintName))
             return false;
 
-        return await FindByNameAsync(blueprintName, ct) != null;
+        var normalizedScope = NormalizeScope(scope);
+        var scopeDirectory = GetScopeDirectory(normalizedScope.ScopeKey);
+        Directory.CreateDirectory(scopeDirectory);
+        return await FindByNameAsync(blueprintName, scopeDirectory, ct) != null;
     }
 
-    private string GetBlueprintPath(string blueprintId)
-        => Path.Combine(_blueprintsDirectory, $"{SanitizeId(blueprintId)}{BlueprintFileSuffix}");
+    private string GetScopeDirectory(string scopeKey)
+        => Path.Combine(_blueprintsDirectory, SanitizeId(scopeKey));
+
+    private static (string HostOrAddress, string Username, string ScopeKey) NormalizeScope(TaskBlueprintScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        var host = scope.HostOrAddress?.Trim() ?? string.Empty;
+        var username = scope.Username?.Trim() ?? string.Empty;
+        if (host.Length == 0 || username.Length == 0)
+            throw new InvalidOperationException("Blueprint scope host and username are required.");
+
+        var normalizedHost = host.ToLowerInvariant();
+        var normalizedUser = username.ToLowerInvariant();
+        return (host, username, $"{normalizedHost}__{normalizedUser}");
+    }
+
+    private static string GetBlueprintPath(string scopeDirectory, string blueprintId)
+        => Path.Combine(scopeDirectory, $"{SanitizeId(blueprintId)}{BlueprintFileSuffix}");
 
     private static string SanitizeId(string blueprintId)
     {
@@ -141,12 +173,12 @@ public sealed class TaskBlueprintService : ITaskBlueprintService
         return string.IsNullOrWhiteSpace(sanitized) ? Guid.NewGuid().ToString("N") : sanitized;
     }
 
-    private async Task<TaskBlueprintRecord?> FindByNameAsync(string blueprintName, CancellationToken ct)
+    private async Task<TaskBlueprintRecord?> FindByNameAsync(string blueprintName, string scopeDirectory, CancellationToken ct)
     {
         var target = blueprintName.Trim();
         if (target.Length == 0) return null;
 
-        foreach (var path in Directory.EnumerateFiles(_blueprintsDirectory, $"*{BlueprintFileSuffix}"))
+        foreach (var path in Directory.EnumerateFiles(scopeDirectory, $"*{BlueprintFileSuffix}"))
         {
             var record = await ReadRecordSafelyAsync(path, ct);
             if (record == null) continue;

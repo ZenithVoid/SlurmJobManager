@@ -16,6 +16,9 @@ public sealed class TaskBlueprintRecord
     public string? RootDirectory { get; set; }
     public string? RemoteWorkDirectory { get; set; }
     public string? ActiveTaskUnitName { get; set; }
+    public string ScopeHostOrAddress { get; set; } = string.Empty;
+    public string ScopeUsername { get; set; } = string.Empty;
+    public string ScopeKey { get; set; } = string.Empty;
 
     public List<TaskUnit> TaskUnits { get; set; } = new();
 
@@ -30,6 +33,18 @@ public sealed class TaskBlueprintSummary
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int Version { get; set; }
+    public string ScopeHostOrAddress { get; set; } = string.Empty;
+    public string ScopeUsername { get; set; } = string.Empty;
+    public string ScopeKey { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+}
+
+/// <summary>
+/// Blueprint visibility scope bound to a remote host/address and username.
+/// </summary>
+public sealed class TaskBlueprintScope
+{
+    public string HostOrAddress { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
 }

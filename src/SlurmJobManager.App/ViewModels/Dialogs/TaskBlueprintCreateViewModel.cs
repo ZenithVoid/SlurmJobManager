@@ -9,6 +9,7 @@ namespace SlurmJobManager.App.ViewModels.Dialogs;
 public sealed class TaskBlueprintCreateViewModel : ViewModelBase
 {
     private readonly ITaskBlueprintService _blueprintService;
+    private readonly TaskBlueprintScope _scope;
 
     private TaskBlueprintSummary? _selectedBlueprint;
     private string _newTaskId = string.Empty;
@@ -73,9 +74,10 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
     public ICommand CreateCommand { get; }
     public ICommand CancelCommand { get; }
 
-    public TaskBlueprintCreateViewModel(ITaskBlueprintService blueprintService)
+    public TaskBlueprintCreateViewModel(ITaskBlueprintService blueprintService, TaskBlueprintScope scope)
     {
         _blueprintService = blueprintService ?? throw new ArgumentNullException(nameof(blueprintService));
+        _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => !IsBusy);
         DeleteBlueprintCommand = new AsyncRelayCommand(DeleteSelectedAsync, () => !IsBusy && SelectedBlueprint != null);
@@ -97,7 +99,7 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
         IsBusy = true;
         try
         {
-            var list = await _blueprintService.ListAsync(ct);
+            var list = await _blueprintService.ListAsync(_scope, ct);
             Blueprints.Clear();
             foreach (var item in list)
                 Blueprints.Add(item);
@@ -139,7 +141,7 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
         IsBusy = true;
         try
         {
-            var success = await _blueprintService.DeleteAsync(SelectedBlueprint.BlueprintId, ct);
+            var success = await _blueprintService.DeleteAsync(SelectedBlueprint.BlueprintId, _scope, ct);
             if (!success)
             {
                 StatusMessage = L("Task.BlueprintDeleteFailed");
@@ -176,7 +178,7 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
         IsBusy = true;
         try
         {
-            var blueprint = await _blueprintService.LoadAsync(SelectedBlueprint.BlueprintId, ct);
+            var blueprint = await _blueprintService.LoadAsync(SelectedBlueprint.BlueprintId, _scope, ct);
             if (blueprint == null)
             {
                 StatusMessage = L("Task.BlueprintLoadMissing");

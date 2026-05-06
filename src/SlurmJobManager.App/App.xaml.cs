@@ -66,7 +66,7 @@ public partial class App : Application
         var consoleVm    = new ConsoleViewModel(ssh, _logger, connectionVm);
 
         // Wire SSH connection → TaskEditor auto-fill
-        connectionVm.ConnectionEstablished += username => taskEditorVm.OnConnectionEstablished(username);
+        connectionVm.ConnectionEstablished += username => taskEditorVm.OnConnectionEstablished(connectionVm.Host, username);
 
         _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm, prefs);
 
