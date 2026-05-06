@@ -406,7 +406,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         var match = BuiltinCdRegex.Match(command);
         if (!match.Success) return false;
 
-        targetDirectory = match.Groups.Count > 1 ? match.Groups[1].Value : string.Empty;
+        targetDirectory = match.Groups.Count > 1 && match.Groups[1].Success ? match.Groups[1].Value : string.Empty;
         return true;
     }
 
@@ -442,7 +442,10 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         => RemotePathDisplayHelper.NormalizeRemotePath(path);
 
     private static string EscapeShellArg(string arg)
-        => "'" + arg.Replace("'", "'\\''") + "'";
+    {
+        var sanitized = ControlCharRegex.Replace(arg, string.Empty);
+        return "'" + sanitized.Replace("'", "'\\''") + "'";
+    }
 
     private static string StripWrappingQuotes(string input)
     {
