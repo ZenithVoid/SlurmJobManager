@@ -466,10 +466,10 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     }
 
     private string GetPromptUser()
-        => string.IsNullOrWhiteSpace(_connection?.Username) ? "user" : _connection!.Username.Trim();
+        => _connection?.Username?.Trim() is { Length: > 0 } user ? user : "user";
 
     private string GetPromptHost()
-        => string.IsNullOrWhiteSpace(_connection?.Host) ? "remote" : _connection!.Host.Trim();
+        => _connection?.Host?.Trim() is { Length: > 0 } host ? host : "remote";
 
     private static string L(string key)
         => Application.Current?.TryFindResource(key) as string ?? key;
