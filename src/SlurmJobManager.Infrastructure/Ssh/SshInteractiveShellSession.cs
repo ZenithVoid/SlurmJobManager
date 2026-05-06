@@ -36,11 +36,8 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         try
         {
             ct.ThrowIfCancellationRequested();
-            await Task.Run(() =>
-            {
-                _shellStream.Write(data);
-                _shellStream.Flush();
-            }, ct);
+            _shellStream.Write(data);
+            _shellStream.Flush();
         }
         finally
         {
@@ -130,7 +127,7 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         Closed?.Invoke(this, EventArgs.Empty);
     }
 
-    private async Task ReaderLoopAsync(CancellationToken ct)
+    private Task ReaderLoopAsync(CancellationToken ct)
     {
         var buffer = new byte[4096];
         var utf8 = new UTF8Encoding(false);
@@ -139,18 +136,9 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         {
             try
             {
-                if (!_shellStream.DataAvailable)
-                {
-                    await Task.Delay(50, ct);
-                    continue;
-                }
-
                 var read = _shellStream.Read(buffer, 0, buffer.Length);
                 if (read <= 0)
-                {
-                    await Task.Delay(50, ct);
-                    continue;
-                }
+                    break;
 
                 var text = utf8.GetString(buffer, 0, read);
                 if (text.Length > 0)
@@ -166,9 +154,11 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
             }
             catch
             {
-                await Task.Delay(80, ct);
+                break;
             }
         }
+
+        return Task.CompletedTask;
     }
 
     public void Dispose()
