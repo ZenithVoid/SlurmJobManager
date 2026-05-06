@@ -32,7 +32,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
     private readonly Terminal _terminal;
     private readonly int _fontSize = 14;
-    private bool _renderQueued;
+    private int _renderQueued;
     private bool _isDisposed;
 
     public event EventHandler<string>? InputGenerated;
@@ -128,7 +128,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     protected override void OnRender(DrawingContext dc)
     {
         base.OnRender(dc);
-        _renderQueued = false;
+        Interlocked.Exchange(ref _renderQueued, 0);
         dc.DrawRectangle(new SolidColorBrush(DefaultBackground), null, new Rect(0, 0, ActualWidth, ActualHeight));
 
         if (_isDisposed) return;
@@ -339,14 +339,15 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
     private void RequestRender()
     {
-        if (_isDisposed || _renderQueued)
+        if (_isDisposed)
+            return;
+        if (Interlocked.CompareExchange(ref _renderQueued, 1, 0) != 0)
             return;
 
-        _renderQueued = true;
         Dispatcher.BeginInvoke(() =>
         {
             try { InvalidateVisual(); }
-            catch { _renderQueued = false; }
+            catch { Interlocked.Exchange(ref _renderQueued, 0); }
         }, DispatcherPriority.Render);
     }
 

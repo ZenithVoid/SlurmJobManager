@@ -1,7 +1,6 @@
 using System.Text;
 using System.Reflection;
 using System.Diagnostics;
-using System.IO;
 using Renci.SshNet;
 using Renci.SshNet.Common;
 using SlurmJobManager.Core.Interfaces;
@@ -28,7 +27,7 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
     {
         _shellStream = shellStream ?? throw new ArgumentNullException(nameof(shellStream));
         try { _shellStream.ReadTimeout = ReadPollTimeoutMs; } catch { /* best effort */ }
-        _readerTask = Task.Run(() => ReaderLoopAsync(_readerCts.Token));
+        _readerTask = Task.Run(() => ReaderLoop(_readerCts.Token));
     }
 
     public async Task WriteAsync(string data, CancellationToken ct = default)
@@ -131,7 +130,7 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         Closed?.Invoke(this, EventArgs.Empty);
     }
 
-    private Task ReaderLoopAsync(CancellationToken ct)
+    private Task ReaderLoop(CancellationToken ct)
     {
         var buffer = new byte[4096];
         var utf8 = new UTF8Encoding(false);
@@ -160,10 +159,6 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
             {
                 continue;
             }
-            catch (IOException ex) when (IsReadTimeout(ex))
-            {
-                continue;
-            }
             catch
             {
                 break;
@@ -178,8 +173,4 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         try { CloseAsync().GetAwaiter().GetResult(); } catch { /* best effort */ }
     }
 
-    private static bool IsReadTimeout(IOException ex)
-        => ex.InnerException is TimeoutException
-           || ex.Message.Contains("timed out", StringComparison.OrdinalIgnoreCase)
-           || ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase);
 }
