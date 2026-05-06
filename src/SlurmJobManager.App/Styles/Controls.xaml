@@ -70,6 +70,32 @@
         <Setter Property="FontSize"   Value="11" />
     </Style>
 
+    <Style x:Key="AppToolTipStyle" TargetType="ToolTip">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Background" Value="{DynamicResource BgPanelBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="MaxWidth" Value="640" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ToolTip" BasedOn="{StaticResource AppToolTipStyle}" />
+
     <!-- Card border (rounded, subtle shadow via drop-shadow effect) -->
     <Style x:Key="CardStyle" TargetType="Border">
         <Setter Property="Background"     Value="{DynamicResource BgCardBrush}" />

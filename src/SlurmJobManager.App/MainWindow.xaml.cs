@@ -68,17 +68,18 @@ public partial class MainWindow : Window
         scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY);
     }
 
-    private void TaskFileListItem_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private void TaskFileListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not ListBoxItem item
-            || item.DataContext is not TaskFileEntry fileEntry
+        if (e.ChangedButton != MouseButton.Left
+            || sender is not ListBox listBox
             || DataContext is not MainViewModel vm)
             return;
 
-        if (ItemsControl.ItemsControlFromItemContainer(item) is not ListBox listBox)
+        if (FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject) is not { DataContext: TaskFileEntry fileEntry })
             return;
 
-        listBox.SelectedItem = fileEntry;
+        if (!Equals(listBox.SelectedItem, fileEntry))
+            listBox.SelectedItem = fileEntry;
 
         if (!vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
             return;
