@@ -1,7 +1,7 @@
-using System.Collections.Specialized;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Threading;
+using SlurmJobManager.App.Controls;
 using SlurmJobManager.App.ViewModels;
 
 namespace SlurmJobManager.App.Views;
@@ -9,67 +9,85 @@ namespace SlurmJobManager.App.Views;
 public partial class ConsoleView : UserControl
 {
     private ConsoleViewModel? _subscribedVm;
-    private bool _suppressScrollTracking;
 
     public ConsoleView()
     {
         InitializeComponent();
-        DataContextChanged += (_, _) => ResubscribeOutput();
         Loaded += ConsoleView_Loaded;
+        Unloaded += ConsoleView_Unloaded;
+        DataContextChanged += (_, _) => ResubscribeViewModel();
     }
 
-    private void ConsoleView_Loaded(object sender, System.Windows.RoutedEventArgs e)
+    private async void ConsoleView_Loaded(object sender, RoutedEventArgs e)
     {
-        OutputScrollViewer.ScrollChanged += OutputScrollViewer_ScrollChanged;
+        ResubscribeViewModel();
+        FocusTerminal();
+        if (DataContext is ConsoleViewModel vm)
+            await vm.EnsureInteractiveShellReadyAsync();
     }
 
-    private void ResubscribeOutput()
+    private void ConsoleView_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (_subscribedVm == null) return;
+        _subscribedVm.TerminalOutputReceived -= OnTerminalOutputReceived;
+        _subscribedVm.FocusRequested -= OnFocusRequested;
+        _subscribedVm.ClearRequested -= OnClearRequested;
+        _subscribedVm = null;
+    }
+
+    private void ResubscribeViewModel()
     {
         if (_subscribedVm != null)
-            _subscribedVm.OutputLines.CollectionChanged -= OnOutputLinesChanged;
+        {
+            _subscribedVm.TerminalOutputReceived -= OnTerminalOutputReceived;
+            _subscribedVm.FocusRequested -= OnFocusRequested;
+            _subscribedVm.ClearRequested -= OnClearRequested;
+        }
 
         _subscribedVm = DataContext as ConsoleViewModel;
+        if (_subscribedVm == null) return;
 
-        if (_subscribedVm != null)
-            _subscribedVm.OutputLines.CollectionChanged += OnOutputLinesChanged;
+        _subscribedVm.TerminalOutputReceived += OnTerminalOutputReceived;
+        _subscribedVm.FocusRequested += OnFocusRequested;
+        _subscribedVm.ClearRequested += OnClearRequested;
     }
 
-    private void OnOutputLinesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private void OnTerminalOutputReceived(object? sender, string text)
     {
-        if (e.Action != NotifyCollectionChangedAction.Add || OutputList.Items.Count == 0)
-            return;
-
-        if (DataContext is not ConsoleViewModel vm || !vm.IsAutoScrollEnabled)
-            return;
-
-        _suppressScrollTracking = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-        {
-            OutputScrollViewer.ScrollToEnd();
-            _suppressScrollTracking = false;
-        });
+        Dispatcher.Invoke(() => TerminalSurface.Write(text));
     }
 
-    private void OutputScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    private void OnFocusRequested(object? sender, EventArgs e)
     {
-        if (_suppressScrollTracking || DataContext is not ConsoleViewModel vm)
-            return;
-
-        if (e.ExtentHeightChange == 0)
-        {
-            var atBottom = e.VerticalOffset >= e.ExtentHeight - e.ViewportHeight - 2;
-            vm.IsAutoScrollEnabled = atBottom;
-        }
+        Dispatcher.Invoke(FocusTerminal);
     }
 
-    private void JumpToBottom_Click(object sender, System.Windows.RoutedEventArgs e)
+    private void OnClearRequested(object? sender, EventArgs e)
     {
-        if (DataContext is not ConsoleViewModel vm)
-            return;
-        vm.IsAutoScrollEnabled = true;
-        _suppressScrollTracking = true;
-        OutputScrollViewer.ScrollToEnd();
-        _suppressScrollTracking = false;
+        Dispatcher.Invoke(TerminalSurface.Clear);
+    }
+
+    private void FocusTerminal()
+    {
+        TerminalSurface.Focus();
+        Keyboard.Focus(TerminalSurface);
+    }
+
+    private async void TerminalSurface_InputGenerated(object sender, string input)
+    {
+        if (DataContext is not ConsoleViewModel vm) return;
+        await vm.ForwardTerminalInputAsync(input);
+    }
+
+    private async void TerminalSurface_TerminalResized(object sender, TerminalResizedEventArgs e)
+    {
+        if (DataContext is not ConsoleViewModel vm) return;
+        await vm.ResizeTerminalAsync(e.Cols, e.Rows);
+    }
+
+    private void CopyTerminal_Click(object sender, RoutedEventArgs e)
+    {
+        Clipboard.SetText(TerminalSurface.GetVisibleText());
     }
 
     private void CmdInput_KeyDown(object sender, KeyEventArgs e)
@@ -81,6 +99,7 @@ public partial class ConsoleView : UserControl
             case Key.Enter:
                 vm.ExecuteCommand.Execute(null);
                 e.Handled = true;
+                FocusTerminal();
                 break;
             case Key.Up:
                 vm.HistoryUpCommand.Execute(null);

@@ -14,6 +14,13 @@ public interface ISshClientService : IDisposable
     /// <summary>Executes a remote command and returns (stdout, stderr, exitCode).</summary>
     Task<(string StdOut, string StdErr, int ExitCode)> ExecuteAsync(string command, CancellationToken ct = default);
 
+    /// <summary>Starts a persistent interactive shell session (PTY-like stream).</summary>
+    Task<IInteractiveShellSession> StartInteractiveShellSessionAsync(
+        string terminalName = "xterm-256color",
+        int cols = 120,
+        int rows = 36,
+        CancellationToken ct = default);
+
     /// <summary>Uploads a local file to a remote path via SFTP.</summary>
     Task UploadFileAsync(string localPath, string remotePath, CancellationToken ct = default);
 

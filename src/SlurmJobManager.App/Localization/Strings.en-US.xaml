@@ -56,6 +56,7 @@
     <sys:String x:Key="Btn.Run">Run</sys:String>
     <sys:String x:Key="Btn.CancelCmd">✕ Cancel</sys:String>
     <sys:String x:Key="Btn.StopCmd">⏹ Stop</sys:String>
+    <sys:String x:Key="Btn.ResetTerminal">Reset Terminal</sys:String>
     <sys:String x:Key="Btn.Copy">Copy</sys:String>
     <sys:String x:Key="Btn.Clear">Clear</sys:String>
     <sys:String x:Key="Btn.OpenInTerminal">Open in Terminal</sys:String>
@@ -397,6 +398,8 @@
     <sys:String x:Key="Console.StatusDisconnected">Disconnected</sys:String>
     <sys:String x:Key="Console.StatusBusy">Running</sys:String>
     <sys:String x:Key="Console.StatusIdle">Idle</sys:String>
+    <sys:String x:Key="Console.BusySwitchDirectoryTitle">Terminal Is Busy</sys:String>
+    <sys:String x:Key="Console.BusySwitchDirectoryPrompt">The terminal is currently occupied by an interactive program. Interrupt and switch to {0}?</sys:String>
     <sys:String x:Key="Console.CdPathMissing">[cd] Directory does not exist.</sys:String>
     <sys:String x:Key="Console.CdPermissionDenied">[cd] Permission denied for the target directory.</sys:String>
     <sys:String x:Key="Console.CdNotDirectory">[cd] Target path is not a directory.</sys:String>
