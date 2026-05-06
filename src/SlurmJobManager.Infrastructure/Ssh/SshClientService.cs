@@ -15,19 +15,40 @@ public sealed class SshClientService : ISshClientService
     private readonly AppSettings _settings;
     private readonly List<IInteractiveShellSession> _interactiveSessions = new();
     private readonly object _sessionLock = new();
+    private readonly object _clientLock = new();
 
     private SshClient? _sshClient;
     private SftpClient? _sftpClient;
+    private bool _disposed;
 
     public SshClientService(AppSettings? settings = null)
     {
         _settings = settings ?? new AppSettings();
     }
 
-    public bool IsConnected => _sshClient?.IsConnected ?? false;
+    public bool IsConnected
+    {
+        get
+        {
+            lock (_clientLock)
+            {
+                if (_disposed) return false;
+                if (_sshClient == null) return false;
+                try
+                {
+                    return _sshClient.IsConnected;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return false;
+                }
+            }
+        }
+    }
 
     public Task ConnectAsync(ConnectionProfile profile, CancellationToken ct = default)
     {
+        ThrowIfDisposed();
         Disconnect();
 
         ct.ThrowIfCancellationRequested();
@@ -38,16 +59,21 @@ public sealed class SshClientService : ISshClientService
             Timeout = _settings.ConnectionTimeout,
         };
 
-        _sshClient  = new SshClient(connInfo);
-        _sftpClient = new SftpClient(connInfo);
+        var sshClient = new SshClient(connInfo);
+        var sftpClient = new SftpClient(connInfo);
+        lock (_clientLock)
+        {
+            _sshClient = sshClient;
+            _sftpClient = sftpClient;
+        }
 
         // SSH.NET Connect() is synchronous; run off the thread-pool so the UI stays responsive.
         return Task.Run(() =>
         {
             ct.ThrowIfCancellationRequested();
-            _sshClient.Connect();
+            _sshClient!.Connect();
             ct.ThrowIfCancellationRequested();
-            _sftpClient.Connect();
+            _sftpClient!.Connect();
         }, ct);
     }
 
@@ -246,6 +272,16 @@ public sealed class SshClientService : ISshClientService
 
     private void Disconnect()
     {
+        SftpClient? sftpClient;
+        SshClient? sshClient;
+        lock (_clientLock)
+        {
+            sftpClient = _sftpClient;
+            sshClient = _sshClient;
+            _sftpClient = null;
+            _sshClient = null;
+        }
+
         List<IInteractiveShellSession> sessionsToClose;
         lock (_sessionLock)
         {
@@ -259,8 +295,10 @@ public sealed class SshClientService : ISshClientService
             try { session.Dispose(); } catch (Exception) { /* best-effort cleanup */ }
         }
 
-        try { _sftpClient?.Disconnect(); } catch (Exception) { /* best-effort cleanup */ }
-        try { _sshClient?.Disconnect(); } catch (Exception) { /* best-effort cleanup */ }
+        try { sftpClient?.Disconnect(); } catch (Exception) { /* best-effort cleanup */ }
+        try { sshClient?.Disconnect(); } catch (Exception) { /* best-effort cleanup */ }
+        try { sftpClient?.Dispose(); } catch (Exception) { /* best-effort cleanup */ }
+        try { sshClient?.Dispose(); } catch (Exception) { /* best-effort cleanup */ }
     }
 
     private void OnInteractiveSessionClosed(object? sender, EventArgs e)
@@ -295,8 +333,17 @@ public sealed class SshClientService : ISshClientService
 
     public void Dispose()
     {
+        lock (_clientLock)
+        {
+            if (_disposed) return;
+            _disposed = true;
+        }
         Disconnect();
-        _sftpClient?.Dispose();
-        _sshClient?.Dispose();
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(SshClientService));
     }
 }

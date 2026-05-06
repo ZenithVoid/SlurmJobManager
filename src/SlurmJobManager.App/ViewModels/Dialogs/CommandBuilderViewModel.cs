@@ -168,7 +168,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             WireCommandCollections(cmd);
 
         // Commands
-        RefreshCommand         = new AsyncRelayCommand(RefreshAsync,         () => ssh.IsConnected && !IsBusy);
+        RefreshCommand         = new AsyncRelayCommand(RefreshAsync,         CanRunSshCommand);
         AddCommandCommand      = new RelayCommand(AddCommand);
         RemoveCommandCommand   = new RelayCommand<CommandEntryViewModel>(RemoveCommand, c => c != null && Commands.Count > 1);
         MoveUpCommand          = new RelayCommand<CommandEntryViewModel>(MoveUp,   c => c != null && Commands.IndexOf(c) > 0);
@@ -179,8 +179,8 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         EditParamFileCommand   = new AsyncRelayCommand<string>(EditParamFileAsync);
         AddExtraArgCommand     = new RelayCommand(AddExtraArg,    () => _selectedCommand != null);
         RemoveExtraArgCommand  = new RelayCommand<ExtraArgViewModel>(RemoveExtraArg);
-        DetectMpiCommand       = new AsyncRelayCommand(DetectMpiAsync, () => ssh.IsConnected && !IsBusy && !string.IsNullOrWhiteSpace(_selectedCommand?.ProgramPath));
-        TestCommandCommand     = new AsyncRelayCommand(TestCommandAsync, () => ssh.IsConnected && !IsBusy && !string.IsNullOrWhiteSpace(_selectedCommand?.ProgramPath));
+        DetectMpiCommand       = new AsyncRelayCommand(DetectMpiAsync, () => CanRunSshCommand() && !string.IsNullOrWhiteSpace(_selectedCommand?.ProgramPath));
+        TestCommandCommand     = new AsyncRelayCommand(TestCommandAsync, () => CanRunSshCommand() && !string.IsNullOrWhiteSpace(_selectedCommand?.ProgramPath));
         SaveAndApplyCommand    = new RelayCommand(SaveAndApply);
         CancelCommand          = new RelayCommand(() => { /* handled in code-behind */ });
     }
@@ -322,7 +322,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
     private async Task EditParamFileAsync(string? path, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(path) || !_ssh.IsConnected)
+        if (string.IsNullOrEmpty(path) || !IsSshConnectedSafe())
         {
             StatusMessage = "请先建立 SSH 连接后再编辑文件。";
             return;
@@ -376,7 +376,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private async Task DetectMpiAsync(CancellationToken ct)
     {
         if (_selectedCommand == null || string.IsNullOrWhiteSpace(_selectedCommand.ProgramPath)) return;
-        if (!_ssh.IsConnected) { StatusMessage = "请先建立 SSH 连接。"; return; }
+        if (!IsSshConnectedSafe()) { StatusMessage = "请先建立 SSH 连接。"; return; }
 
         IsBusy = true;
         StatusMessage = $"正在通过 ldd 分析 MPI 依赖…";
@@ -498,7 +498,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private async Task TestCommandAsync(CancellationToken ct)
     {
         if (_selectedCommand == null || string.IsNullOrWhiteSpace(_selectedCommand.ProgramPath)) return;
-        if (!_ssh.IsConnected) return;
+        if (!IsSshConnectedSafe()) return;
 
         IsBusy = true;
         StatusMessage = "测试中…";
@@ -647,6 +647,21 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         }
 
         return true;
+    }
+
+    private bool CanRunSshCommand()
+        => !IsBusy && IsSshConnectedSafe();
+
+    private bool IsSshConnectedSafe()
+    {
+        try
+        {
+            return _ssh.IsConnected;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
     }
 
     private static string L(string key, string fallback)

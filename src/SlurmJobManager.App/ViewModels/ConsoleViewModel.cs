@@ -97,7 +97,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         }
         else
         {
-            _isConnected = _ssh.IsConnected;
+            _isConnected = IsSshConnectedSafe();
         }
 
         ExecuteCommand = new AsyncRelayCommand(ExecuteAsync, () => IsConnected);
@@ -169,7 +169,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     public async Task<bool> OpenAtDirectoryAsync(string remoteDirectory, CancellationToken ct = default)
     {
         if (_isDisposed) return false;
-        if (!_ssh.IsConnected)
+        if (!IsSshConnectedSafe())
             return false;
 
         if (string.IsNullOrWhiteSpace(remoteDirectory))
@@ -230,7 +230,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     {
         if (_isDisposed) return false;
         if (_shellSession?.IsOpen == true) return true;
-        if (!_ssh.IsConnected)
+        if (!IsSshConnectedSafe())
             return false;
 
         if (_isInitializingSession) return false;
@@ -343,6 +343,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
     private async void OnConnectionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (_isDisposed) return;
         if (_connection == null) return;
 
         if (e.PropertyName is nameof(ConnectionViewModel.IsConnected))
@@ -438,7 +439,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
     private async Task EnsureHomeDirectoryLoadedAsync(CancellationToken ct)
     {
-        if (!_ssh.IsConnected || !string.IsNullOrWhiteSpace(_homeDirectory)) return;
+        if (!IsSshConnectedSafe() || !string.IsNullOrWhiteSpace(_homeDirectory)) return;
         var home = await _ssh.GetHomeDirectoryAsync(ct);
         _homeDirectory = NormalizeRemotePath(home);
         if (string.IsNullOrWhiteSpace(_currentWorkingDirectory))
@@ -557,6 +558,19 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
     private string GetPromptHost()
         => _connection?.Host?.Trim() is { Length: > 0 } host ? host : "remote";
+
+    private bool IsSshConnectedSafe()
+    {
+        if (_isDisposed) return false;
+        try
+        {
+            return _ssh.IsConnected;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+    }
 
     private static string L(string key)
         => Application.Current?.TryFindResource(key) as string ?? key;
