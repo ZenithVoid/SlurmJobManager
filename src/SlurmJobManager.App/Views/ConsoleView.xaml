@@ -21,6 +21,10 @@
         <TextBlock DockPanel.Dock="Top"
                    Text="{DynamicResource Console.Title}"
                    Style="{StaticResource PageTitleStyle}" />
+        <TextBlock DockPanel.Dock="Top"
+                   Text="{Binding ConsoleStatusSummary}"
+                   Style="{StaticResource MutedTextStyle}"
+                   Margin="0,2,0,6" />
 
         <!-- Connection hint: shown when SSH is not connected -->
         <Border DockPanel.Dock="Top"
@@ -37,31 +41,38 @@
         <!-- Command input row -->
         <Grid DockPanel.Dock="Bottom" Margin="0,6,0,0">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0"
+                       Text="{Binding PromptText}"
+                       Foreground="{DynamicResource AccentGreenBrush}"
+                       FontFamily="Consolas"
+                       VerticalAlignment="Center"
+                       Margin="0,0,8,0" />
             <TextBox x:Name="CmdInput"
-                     Grid.Column="0"
+                     Grid.Column="1"
                      Text="{Binding CommandInput, UpdateSourceTrigger=PropertyChanged}"
                      Foreground="{DynamicResource AccentGreenBrush}"
                      FontFamily="Consolas"
                      KeyDown="CmdInput_KeyDown" />
-            <Button Grid.Column="1" Content="{DynamicResource Btn.Run}"
+            <Button Grid.Column="2" Content="{DynamicResource Btn.Run}"
                     Command="{Binding ExecuteCommand}"
                     Style="{StaticResource SuccessButtonStyle}"
                     Margin="4,0,0,0" Padding="10,4" />
-            <Button Grid.Column="2" Content="{DynamicResource Btn.StopCmd}"
+            <Button Grid.Column="3" Content="{DynamicResource Btn.StopCmd}"
                      Command="{Binding CancelCommand}"
                      Style="{StaticResource DangerButtonStyle}"
                      Margin="4,0,0,0" Padding="8,4" />
-            <Button Grid.Column="3" Content="{DynamicResource Btn.Copy}"
+            <Button Grid.Column="4" Content="{DynamicResource Btn.Copy}"
                     Command="{Binding CopyOutputCommand}"
                     Style="{StaticResource AccentButtonStyle}"
                     Margin="4,0,0,0" Padding="8,4" />
-            <Button Grid.Column="4" Content="{DynamicResource Btn.Clear}"
+            <Button Grid.Column="5" Content="{DynamicResource Btn.Clear}"
                     Command="{Binding ClearCommand}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Margin="4,0,0,0" Padding="8,4" />

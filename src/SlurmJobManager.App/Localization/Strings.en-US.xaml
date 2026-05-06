@@ -58,6 +58,7 @@
     <sys:String x:Key="Btn.StopCmd">⏹ Stop</sys:String>
     <sys:String x:Key="Btn.Copy">Copy</sys:String>
     <sys:String x:Key="Btn.Clear">Clear</sys:String>
+    <sys:String x:Key="Btn.OpenInTerminal">Open in Terminal</sys:String>
 
     <!-- ── Status text ──────────────────────────────────────────────────── -->
     <sys:String x:Key="Status.Ready">Ready</sys:String>
@@ -184,6 +185,7 @@
     <sys:String x:Key="Task.TaskFilesHint">Connect and set the task directory first, then click ⟳ refresh.</sys:String>
     <sys:String x:Key="Task.CurrentPath">Current Path</sys:String>
     <sys:String x:Key="Task.PathUp">Go to parent directory</sys:String>
+    <sys:String x:Key="Task.OpenInTerminalHint">Switch to Console and open at the current task directory.</sys:String>
     <sys:String x:Key="Task.OverwriteTitle">Overwrite Confirmation</sys:String>
     <sys:String x:Key="Task.OverwritePrompt">Remote file {0} already exists. Overwrite?</sys:String>
     <sys:String x:Key="Task.SaveCancelled">Save cancelled.</sys:String>
@@ -242,6 +244,10 @@
     <sys:String x:Key="Task.DirLoadedCount">Loaded {0} entries.</sys:String>
     <sys:String x:Key="Task.RefreshFilesFailed">Failed to refresh file list: {0}</sys:String>
     <sys:String x:Key="Task.GoUpPathEmpty">Current path is empty and cannot go up.</sys:String>
+    <sys:String x:Key="Task.OpenInTerminalMissingDir">No available task directory to open in terminal.</sys:String>
+    <sys:String x:Key="Task.OpenInTerminalUnavailable">Console navigation is not ready. Please retry.</sys:String>
+    <sys:String x:Key="Task.OpenInTerminalSuccess">Opened terminal at {0}.</sys:String>
+    <sys:String x:Key="Task.OpenInTerminalFailed">Failed to open terminal at {0}. Check directory access.</sys:String>
     <sys:String x:Key="Task.BinaryFileBlocked">File {0} appears to be binary and was blocked.</sys:String>
     <sys:String x:Key="Task.Saving">Saving task…</sys:String>
     <sys:String x:Key="Task.SavedPath">Task saved: {0}</sys:String>
@@ -382,9 +388,20 @@
     <sys:String x:Key="Console.NotConnected">⚠ You can browse this page freely. To execute commands, please establish an SSH connection first.</sys:String>
     <sys:String x:Key="Console.ErrInvalidCommand">[error] Command contains illegal characters and was blocked.</sys:String>
     <sys:String x:Key="Console.ErrNotConnected">SSH connection is not established. Connect first in the connection page.</sys:String>
+    <sys:String x:Key="Console.ErrNoTargetDirectory">No target directory was provided for terminal navigation.</sys:String>
     <sys:String x:Key="Console.Timeout">[timeout] Command timed out ({0:0}s) and was canceled.</sys:String>
     <sys:String x:Key="Console.Cancelling">[cancelling…]</sys:String>
     <sys:String x:Key="Console.JumpToBottom">Jump to bottom</sys:String>
+    <sys:String x:Key="Console.StatusSummary">Status: {0}   CWD: {1}   Session: {2}</sys:String>
+    <sys:String x:Key="Console.StatusConnected">Connected</sys:String>
+    <sys:String x:Key="Console.StatusDisconnected">Disconnected</sys:String>
+    <sys:String x:Key="Console.StatusBusy">Running</sys:String>
+    <sys:String x:Key="Console.StatusIdle">Idle</sys:String>
+    <sys:String x:Key="Console.CdPathMissing">[cd] Directory does not exist.</sys:String>
+    <sys:String x:Key="Console.CdPermissionDenied">[cd] Permission denied for the target directory.</sys:String>
+    <sys:String x:Key="Console.CdNotDirectory">[cd] Target path is not a directory.</sys:String>
+    <sys:String x:Key="Console.CdFailedNoDetail">[cd] Failed to change directory.</sys:String>
+    <sys:String x:Key="Console.CdFailed">[cd] Failed to change directory: {0}</sys:String>
 
     <!-- ── Crash dialog ─────────────────────────────────────────────────── -->
     <sys:String x:Key="Crash.Title">Fatal Application Error</sys:String>

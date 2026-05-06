@@ -25,6 +25,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     private readonly ISlurmService _slurm;
     private readonly ITaskStorageService _storage;
     private readonly ITaskBlueprintService _blueprints;
+    private Func<string, Task<bool>>? _openInConsoleAsync;
 
     // ── Local storage root (under <AppBaseDirectory>/Data) ──────────────────
     private static readonly string LocalDataRoot = LocalDataPaths.TasksDirectory;
@@ -271,6 +272,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
     public ICommand RefreshTaskFilesCommand           { get; }
     public ICommand OpenTaskFileCommand               { get; }
     public ICommand GoUpTaskFilesPathCommand          { get; }
+    public ICommand OpenInConsoleCommand              { get; }
 
     /// <summary>Opens the Command Builder dialog for the active task unit.</summary>
     public ICommand OpenCommandBuilderCommand { get; }
@@ -283,12 +285,14 @@ public sealed class TaskEditorViewModel : ViewModelBase
         ISshClientService ssh,
         ISlurmService slurm,
         ITaskStorageService storage,
-        ITaskBlueprintService blueprints)
+        ITaskBlueprintService blueprints,
+        Func<string, Task<bool>>? openInConsoleAsync = null)
     {
         _ssh     = ssh     ?? throw new ArgumentNullException(nameof(ssh));
         _slurm   = slurm   ?? throw new ArgumentNullException(nameof(slurm));
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _blueprints = blueprints ?? throw new ArgumentNullException(nameof(blueprints));
+        _openInConsoleAsync = openInConsoleAsync;
 
         BrowseRootDirectoryCommand       = new AsyncRelayCommand(BrowseRootDirectoryAsync, () => _ssh.IsConnected);
         NewTaskIdCommand                 = new RelayCommand(GenerateNewTaskId, () => _taskIdDirectoryExists != true);
@@ -305,6 +309,7 @@ public sealed class TaskEditorViewModel : ViewModelBase
         RefreshTaskFilesCommand          = new AsyncRelayCommand(RefreshTaskFilesAsync,             () => _ssh.IsConnected && !IsBusy);
         OpenTaskFileCommand              = new AsyncRelayCommand<TaskFileEntry>(OpenTaskFileAsync);
         GoUpTaskFilesPathCommand         = new AsyncRelayCommand(GoUpTaskFilesPathAsync,            () => _ssh.IsConnected && !IsBusy);
+        OpenInConsoleCommand             = new AsyncRelayCommand(OpenInConsoleAsync,                 () => !IsBusy);
         OpenCommandBuilderCommand        = new AsyncRelayCommand(OpenCommandBuilderAsync,           () => !IsBusy);
         SaveAsBlueprintCommand           = new AsyncRelayCommand(SaveAsBlueprintAsync,              () => !IsBusy);
         CreateFromBlueprintCommand       = new AsyncRelayCommand(CreateFromBlueprintAsync,          () => !IsBusy);
@@ -316,6 +321,11 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
         // Create a single default task unit so the UI is never empty on first run
         EnsureAtLeastOneTaskUnit();
+    }
+
+    public void SetOpenInConsoleHandler(Func<string, Task<bool>>? openInConsoleAsync)
+    {
+        _openInConsoleAsync = openInConsoleAsync;
     }
 
     // ── Task-unit management ─────────────────────────────────────────────────
@@ -962,6 +972,40 @@ public sealed class TaskEditorViewModel : ViewModelBase
         }
 
         win.ShowDialog();
+    }
+
+    private async Task OpenInConsoleAsync(CancellationToken ct)
+    {
+        await EnsureHomeDirectoryLoadedAsync(ct);
+
+        if (!_ssh.IsConnected)
+        {
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
+            return;
+        }
+
+        var targetDirectory = string.IsNullOrWhiteSpace(CurrentTaskFilesPath)
+            ? RemoteWorkDir
+            : CurrentTaskFilesPath;
+        targetDirectory = NormalizeRemotePath(ExpandHomePath(targetDirectory));
+
+        if (string.IsNullOrWhiteSpace(targetDirectory))
+        {
+            SetStatus("Task.OpenInTerminalMissingDir", "WarningTextStyle");
+            return;
+        }
+
+        if (_openInConsoleAsync == null)
+        {
+            SetStatus("Task.OpenInTerminalUnavailable", "WarningTextStyle");
+            return;
+        }
+
+        var opened = await _openInConsoleAsync(targetDirectory);
+        if (opened)
+            SetStatus(string.Format(L("Task.OpenInTerminalSuccess"), CollapseHomePath(targetDirectory)), "SuccessTextStyle", localize: false);
+        else
+            SetStatus(string.Format(L("Task.OpenInTerminalFailed"), CollapseHomePath(targetDirectory)), "WarningTextStyle", localize: false);
     }
 
     // ── Command Builder dialog ────────────────────────────────────────────────
