@@ -187,7 +187,7 @@
                     <TextBlock Text="{DynamicResource Settings.LocalDataRootLabel}"
                                Style="{StaticResource FieldLabelStyle}" />
 
-                    <TextBox Text="{Binding LocalDataDirectory}"
+                    <TextBox Text="{Binding LocalDataDirectory, Mode=OneWay}"
                              IsReadOnly="True"
                              Margin="0,0,0,8"
                              ToolTip="{Binding LocalDataDirectory}" />
