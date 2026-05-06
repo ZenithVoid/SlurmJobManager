@@ -73,6 +73,8 @@ public partial class ConsoleView : UserControl
         Keyboard.Focus(TerminalSurface);
     }
 
+    public void RequestTerminalFocus() => FocusTerminal();
+
     private async void TerminalSurface_InputGenerated(object sender, string input)
     {
         if (DataContext is not ConsoleViewModel vm) return;

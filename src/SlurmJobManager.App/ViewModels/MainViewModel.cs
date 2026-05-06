@@ -63,7 +63,10 @@ public sealed class MainViewModel : ViewModelBase
             // Keep ActiveNavItem in sync when ActiveTab is set directly
             var matching = NavItems?.FirstOrDefault(n => n.TabId == value);
             if (matching != null && !ReferenceEquals(_activeNavItem, matching))
+            {
                 _activeNavItem = matching;
+                OnPropertyChanged(nameof(ActiveNavItem));
+            }
         }
     }
 
@@ -159,7 +162,13 @@ public sealed class MainViewModel : ViewModelBase
 
     public async Task<bool> OpenConsoleAtDirectoryAsync(string remoteDirectory)
     {
+        if (!Console.IsConnected || string.IsNullOrWhiteSpace(remoteDirectory))
+            return false;
+
         ActiveTab = "Console";
+        if (ActiveNavItem?.TabId != "Console")
+            ActiveNavItem = NavItems.FirstOrDefault(n => n.TabId == "Console");
+
         return await Console.OpenAtDirectoryAsync(remoteDirectory);
     }
 

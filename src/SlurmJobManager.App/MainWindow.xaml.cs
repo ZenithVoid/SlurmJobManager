@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using SlurmJobManager.App.Services;
 using SlurmJobManager.App.ViewModels;
 
@@ -42,11 +43,15 @@ public partial class MainWindow : Window
             vm.PropertyChanged += (_, args) =>
             {
                 if (args.PropertyName == nameof(MainViewModel.ActiveTab))
+                {
                     AnimatePageIn(vm.ActiveTab);
+                    ApplyTabFocus(vm.ActiveTab);
+                }
             };
 
             // Animate the initial page
             AnimatePageIn(vm.ActiveTab);
+            ApplyTabFocus(vm.ActiveTab);
         }
     }
 
@@ -81,8 +86,28 @@ public partial class MainWindow : Window
         if (sender is ListBox lb && lb.SelectedItem is TaskFileEntry fileEntry
             && DataContext is MainViewModel vm)
         {
-            vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
+            if (vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
+                vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
         }
+    }
+
+    private void ApplyTabFocus(string tabId)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            switch (tabId)
+            {
+                case "Console":
+                    PageConsole.Focus();
+                    Keyboard.Focus(PageConsole);
+                    ConsolePageView.RequestTerminalFocus();
+                    break;
+                case "Tasks":
+                    PageTasks.Focus();
+                    Keyboard.Focus(PageTasks);
+                    break;
+            }
+        }, DispatcherPriority.Input);
     }
 
     // ── Custom title-bar interactions ─────────────────────────────────────
