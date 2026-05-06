@@ -94,18 +94,9 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
         var modifiers = ConvertModifiers(Keyboard.Modifiers);
 
-        if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control &&
-            e.Key == System.Windows.Input.Key.C)
+        if (TryMapCtrlChord(e.Key, Keyboard.Modifiers, out var ctrlData))
         {
-            EmitInput("\u0003");
-            e.Handled = true;
-            return;
-        }
-
-        if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control &&
-            e.Key == System.Windows.Input.Key.L)
-        {
-            EmitInput("\u000c");
+            EmitInput(ctrlData);
             e.Handled = true;
             return;
         }
@@ -314,6 +305,33 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     {
         if (!string.IsNullOrEmpty(data))
             InputGenerated?.Invoke(this, data);
+    }
+
+    private static bool TryMapCtrlChord(System.Windows.Input.Key key, ModifierKeys modifiers, out string? data)
+    {
+        data = null;
+        if ((modifiers & ModifierKeys.Control) != ModifierKeys.Control)
+            return false;
+        if ((modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+            return false;
+        if ((modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+            return false;
+
+        if (key is >= System.Windows.Input.Key.A and <= System.Windows.Input.Key.Z)
+        {
+            // Standard terminal control codes: Ctrl+A => 0x01 ... Ctrl+Z => 0x1A.
+            var letterIndex = key - System.Windows.Input.Key.A + 1;
+            data = new string((char)letterIndex, 1);
+            return true;
+        }
+
+        if (key == System.Windows.Input.Key.D2 || key == System.Windows.Input.Key.Space)
+        {
+            data = "\u0000"; // Ctrl+2 / Ctrl+Space
+            return true;
+        }
+
+        return false;
     }
 
     public void Dispose()

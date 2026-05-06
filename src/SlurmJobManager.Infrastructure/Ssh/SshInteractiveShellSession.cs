@@ -1,4 +1,6 @@
 using System.Text;
+using System.Reflection;
+using System.Diagnostics;
 using Renci.SshNet;
 using SlurmJobManager.Core.Interfaces;
 
@@ -6,6 +8,7 @@ namespace SlurmJobManager.Infrastructure.Ssh;
 
 internal sealed class SshInteractiveShellSession : IInteractiveShellSession
 {
+    // Reflection-based PTY resize is currently validated with SSH.NET 2024.2.0.
     private static readonly TimeSpan ReaderShutdownTimeout = TimeSpan.FromSeconds(2);
     private readonly ShellStream _shellStream;
     private readonly CancellationTokenSource _readerCts = new();
@@ -47,11 +50,57 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
 
     public Task ResizeAsync(int cols, int rows, CancellationToken ct = default)
     {
-        _ = cols;
-        _ = rows;
-        _ = ct;
-        // SSH.NET ShellStream does not expose a public runtime resize API.
-        return Task.CompletedTask;
+        if (!IsOpen) return Task.CompletedTask;
+
+        cols = Math.Max(2, cols);
+        rows = Math.Max(2, rows);
+        return Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                var channelField = _shellStream.GetType().GetField("_channel", BindingFlags.Instance | BindingFlags.NonPublic);
+                var channel = channelField?.GetValue(_shellStream);
+                if (channel == null)
+                {
+                    Debug.WriteLine("[SshInteractiveShellSession] Resize skipped: ShellStream channel field is unavailable.");
+                    return;
+                }
+
+                var method = channel.GetType().GetMethod(
+                    "SendWindowChangeRequest",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                    binder: null,
+                    types: new[] { typeof(uint), typeof(uint), typeof(uint), typeof(uint) },
+                    modifiers: null);
+
+                if (method == null)
+                {
+                    Debug.WriteLine("[SshInteractiveShellSession] Resize skipped: SendWindowChangeRequest is unavailable.");
+                    return;
+                }
+
+                // Pixel width/height are intentionally set to 0 because most SSH servers
+                // rely on character cell dimensions for PTY resize handling.
+                _ = method.Invoke(channel, new object[] { (uint)cols, (uint)rows, 0u, 0u });
+            }
+            catch (TargetInvocationException ex)
+            {
+                Debug.WriteLine($"[SshInteractiveShellSession] Resize invocation failed: {ex.InnerException?.Message ?? ex.Message}");
+            }
+            catch (MethodAccessException ex)
+            {
+                Debug.WriteLine($"[SshInteractiveShellSession] Resize access denied: {ex.Message}");
+            }
+            catch (ArgumentException ex)
+            {
+                Debug.WriteLine($"[SshInteractiveShellSession] Resize argument mismatch: {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                Debug.WriteLine($"[SshInteractiveShellSession] Resize unsupported: {ex.Message}");
+            }
+        }, ct);
     }
 
     public async Task CloseAsync()
