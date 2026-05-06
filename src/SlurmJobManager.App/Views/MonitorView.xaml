@@ -206,7 +206,7 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="90" />
 
-                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="230">
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="2*" MinWidth="230">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding JobName}"
@@ -235,7 +235,7 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColNodes}" Width="190">
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColNodes}" Width="1.5*" MinWidth="190">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding NodeList}"
