@@ -1256,8 +1256,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 }
                 else
                 {
-                    unit.RemoteWorkDirectory = sourceWorkspaceWorkDir;
-                    warnings.Add(L("Task.BlueprintRemoteWorkDirNeedsReview"));
+                    SetRemoteWorkDirectoryWithReviewWarning(unit, sourceWorkspaceWorkDir, warnings);
                 }
             }
             else
@@ -1271,8 +1270,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         }
         else
         {
-            unit.RemoteWorkDirectory = sourceUnitWorkDir;
-            warnings.Add(L("Task.BlueprintRemoteWorkDirNeedsReview"));
+            SetRemoteWorkDirectoryWithReviewWarning(unit, sourceUnitWorkDir, warnings);
         }
 
         unit.SbatchTemplate = AdaptSbatchTemplate(unit.SbatchTemplate, oldTaskId, newTaskId, warnings);
@@ -1286,6 +1284,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 .Select(path => AdaptParameterPath(path, oldTaskId, unit.RemoteWorkDirectory ?? fallbackWorkDir, warnings))
                 .ToList();
         }
+    }
+
+    private void SetRemoteWorkDirectoryWithReviewWarning(TaskUnit unit, string workDir, HashSet<string> warnings)
+    {
+        unit.RemoteWorkDirectory = workDir;
+        warnings.Add(L("Task.BlueprintRemoteWorkDirNeedsReview"));
     }
 
     private string AdaptSbatchTemplate(
