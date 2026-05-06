@@ -459,7 +459,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         RefreshTemplateCandidatesCommand = new AsyncRelayCommand(RefreshTemplateCandidatesAsync,   CanRunSshCommand);
         TogglePinTemplateCommand         = new RelayCommand(TogglePinTemplate,                     () => !string.IsNullOrWhiteSpace(SelectedTemplate));
         RefreshTaskFilesCommand          = new AsyncRelayCommand(RefreshTaskFilesAsync,             CanRunSshCommand);
-        OpenTaskFileCommand              = new AsyncRelayCommand<TaskFileEntry>(OpenTaskFileAsync);
+        OpenTaskFileCommand              = new AsyncRelayCommand<TaskFileEntry>(OpenTaskFileAsync, entry => entry is not null && !IsBusy);
         DeleteTaskFilesCommand           = new AsyncRelayCommand<IReadOnlyList<TaskFileEntry>>(DeleteTaskFilesAsync);
         ViewTaskFileTimeInfoCommand      = new AsyncRelayCommand<TaskFileEntry>(ViewTaskFileTimeInfoAsync);
         GoUpTaskFilesPathCommand         = new AsyncRelayCommand(GoUpTaskFilesPathAsync,            CanRunSshCommand);
@@ -1139,20 +1139,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var remotePath = fileEntry.RemotePath;
-        var vm  = new RemoteFileEditorViewModel(_ssh, remotePath, _homeDirectory);
-        var win = new RemoteFileEditorView { DataContext = vm };
-
-        if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
-        await vm.LoadAsync(ct);
-        if (vm.IsBinaryFile)
-        {
-            StatusMessage = vm.StatusMessage;
-            StatusStyleKey = vm.StatusStyleKey;
-            return;
-        }
-
-        win.ShowDialog();
+        await OpenRemoteTextFileInEditorAsync(fileEntry.RemotePath, "Task.TaskFileMissing", ct);
     }
 
     private async Task DeleteTaskFilesAsync(IReadOnlyList<TaskFileEntry>? entries, CancellationToken ct)
@@ -1173,13 +1160,16 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         if (targets.Count == 0)
             return;
 
-        var confirm = MessageBox.Show(
-            BuildDeleteConfirmationMessage(targets),
-            L("Task.FileDeleteConfirmTitle"),
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Warning,
-            MessageBoxResult.Cancel);
-        if (confirm != MessageBoxResult.OK)
+        var (confirmMessage, confirmDetails) = BuildDeleteConfirmationContent(targets);
+        var confirmVm = new ConfirmationDialogViewModel(
+            title: L("Task.FileDeleteConfirmTitle"),
+            message: confirmMessage,
+            details: confirmDetails,
+            confirmButtonText: L("Dialog.Confirm"),
+            cancelButtonText: L("Btn.Cancel"),
+            isWarning: true,
+            showCancelButton: true);
+        if (!ShowConfirmationDialog(confirmVm))
         {
             SetStatus("Task.FileDeleteCancelled", "InfoTextStyle");
             return;
@@ -1238,11 +1228,14 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         var detailLines = failures.Select(static f => $"{f.Entry.DisplayName}: {f.Reason}");
         var detailText = string.Join(Environment.NewLine, detailLines);
-        MessageBox.Show(
-            string.Format(L("Task.FileDeleteFailureDetail"), detailText),
-            L("Task.FileDeleteResultTitle"),
-            MessageBoxButton.OK,
-            MessageBoxImage.Warning);
+        _ = ShowConfirmationDialog(new ConfirmationDialogViewModel(
+            title: L("Task.FileDeleteResultTitle"),
+            message: L("Task.FileDeleteFailureSummaryTitle"),
+            details: string.Format(L("Task.FileDeleteFailureDetail"), $"{Environment.NewLine}{detailText}"),
+            confirmButtonText: L("Dialog.OK"),
+            cancelButtonText: string.Empty,
+            isWarning: true,
+            showCancelButton: false));
     }
 
     private async Task ViewTaskFileTimeInfoAsync(TaskFileEntry? fileEntry, CancellationToken ct)
@@ -2320,45 +2313,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private async Task<bool> OpenRemoteDiagnosticFileAsync(string remotePath, string missingResourceKey, CancellationToken ct)
     {
-        if (!IsSshConnectedSafe())
-        {
-            SetStatus("Task.RequireConnection", "WarningTextStyle");
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(remotePath))
-        {
-            SetStatus(string.Format(L(missingResourceKey), L("Task.DiagnosticPathUnknown")), "WarningTextStyle", localize: false);
-            return false;
-        }
-
-        try
-        {
-            if (!await _ssh.RemoteFileExistsAsync(remotePath, ct))
-            {
-                SetStatus(string.Format(L(missingResourceKey), CollapseHomePath(remotePath)), "WarningTextStyle", localize: false);
-                return false;
-            }
-
-            var vm = new RemoteFileEditorViewModel(_ssh, remotePath, _homeDirectory);
-            var win = new RemoteFileEditorView { DataContext = vm };
-            if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
-            await vm.LoadAsync(ct);
-            if (vm.IsBinaryFile)
-            {
-                StatusMessage = vm.StatusMessage;
-                StatusStyleKey = vm.StatusStyleKey;
-                return false;
-            }
-
-            win.ShowDialog();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            SetStatus(string.Format(L("Task.DiagnosticOpenRemoteFileFailed"), ex.Message), "ErrorTextStyle", localize: false);
-            return false;
-        }
+        return await OpenRemoteTextFileInEditorAsync(remotePath, missingResourceKey, ct);
     }
 
     private static string ResolveUnitNameForPath(TaskUnitViewModel? unit)
@@ -2575,16 +2530,19 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private static string EscapeShellArg(string arg)
         => "'" + arg.Replace("'", "'\\''") + "'";
 
-    private string BuildDeleteConfirmationMessage(IReadOnlyList<TaskFileEntry> entries)
+    private (string Message, string Details) BuildDeleteConfirmationContent(IReadOnlyList<TaskFileEntry> entries)
     {
         if (entries.Count == 1)
         {
             var entry = entries[0];
-            return string.Format(
-                L("Task.FileDeleteConfirmSingle"),
-                entry.DisplayName,
-                entry.DisplayRemotePath,
+            var message = L("Task.FileDeleteConfirmSingle");
+            var details = string.Join(
+                Environment.NewLine,
+                $"{L("Task.FileTimeNameLabel")} {entry.DisplayName}",
+                $"{L("Task.FileTimePathLabel")} {entry.DisplayRemotePath}",
+                string.Empty,
                 L("Task.FileDeleteIrreversibleHint"));
+            return (message, details);
         }
 
         const int deletePreviewCount = 8;
@@ -2595,11 +2553,90 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         if (entries.Count > deletePreviewCount)
             preview.Add(string.Format(L("Task.FileDeleteConfirmMoreItems"), entries.Count - deletePreviewCount));
 
-        return string.Format(
-            L("Task.FileDeleteConfirmBatch"),
-            entries.Count,
+        var batchMessage = string.Format(L("Task.FileDeleteConfirmBatch"), entries.Count);
+        var batchDetails = string.Join(
+            Environment.NewLine,
             string.Join(Environment.NewLine, preview),
+            string.Empty,
             L("Task.FileDeleteIrreversibleHint"));
+        return (batchMessage, batchDetails);
+    }
+
+    private bool ShowConfirmationDialog(ConfirmationDialogViewModel viewModel)
+    {
+        var dialog = new ConfirmationDialogView { DataContext = viewModel };
+        if (Application.Current.MainWindow is { } mainWindow)
+            dialog.Owner = mainWindow;
+        return dialog.ShowDialog() == true;
+    }
+
+    private async Task<bool> OpenRemoteTextFileInEditorAsync(string remotePath, string missingResourceKey, CancellationToken ct)
+    {
+        if (!IsSshConnectedSafe())
+        {
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
+            Debug.WriteLine("[TaskEditor.OpenRemoteTextFileInEditorAsync] SSH connection is not available.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(remotePath))
+        {
+            var reason = L("Task.DiagnosticPathUnknown");
+            SetStatus(string.Format(L(missingResourceKey), reason), "WarningTextStyle", localize: false);
+            Debug.WriteLine("[TaskEditor.OpenRemoteTextFileInEditorAsync] Remote path is empty.");
+            return false;
+        }
+
+        var normalizedPath = NormalizeRemotePath(remotePath);
+        try
+        {
+            if (!await _ssh.RemoteFileExistsAsync(normalizedPath, ct))
+            {
+                var displayPath = CollapseHomePath(normalizedPath);
+                SetStatus(string.Format(L(missingResourceKey), displayPath), "WarningTextStyle", localize: false);
+                Debug.WriteLine($"[TaskEditor.OpenRemoteTextFileInEditorAsync] Remote file not found: {normalizedPath}");
+                return false;
+            }
+
+            var editorViewModel = new RemoteFileEditorViewModel(_ssh, normalizedPath, _homeDirectory);
+            var editorWindow = new RemoteFileEditorView { DataContext = editorViewModel };
+            if (Application.Current.MainWindow is { } mainWindow)
+                editorWindow.Owner = mainWindow;
+
+            await editorViewModel.LoadAsync(ct);
+
+            if (editorViewModel.IsBinaryFile)
+            {
+                SetStatus(editorViewModel.StatusMessage, editorViewModel.StatusStyleKey, localize: false);
+                Debug.WriteLine($"[TaskEditor.OpenRemoteTextFileInEditorAsync] Binary file blocked: {normalizedPath}");
+                return false;
+            }
+
+            if (!editorViewModel.LoadSucceeded)
+            {
+                var loadError = string.IsNullOrWhiteSpace(editorViewModel.StatusMessage)
+                    ? L("Task.RemoteFileOpenLoadUnknownError")
+                    : editorViewModel.StatusMessage;
+                SetStatus(
+                    string.Format(L("Task.RemoteFileOpenFailed"), CollapseHomePath(normalizedPath), loadError),
+                    "ErrorTextStyle",
+                    localize: false);
+                Debug.WriteLine($"[TaskEditor.OpenRemoteTextFileInEditorAsync] Load failed for {normalizedPath}: {loadError}");
+                return false;
+            }
+
+            editorWindow.ShowDialog();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[TaskEditor.OpenRemoteTextFileInEditorAsync] Exception for {normalizedPath}: {ex}");
+            SetStatus(
+                string.Format(L("Task.RemoteFileOpenFailed"), CollapseHomePath(normalizedPath), ex.Message),
+                "ErrorTextStyle",
+                localize: false);
+            return false;
+        }
     }
 
     private string FormatUnixTimeOrUnavailable(long unixTime)

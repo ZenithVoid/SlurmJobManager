@@ -24,6 +24,8 @@
 
     <!-- ── 通用按钮 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Btn.Refresh">刷新</sys:String>
+    <sys:String x:Key="Dialog.Confirm">确认</sys:String>
+    <sys:String x:Key="Dialog.OK">确定</sys:String>
     <sys:String x:Key="Btn.Cancel">取消</sys:String>
     <sys:String x:Key="Btn.Connect">连接</sys:String>
     <sys:String x:Key="Btn.Disconnect">断开</sys:String>
@@ -204,8 +206,8 @@
     <sys:String x:Key="Task.FileMenuDelete">删除</sys:String>
     <sys:String x:Key="Task.FileMenuViewTimeInfo">查看时间信息</sys:String>
     <sys:String x:Key="Task.FileDeleteConfirmTitle">删除确认</sys:String>
-    <sys:String x:Key="Task.FileDeleteConfirmSingle">确认删除此项目？\n\n名称：{0}\n路径：{1}\n\n{2}</sys:String>
-    <sys:String x:Key="Task.FileDeleteConfirmBatch">确认删除已选中的 {0} 个项目？\n\n{1}\n\n{2}</sys:String>
+    <sys:String x:Key="Task.FileDeleteConfirmSingle">确认删除此项目？</sys:String>
+    <sys:String x:Key="Task.FileDeleteConfirmBatch">确认删除已选中的 {0} 个项目？</sys:String>
     <sys:String x:Key="Task.FileDeleteConfirmMoreItems">…… 以及其余 {0} 项</sys:String>
     <sys:String x:Key="Task.FileDeleteIrreversibleHint">此操作不可撤销。</sys:String>
     <sys:String x:Key="Task.FileDeleteCancelled">已取消删除。</sys:String>
@@ -214,7 +216,11 @@
     <sys:String x:Key="Task.FileDeleteAllFailedSummary">选中项目全部删除失败（{0} 项）。</sys:String>
     <sys:String x:Key="Task.FileDeletePartialSummary">已删除 {0} 项，失败 {1} 项。</sys:String>
     <sys:String x:Key="Task.FileDeleteResultTitle">删除结果详情</sys:String>
-    <sys:String x:Key="Task.FileDeleteFailureDetail">以下项目删除失败：\n{0}</sys:String>
+    <sys:String x:Key="Task.FileDeleteFailureSummaryTitle">以下项目删除失败。</sys:String>
+    <sys:String x:Key="Task.FileDeleteFailureDetail">失败项目：{0}</sys:String>
+    <sys:String x:Key="Task.TaskFileMissing">远程文件不存在：{0}</sys:String>
+    <sys:String x:Key="Task.RemoteFileOpenFailed">打开远程文件失败 {0}：{1}</sys:String>
+    <sys:String x:Key="Task.RemoteFileOpenLoadUnknownError">远程文件加载失败（未知原因）。</sys:String>
     <sys:String x:Key="Task.FileTimeInfoTitle">文件时间信息</sys:String>
     <sys:String x:Key="Task.FileTimeNameLabel">名称：</sys:String>
     <sys:String x:Key="Task.FileTimePathLabel">路径：</sys:String>
