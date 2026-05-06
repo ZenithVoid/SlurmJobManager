@@ -75,8 +75,10 @@ public partial class MainWindow : Window
             || DataContext is not MainViewModel vm)
             return;
 
-        if (ItemsControl.ItemsControlFromItemContainer(item) is ListBox listBox)
-            listBox.SelectedItem = fileEntry;
+        if (ItemsControl.ItemsControlFromItemContainer(item) is not ListBox listBox)
+            return;
+
+        listBox.SelectedItem = fileEntry;
 
         if (!vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
             return;

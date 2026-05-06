@@ -2244,6 +2244,9 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private static string L(string key)
         => Application.Current?.TryFindResource(key) as string ?? key;
 
+    /// <summary>
+    /// Formats task-context values for tooltip display, returning a localized placeholder when empty.
+    /// </summary>
     private static string GetTaskContextDisplayValue(string? value)
         => string.IsNullOrWhiteSpace(value)
             ? L("Task.ContextValueEmpty")
