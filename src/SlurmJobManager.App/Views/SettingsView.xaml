@@ -12,7 +12,7 @@
     <UserControl.Resources>
         <Style x:Key="LocaleZhButtonStyle" TargetType="Button" BasedOn="{StaticResource NeutralButtonStyle}">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding CurrentLocale}" Value="zh-CN">
+                <DataTrigger Binding="{Binding CurrentLocale, Mode=OneWay}" Value="zh-CN">
                     <Setter Property="Background" Value="{DynamicResource AccentBlueBrush}" />
                     <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
                 </DataTrigger>
@@ -20,7 +20,7 @@
         </Style>
         <Style x:Key="LocaleEnButtonStyle" TargetType="Button" BasedOn="{StaticResource NeutralButtonStyle}">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding CurrentLocale}" Value="en-US">
+                <DataTrigger Binding="{Binding CurrentLocale, Mode=OneWay}" Value="en-US">
                     <Setter Property="Background" Value="{DynamicResource AccentBlueBrush}" />
                     <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
                 </DataTrigger>
@@ -41,7 +41,7 @@
                 <StackPanel>
                     <TextBlock Text="{DynamicResource Settings.SshConnection}"
                                Style="{StaticResource SectionHeaderStyle}" />
-                    <views:ConnectionView DataContext="{Binding Connection}" />
+                    <views:ConnectionView DataContext="{Binding Connection, Mode=OneWay}" />
                 </StackPanel>
             </Border>
 
@@ -87,7 +87,7 @@
                                    Style="{StaticResource FieldLabelStyle}"
                                    VerticalAlignment="Center"
                                    Margin="0,0,12,0" />
-                        <Button Content="{Binding ThemeLabel}"
+                        <Button Content="{Binding ThemeLabel, Mode=OneWay}"
                                 Command="{Binding ToggleThemeCommand}"
                                 Style="{StaticResource NeutralButtonStyle}"
                                 Padding="12,6" />
@@ -190,7 +190,7 @@
                     <TextBox Text="{Binding LocalDataDirectory, Mode=OneWay}"
                              IsReadOnly="True"
                              Margin="0,0,0,8"
-                             ToolTip="{Binding LocalDataDirectory}" />
+                             ToolTip="{Binding LocalDataDirectory, Mode=OneWay}" />
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <Button Content="{DynamicResource Settings.OpenDataDirectory}"
@@ -210,34 +210,34 @@
                     <TextBlock Margin="0,6,0,0"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                TextWrapping="Wrap"
-                               ToolTip="{Binding TasksDirectory}">
+                               ToolTip="{Binding TasksDirectory, Mode=OneWay}">
                         <Run Text="• " />
                         <Run Text="{DynamicResource Settings.LocalDataTasks}" />
-                        <Run Text="{Binding TasksDirectory}" />
+                        <Run Text="{Binding TasksDirectory, Mode=OneWay}" />
                     </TextBlock>
                     <TextBlock Margin="0,2,0,0"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                TextWrapping="Wrap"
-                               ToolTip="{Binding BlueprintsDirectory}">
+                               ToolTip="{Binding BlueprintsDirectory, Mode=OneWay}">
                         <Run Text="• " />
                         <Run Text="{DynamicResource Settings.LocalDataBlueprints}" />
-                        <Run Text="{Binding BlueprintsDirectory}" />
+                        <Run Text="{Binding BlueprintsDirectory, Mode=OneWay}" />
                     </TextBlock>
                     <TextBlock Margin="0,2,0,0"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                TextWrapping="Wrap"
-                               ToolTip="{Binding RecentConnectionsFilePath}">
+                               ToolTip="{Binding RecentConnectionsFilePath, Mode=OneWay}">
                         <Run Text="• " />
                         <Run Text="{DynamicResource Settings.LocalDataRecentConnections}" />
-                        <Run Text="{Binding RecentConnectionsFilePath}" />
+                        <Run Text="{Binding RecentConnectionsFilePath, Mode=OneWay}" />
                     </TextBlock>
                     <TextBlock Margin="0,2,0,0"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                TextWrapping="Wrap"
-                               ToolTip="{Binding PreferencesFilePath}">
+                               ToolTip="{Binding PreferencesFilePath, Mode=OneWay}">
                         <Run Text="• " />
                         <Run Text="{DynamicResource Settings.LocalDataPreferences}" />
-                        <Run Text="{Binding PreferencesFilePath}" />
+                        <Run Text="{Binding PreferencesFilePath, Mode=OneWay}" />
                     </TextBlock>
                 </StackPanel>
             </Border>
