@@ -220,11 +220,13 @@
                                             FontSize="13"
                                             FontWeight="SemiBold"
                                             Margin="8,0,0,0"
-                                            VerticalAlignment="Center"
-                                            ToolTip="{DynamicResource Task.ContextInfoButtonHint}">
+                                            VerticalAlignment="Center">
                                         <Button.ToolTip>
                                             <ToolTip MaxWidth="520" Placement="Bottom">
                                                 <StackPanel>
+                                                    <TextBlock Text="{DynamicResource Task.ContextInfoButtonHint}"
+                                                               Style="{StaticResource MutedTextStyle}"
+                                                               Margin="0,0,0,6" />
                                                     <TextBlock Text="{DynamicResource Task.ContextInfoTitle}"
                                                                Style="{StaticResource SectionHeaderStyle}" />
                                                     <Grid>
@@ -357,15 +359,8 @@
                                         </ListBox.Style>
                                         <ListBox.ItemContainerStyle>
                                             <Style TargetType="ListBoxItem">
-                                                <Setter Property="InputBindings">
-                                                    <Setter.Value>
-                                                        <InputBindingCollection>
-                                                            <MouseBinding MouseAction="LeftDoubleClick"
-                                                                          Command="{Binding DataContext.TaskEditor.OpenTaskFileCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                                          CommandParameter="{Binding}" />
-                                                        </InputBindingCollection>
-                                                    </Setter.Value>
-                                                </Setter>
+                                                <EventSetter Event="MouseDoubleClick"
+                                                             Handler="TaskFileListItem_MouseDoubleClick" />
                                             </Style>
                                         </ListBox.ItemContainerStyle>
                                         <ListBox.ItemTemplate>

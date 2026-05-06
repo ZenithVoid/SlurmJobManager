@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -65,6 +66,23 @@ public partial class MainWindow : Window
         page.BeginAnimation(OpacityProperty, fadeIn);
         scale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleX);
         scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY);
+    }
+
+    private void TaskFileListItem_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not ListBoxItem item
+            || item.DataContext is not TaskFileEntry fileEntry
+            || DataContext is not MainViewModel vm)
+            return;
+
+        if (ItemsControl.ItemsControlFromItemContainer(item) is ListBox listBox)
+            listBox.SelectedItem = fileEntry;
+
+        if (!vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
+            return;
+
+        vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
+        e.Handled = true;
     }
 
     private void ApplyTabFocus(string tabId)
