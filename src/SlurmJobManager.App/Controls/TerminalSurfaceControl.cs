@@ -35,16 +35,24 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
     private readonly Terminal _terminal;
     private readonly DispatcherTimer _renderTimer;
+    private readonly VisualCollection _visuals;
+    private readonly List<DrawingVisual> _rowVisuals = new();
+    private readonly DrawingVisual _cursorVisual = new();
     private readonly SolidColorBrush _defaultForegroundBrush;
     private readonly SolidColorBrush _defaultBackgroundBrush;
     private readonly SolidColorBrush _cursorBrush;
     private readonly Dictionary<uint, SolidColorBrush> _brushCache = new();
     private readonly int _fontSize = 14;
+    private ulong[] _rowHashes = Array.Empty<ulong>();
     private int _renderQueued;
     private double _cellWidth;
     private double _cellHeight;
     private double _pixelsPerDip = 1d;
     private bool _isDisposed;
+    private bool _fullRenderRequested = true;
+    private bool _lastCursorVisible;
+    private int _lastCursorX = -1;
+    private int _lastCursorY = -1;
 
     public event EventHandler<string>? InputGenerated;
     public event EventHandler<TerminalResizedEventArgs>? TerminalResized;
@@ -56,6 +64,8 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         Focusable = true;
         Cursor = Cursors.IBeam;
         SnapsToDevicePixels = true;
+
+        _visuals = new VisualCollection(this);
 
         _defaultForegroundBrush = CreateFrozenBrush(DefaultForeground);
         _defaultBackgroundBrush = CreateFrozenBrush(DefaultBackground);
@@ -74,7 +84,8 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
                 return;
             }
 
-            InvalidateVisual();
+            Interlocked.Exchange(ref _renderQueued, 0);
+            RenderPendingChanges();
         };
 
         _terminal = new Terminal(new TerminalOptions
@@ -91,8 +102,12 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
         _terminal.LineFed += (_, _) => RequestRender();
         _terminal.BufferChanged += (_, _) => RequestRender();
-        _terminal.Resized += (_, _) => RequestRender();
-        _terminal.Scrolled += (_, _) => RequestRender();
+        _terminal.Resized += (_, _) =>
+        {
+            EnsureRowVisuals(_terminal.Rows, true);
+            RequestRender(forceFull: true);
+        };
+        _terminal.Scrolled += (_, _) => RequestRender(forceFull: true);
         _terminal.CursorStyleChanged += (_, _) => RequestRender();
 
         Loaded += (_, _) =>
@@ -100,7 +115,13 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
             ResizeToViewport();
             Focus();
         };
-        SizeChanged += (_, _) => ResizeToViewport();
+        SizeChanged += (_, _) =>
+        {
+            ResizeToViewport();
+            InvalidateVisual();
+        };
+
+        EnsureRowVisuals(_terminal.Rows, true);
     }
 
     public void Write(string data)
@@ -114,11 +135,15 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     {
         if (_isDisposed) return;
         _terminal.Clear();
-        RequestRender();
+        RequestRender(forceFull: true);
     }
 
     public string GetVisibleText()
         => string.Join(Environment.NewLine, _terminal.GetVisibleLines());
+
+    protected override int VisualChildrenCount => _visuals.Count;
+
+    protected override Visual GetVisualChild(int index) => _visuals[index];
 
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
@@ -159,56 +184,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     protected override void OnRender(DrawingContext dc)
     {
         base.OnRender(dc);
-        Interlocked.Exchange(ref _renderQueued, 0);
         dc.DrawRectangle(_defaultBackgroundBrush, null, new Rect(0, 0, ActualWidth, ActualHeight));
-
-        if (_isDisposed) return;
-        EnsureCellMetrics();
-        var cellWidth = _cellWidth;
-        var cellHeight = _cellHeight;
-        var buffer = _terminal.Buffer;
-        var rows = _terminal.Rows;
-        var cols = _terminal.Cols;
-        var yDisp = buffer.YDisp;
-        var pixelsPerDip = _pixelsPerDip;
-
-        for (var row = 0; row < rows; row++)
-        {
-            var line = buffer.GetLine(yDisp + row);
-            if (line == null) continue;
-
-            for (var col = 0; col < Math.Min(cols, line.Length); col++)
-            {
-                var cell = line[col];
-                if (cell.Width == 0) continue;
-
-                var attrs = cell.Attributes;
-                var (fg, bg) = ResolveColors(attrs);
-                var rect = new Rect(col * cellWidth, row * cellHeight, Math.Max(cellWidth * cell.Width, cellWidth), cellHeight);
-
-                if (bg != DefaultBackground)
-                    dc.DrawRectangle(GetBrush(bg), null, rect);
-
-                var content = string.IsNullOrEmpty(cell.Content) ? " " : cell.Content;
-                var formatted = new FormattedText(
-                    content,
-                    CultureInfo.InvariantCulture,
-                    FlowDirection.LeftToRight,
-                    MonoTypeface,
-                    _fontSize,
-                    fg == DefaultForeground ? _defaultForegroundBrush : GetBrush(fg),
-                    pixelsPerDip);
-                dc.DrawText(formatted, new Point(rect.X, rect.Y));
-            }
-        }
-
-        if (_terminal.CursorVisible)
-        {
-            var cursorX = Math.Clamp(buffer.X, 0, cols - 1);
-            var cursorY = Math.Clamp(buffer.Y, 0, rows - 1);
-            var cursorRect = new Rect(cursorX * cellWidth, cursorY * cellHeight, cellWidth, cellHeight);
-            dc.DrawRectangle(_cursorBrush, null, cursorRect);
-        }
     }
 
     private void ResizeToViewport()
@@ -225,7 +201,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
         _terminal.Resize(cols, rows);
         TerminalResized?.Invoke(this, new TerminalResizedEventArgs(cols, rows));
-        InvalidateVisual();
+        RequestRender(forceFull: true);
     }
 
     private void EnsureCellMetrics()
@@ -245,6 +221,174 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
             _pixelsPerDip);
         _cellWidth = Math.Max(1, probe.WidthIncludingTrailingWhitespace);
         _cellHeight = Math.Max(1, probe.Height);
+        _fullRenderRequested = true;
+    }
+
+    private void RenderPendingChanges()
+    {
+        if (_isDisposed)
+            return;
+
+        EnsureCellMetrics();
+        EnsureRowVisuals(_terminal.Rows, false);
+
+        var buffer = _terminal.Buffer;
+        var rows = _terminal.Rows;
+        var cols = _terminal.Cols;
+        if (_rowHashes.Length != rows)
+            EnsureRowVisuals(rows, true);
+        var yDisp = buffer.YDisp;
+        var forceFull = _fullRenderRequested;
+        _fullRenderRequested = false;
+
+        for (var row = 0; row < rows; row++)
+        {
+            var line = buffer.GetLine(yDisp + row);
+            var hash = ComputeLineHash(line, cols);
+            if (!forceFull && _rowHashes[row] == hash)
+                continue;
+
+            _rowHashes[row] = hash;
+            DrawRow(row, line, cols);
+        }
+
+        DrawCursor(buffer, cols, rows);
+    }
+
+    private void EnsureRowVisuals(int rows, bool forceReset)
+    {
+        if (!forceReset && _rowVisuals.Count == rows)
+            return;
+
+        _visuals.Clear();
+        _rowVisuals.Clear();
+
+        for (var i = 0; i < rows; i++)
+        {
+            var visual = new DrawingVisual();
+            _rowVisuals.Add(visual);
+            _visuals.Add(visual);
+        }
+
+        _visuals.Add(_cursorVisual);
+        _rowHashes = new ulong[rows];
+        for (var i = 0; i < _rowHashes.Length; i++)
+            _rowHashes[i] = ulong.MaxValue;
+
+        _lastCursorVisible = false;
+        _lastCursorX = -1;
+        _lastCursorY = -1;
+        _fullRenderRequested = true;
+    }
+
+    private void DrawRow(int row, BufferLine? line, int cols)
+    {
+        var visual = _rowVisuals[row];
+        using var dc = visual.RenderOpen();
+
+        var y = row * _cellHeight;
+        dc.DrawRectangle(_defaultBackgroundBrush, null, new Rect(0, y, ActualWidth, _cellHeight));
+
+        if (line == null)
+            return;
+
+        var pixelsPerDip = _pixelsPerDip;
+        for (var col = 0; col < Math.Min(cols, line.Length); col++)
+        {
+            var cell = line[col];
+            if (cell.Width == 0) continue;
+
+            var attrs = cell.Attributes;
+            var (fg, bg) = ResolveColors(attrs);
+            var rect = new Rect(col * _cellWidth, y, Math.Max(_cellWidth * cell.Width, _cellWidth), _cellHeight);
+
+            if (bg != DefaultBackground)
+                dc.DrawRectangle(GetBrush(bg), null, rect);
+
+            var content = string.IsNullOrEmpty(cell.Content) ? " " : cell.Content;
+            var formatted = new FormattedText(
+                content,
+                CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                MonoTypeface,
+                _fontSize,
+                fg == DefaultForeground ? _defaultForegroundBrush : GetBrush(fg),
+                pixelsPerDip);
+            dc.DrawText(formatted, new Point(rect.X, rect.Y));
+        }
+    }
+
+    private void DrawCursor(TerminalBuffer buffer, int cols, int rows)
+    {
+        if (cols <= 0 || rows <= 0)
+        {
+            _lastCursorVisible = false;
+            _lastCursorX = -1;
+            _lastCursorY = -1;
+            using var clearDc = _cursorVisual.RenderOpen();
+            return;
+        }
+
+        var cursorVisible = _terminal.CursorVisible;
+        var cursorX = Math.Clamp(buffer.X, 0, cols - 1);
+        var cursorY = Math.Clamp(buffer.Y, 0, rows - 1);
+
+        if (_lastCursorVisible == cursorVisible && _lastCursorX == cursorX && _lastCursorY == cursorY)
+            return;
+
+        _lastCursorVisible = cursorVisible;
+        _lastCursorX = cursorX;
+        _lastCursorY = cursorY;
+
+        using var dc = _cursorVisual.RenderOpen();
+        if (!cursorVisible)
+            return;
+
+        var cursorRect = new Rect(cursorX * _cellWidth, cursorY * _cellHeight, _cellWidth, _cellHeight);
+        dc.DrawRectangle(_cursorBrush, null, cursorRect);
+    }
+
+    // FNV-1a is used here for a fast per-row fingerprint so unchanged rows skip redraw; a rare collision only causes a missed single-frame update.
+    private static ulong ComputeLineHash(BufferLine? line, int cols)
+    {
+        const ulong offset = 14695981039346656037ul;
+        const ulong prime = 1099511628211ul;
+        var hash = offset;
+
+        if (line == null)
+            return hash;
+
+        var length = Math.Min(cols, line.Length);
+        for (var col = 0; col < length; col++)
+        {
+            var cell = line[col];
+            hash ^= (ulong)cell.Width;
+            hash *= prime;
+
+            var attrs = cell.Attributes;
+            hash ^= (ulong)attrs.GetFgColor();
+            hash *= prime;
+            hash ^= (ulong)attrs.GetBgColor();
+            hash *= prime;
+            hash ^= (ulong)attrs.GetFgColorMode();
+            hash *= prime;
+            hash ^= (ulong)attrs.GetBgColorMode();
+            hash *= prime;
+            hash ^= attrs.IsInverse() ? 1ul : 0ul;
+            hash *= prime;
+
+            var content = cell.Content;
+            if (string.IsNullOrEmpty(content))
+                continue;
+
+            for (var i = 0; i < content.Length; i++)
+            {
+                hash ^= content[i];
+                hash *= prime;
+            }
+        }
+
+        return hash;
     }
 
     private static (Color fg, Color bg) ResolveColors(AttributeData attrs)
@@ -362,7 +506,6 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
         if (key is >= System.Windows.Input.Key.A and <= System.Windows.Input.Key.Z)
         {
-            // Standard terminal control codes: Ctrl+A => 0x01 ... Ctrl+Z => 0x1A.
             var letterIndex = key - System.Windows.Input.Key.A + 1;
             data = new string((char)letterIndex, 1);
             return true;
@@ -370,19 +513,24 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
         if (key == System.Windows.Input.Key.D2 || key == System.Windows.Input.Key.Space)
         {
-            data = "\u0000"; // Ctrl+2 / Ctrl+Space
+            data = "\u0000";
             return true;
         }
 
         return false;
     }
 
-    private void RequestRender()
+    private void RequestRender(bool forceFull = false)
     {
         if (_isDisposed)
             return;
+
+        if (forceFull)
+            _fullRenderRequested = true;
+
         if (Interlocked.CompareExchange(ref _renderQueued, 1, 0) != 0)
             return;
+
         if (!_renderTimer.IsEnabled)
             _renderTimer.Start();
     }

@@ -67,7 +67,7 @@ public partial class ConsoleView : UserControl
             _outputFlushQueued = true;
         }
 
-        _ = Dispatcher.InvokeAsync(FlushBufferedOutput, System.Windows.Threading.DispatcherPriority.Background);
+        _ = Dispatcher.InvokeAsync(FlushBufferedOutput, System.Windows.Threading.DispatcherPriority.Render);
     }
 
     private void OnFocusRequested(object? sender, EventArgs e)
@@ -105,6 +105,8 @@ public partial class ConsoleView : UserControl
     private void TerminalSurface_InputGenerated(object sender, string input)
     {
         if (DataContext is not ConsoleViewModel vm) return;
+        if (vm.TryForwardTerminalInput(input))
+            return;
         _ = ForwardTerminalInputSafelyAsync(vm, input);
     }
 

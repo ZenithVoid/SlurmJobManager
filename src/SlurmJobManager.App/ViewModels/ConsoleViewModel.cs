@@ -140,12 +140,28 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     public async Task ForwardTerminalInputAsync(string data, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(data)) return;
+        if (TryForwardTerminalInput(data)) return;
         if (!await EnsureShellSessionAsync(ct)) return;
 
-        if (data.Contains('\r') || data.Contains('\n'))
+        if (ShouldSetBusyForInput(data))
             SetBusy(true);
 
         await SendRawInputAsync(data, ct);
+    }
+
+    public bool TryForwardTerminalInput(string data)
+    {
+        if (string.IsNullOrEmpty(data))
+            return false;
+
+        var session = _shellSession;
+        if (session?.IsOpen != true)
+            return false;
+
+        if (ShouldSetBusyForInput(data))
+            SetBusy(true);
+
+        return session.TryWrite(data);
     }
 
     public async Task ResizeTerminalAsync(int cols, int rows, CancellationToken ct = default)
@@ -484,6 +500,9 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         if (string.IsNullOrEmpty(input)) return string.Empty;
         return ControlCharRegex.Replace(input, string.Empty).Trim();
     }
+
+    private static bool ShouldSetBusyForInput(string data)
+        => data.IndexOfAny(new[] { '\r', '\n' }) >= 0;
 
     private void SetBusy(bool value)
     {
