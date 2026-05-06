@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -29,10 +30,19 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     private static readonly Color DefaultBackground = Color.FromRgb(0x0F, 0x14, 0x1A);
     private static readonly Color CursorColor = Color.FromArgb(180, 0x9D, 0xCB, 0xFF);
     private static readonly Typeface MonoTypeface = new(new FontFamily("Cascadia Mono"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+    private static readonly TimeSpan MinRenderInterval = TimeSpan.FromMilliseconds(16);
 
     private readonly Terminal _terminal;
+    private readonly DispatcherTimer _renderTimer;
+    private readonly SolidColorBrush _defaultForegroundBrush;
+    private readonly SolidColorBrush _defaultBackgroundBrush;
+    private readonly SolidColorBrush _cursorBrush;
+    private readonly Dictionary<uint, SolidColorBrush> _brushCache = new();
     private readonly int _fontSize = 14;
     private int _renderQueued;
+    private double _cellWidth;
+    private double _cellHeight;
+    private double _pixelsPerDip = 1d;
     private bool _isDisposed;
 
     public event EventHandler<string>? InputGenerated;
@@ -45,6 +55,26 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         Focusable = true;
         Cursor = Cursors.IBeam;
         SnapsToDevicePixels = true;
+
+        _defaultForegroundBrush = CreateFrozenBrush(DefaultForeground);
+        _defaultBackgroundBrush = CreateFrozenBrush(DefaultBackground);
+        _cursorBrush = CreateFrozenBrush(CursorColor);
+
+        _renderTimer = new DispatcherTimer(DispatcherPriority.Render)
+        {
+            Interval = MinRenderInterval
+        };
+        _renderTimer.Tick += (_, _) =>
+        {
+            _renderTimer.Stop();
+            if (_isDisposed)
+            {
+                Interlocked.Exchange(ref _renderQueued, 0);
+                return;
+            }
+
+            InvalidateVisual();
+        };
 
         _terminal = new Terminal(new TerminalOptions
         {
@@ -76,7 +106,6 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     {
         if (string.IsNullOrEmpty(data) || _isDisposed) return;
         _terminal.Write(data);
-        RequestRender();
     }
 
     public void Clear()
@@ -129,16 +158,17 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     {
         base.OnRender(dc);
         Interlocked.Exchange(ref _renderQueued, 0);
-        dc.DrawRectangle(new SolidColorBrush(DefaultBackground), null, new Rect(0, 0, ActualWidth, ActualHeight));
+        dc.DrawRectangle(_defaultBackgroundBrush, null, new Rect(0, 0, ActualWidth, ActualHeight));
 
         if (_isDisposed) return;
-        var (cellWidth, cellHeight) = MeasureCell();
+        EnsureCellMetrics();
+        var cellWidth = _cellWidth;
+        var cellHeight = _cellHeight;
         var buffer = _terminal.Buffer;
         var rows = _terminal.Rows;
         var cols = _terminal.Cols;
         var yDisp = buffer.YDisp;
-
-        var defaultFgBrush = new SolidColorBrush(DefaultForeground);
+        var pixelsPerDip = _pixelsPerDip;
 
         for (var row = 0; row < rows; row++)
         {
@@ -155,7 +185,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
                 var rect = new Rect(col * cellWidth, row * cellHeight, Math.Max(cellWidth * cell.Width, cellWidth), cellHeight);
 
                 if (bg != DefaultBackground)
-                    dc.DrawRectangle(new SolidColorBrush(bg), null, rect);
+                    dc.DrawRectangle(GetBrush(bg), null, rect);
 
                 var content = string.IsNullOrEmpty(cell.Content) ? " " : cell.Content;
                 var formatted = new FormattedText(
@@ -164,8 +194,8 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
                     FlowDirection.LeftToRight,
                     MonoTypeface,
                     _fontSize,
-                    fg == DefaultForeground ? defaultFgBrush : new SolidColorBrush(fg),
-                    VisualTreeHelper.GetDpi(this).PixelsPerDip);
+                    fg == DefaultForeground ? _defaultForegroundBrush : GetBrush(fg),
+                    pixelsPerDip);
                 dc.DrawText(formatted, new Point(rect.X, rect.Y));
             }
         }
@@ -175,14 +205,16 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
             var cursorX = Math.Clamp(buffer.X, 0, cols - 1);
             var cursorY = Math.Clamp(buffer.Y, 0, rows - 1);
             var cursorRect = new Rect(cursorX * cellWidth, cursorY * cellHeight, cellWidth, cellHeight);
-            dc.DrawRectangle(new SolidColorBrush(CursorColor), null, cursorRect);
+            dc.DrawRectangle(_cursorBrush, null, cursorRect);
         }
     }
 
     private void ResizeToViewport()
     {
         if (_isDisposed || !IsLoaded || ActualWidth <= 0 || ActualHeight <= 0) return;
-        var (cellWidth, cellHeight) = MeasureCell();
+        EnsureCellMetrics();
+        var cellWidth = _cellWidth;
+        var cellHeight = _cellHeight;
         if (cellWidth <= 0 || cellHeight <= 0) return;
 
         var cols = Math.Max(2, (int)(ActualWidth / cellWidth));
@@ -194,8 +226,13 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         InvalidateVisual();
     }
 
-    private (double cellWidth, double cellHeight) MeasureCell()
+    private void EnsureCellMetrics()
     {
+        var currentPixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        if (_cellWidth > 0 && _cellHeight > 0 && Math.Abs(_pixelsPerDip - currentPixelsPerDip) < 0.0001)
+            return;
+
+        _pixelsPerDip = currentPixelsPerDip;
         var probe = new FormattedText(
             "W",
             CultureInfo.InvariantCulture,
@@ -203,8 +240,9 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
             MonoTypeface,
             _fontSize,
             Brushes.White,
-            VisualTreeHelper.GetDpi(this).PixelsPerDip);
-        return (Math.Max(1, probe.WidthIncludingTrailingWhitespace), Math.Max(1, probe.Height));
+            _pixelsPerDip);
+        _cellWidth = Math.Max(1, probe.WidthIncludingTrailingWhitespace);
+        _cellHeight = Math.Max(1, probe.Height);
     }
 
     private static (Color fg, Color bg) ResolveColors(AttributeData attrs)
@@ -343,18 +381,33 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
             return;
         if (Interlocked.CompareExchange(ref _renderQueued, 1, 0) != 0)
             return;
-
-        Dispatcher.BeginInvoke(() =>
-        {
-            try { InvalidateVisual(); }
-            catch { Interlocked.Exchange(ref _renderQueued, 0); }
-        }, DispatcherPriority.Render);
+        if (!_renderTimer.IsEnabled)
+            _renderTimer.Start();
     }
 
     public void Dispose()
     {
         if (_isDisposed) return;
         _isDisposed = true;
+        _renderTimer.Stop();
         _terminal.Dispose();
+    }
+
+    private static SolidColorBrush CreateFrozenBrush(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
+
+    private SolidColorBrush GetBrush(Color color)
+    {
+        var key = ((uint)color.A << 24) | ((uint)color.R << 16) | ((uint)color.G << 8) | color.B;
+        if (_brushCache.TryGetValue(key, out var cached))
+            return cached;
+
+        var brush = CreateFrozenBrush(color);
+        _brushCache[key] = brush;
+        return brush;
     }
 }
