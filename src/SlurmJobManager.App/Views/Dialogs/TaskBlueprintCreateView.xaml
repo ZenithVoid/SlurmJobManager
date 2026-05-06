@@ -33,14 +33,31 @@
         <ListBox Grid.Row="1" Grid.Column="0"
                  ItemsSource="{Binding Blueprints}"
                  SelectedItem="{Binding SelectedBlueprint, Mode=TwoWay}"
-                 DisplayMemberPath="Name"
-                 Margin="0,6,0,8" />
+                 Margin="0,6,0,8">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="0,2">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Description}"
+                                   TextWrapping="Wrap"
+                                   Style="{StaticResource MutedTextStyle}" />
+                        <TextBlock Text="{Binding UpdatedAt, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}"
+                                   Style="{StaticResource MutedTextStyle}"
+                                   FontSize="11" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
 
         <Border Grid.Row="1" Grid.Column="2"
                 Style="{StaticResource CardStyle}"
                 Padding="8"
                 Margin="0,6,0,8">
             <StackPanel>
+                <TextBlock Text="{DynamicResource Task.BlueprintName}"
+                           Style="{StaticResource FieldLabelStyle}" />
+                <TextBlock Text="{Binding SelectedBlueprint.Name}"
+                           Margin="0,0,0,8" />
                 <TextBlock Text="{DynamicResource Task.BlueprintDescription}"
                            Style="{StaticResource FieldLabelStyle}" />
                 <TextBlock Text="{Binding SelectedBlueprintDescription}"
