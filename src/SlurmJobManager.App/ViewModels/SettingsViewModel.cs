@@ -37,8 +37,7 @@ public sealed class SettingsViewModel : ViewModelBase
         get => _prefs.AutoConnectOnStartup;
         set
         {
-            _prefs.AutoConnectOnStartup = value;
-            if (_prefs.LastSaveSucceeded)
+            if (_prefs.TrySetAutoConnectOnStartup(value, out var saveError))
             {
                 ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
             }
@@ -46,7 +45,7 @@ public sealed class SettingsViewModel : ViewModelBase
             {
                 ToastService.Instance.Error(string.Format(
                     L("Settings.AutoSaveFailedFormat"),
-                    _prefs.LastSaveError ?? L("Settings.UnknownError")));
+                    saveError ?? L("Settings.UnknownError")));
             }
             OnPropertyChanged();
         }
@@ -128,8 +127,6 @@ public sealed class SettingsViewModel : ViewModelBase
                 ToastService.Instance.Error(L("Settings.OpenDataDirFailed"));
                 return;
             }
-
-            ToastService.Instance.Info(L("Settings.OpenDataDirSuccess"));
         }
         catch (Exception ex)
         {

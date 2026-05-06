@@ -43,6 +43,23 @@ public sealed class AppPreferencesService
         }
     }
 
+    public bool TrySetAutoConnectOnStartup(bool value, out string? error)
+    {
+        if (_dto.AutoConnectOnStartup != value)
+        {
+            _dto = _dto with { AutoConnectOnStartup = value };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
     // ── Persistence ──────────────────────────────────────────────────────────
 
     private AppPrefsDto Load()
