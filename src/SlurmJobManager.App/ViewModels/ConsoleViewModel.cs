@@ -493,6 +493,6 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     {
         if (_connection != null)
             _connection.PropertyChanged -= OnConnectionPropertyChanged;
-        _ = CloseShellSessionAsync();
+        try { CloseShellSessionAsync().GetAwaiter().GetResult(); } catch { /* best effort */ }
     }
 }

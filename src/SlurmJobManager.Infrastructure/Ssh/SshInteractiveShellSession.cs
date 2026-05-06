@@ -78,14 +78,14 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
             {
                 if (!_shellStream.DataAvailable)
                 {
-                    await Task.Delay(15, ct);
+                    await Task.Delay(50, ct);
                     continue;
                 }
 
                 var read = _shellStream.Read(buffer, 0, buffer.Length);
                 if (read <= 0)
                 {
-                    await Task.Delay(15, ct);
+                    await Task.Delay(50, ct);
                     continue;
                 }
 
@@ -103,7 +103,7 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
             }
             catch
             {
-                await Task.Delay(30, ct);
+                await Task.Delay(80, ct);
             }
         }
     }

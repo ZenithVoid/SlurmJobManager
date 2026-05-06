@@ -30,7 +30,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     private static readonly Typeface MonoTypeface = new(new FontFamily("Cascadia Mono"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
 
     private readonly Terminal _terminal;
-    private readonly double _fontSize = 14d;
+    private readonly int _fontSize = 14;
     private bool _isDisposed;
 
     public event EventHandler<string>? InputGenerated;
@@ -53,7 +53,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
             CursorStyle = CursorStyle.Block,
             CursorBlink = true,
             FontFamily = "Cascadia Mono",
-            FontSize = (int)_fontSize,
+            FontSize = _fontSize,
         });
 
         _terminal.LineFed += (_, _) => InvalidateVisual();
@@ -282,7 +282,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
     private static bool TryMapKey(System.Windows.Input.Key key, out XTerm.Input.Key mapped)
     {
-        mapped = key switch
+        XTerm.Input.Key? resolved = key switch
         {
             System.Windows.Input.Key.Enter => XTerm.Input.Key.Enter,
             System.Windows.Input.Key.Tab => XTerm.Input.Key.Tab,
@@ -298,13 +298,16 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
             System.Windows.Input.Key.PageUp => XTerm.Input.Key.PageUp,
             System.Windows.Input.Key.PageDown => XTerm.Input.Key.PageDown,
             System.Windows.Input.Key.Insert => XTerm.Input.Key.Insert,
-            _ => default
+            _ => (XTerm.Input.Key?)null
         };
-        return key is System.Windows.Input.Key.Enter or System.Windows.Input.Key.Tab or System.Windows.Input.Key.Back
-            or System.Windows.Input.Key.Escape or System.Windows.Input.Key.Left or System.Windows.Input.Key.Right
-            or System.Windows.Input.Key.Up or System.Windows.Input.Key.Down or System.Windows.Input.Key.Delete
-            or System.Windows.Input.Key.Home or System.Windows.Input.Key.End or System.Windows.Input.Key.PageUp
-            or System.Windows.Input.Key.PageDown or System.Windows.Input.Key.Insert;
+        if (resolved.HasValue)
+        {
+            mapped = resolved.Value;
+            return true;
+        }
+
+        mapped = default;
+        return false;
     }
 
     private void EmitInput(string? data)
