@@ -30,10 +30,12 @@ public sealed class SshClientService : ISshClientService
     {
         get
         {
-            if (_disposed) return false;
             SshClient? sshClient;
             lock (_clientLock)
+            {
+                if (_disposed) return false;
                 sshClient = _sshClient;
+            }
 
             if (sshClient == null) return false;
             try
@@ -60,10 +62,12 @@ public sealed class SshClientService : ISshClientService
             Timeout = _settings.ConnectionTimeout,
         };
 
+        var sshClient = new SshClient(connInfo);
+        var sftpClient = new SftpClient(connInfo);
         lock (_clientLock)
         {
-            _sshClient = new SshClient(connInfo);
-            _sftpClient = new SftpClient(connInfo);
+            _sshClient = sshClient;
+            _sftpClient = sftpClient;
         }
 
         // SSH.NET Connect() is synchronous; run off the thread-pool so the UI stays responsive.
