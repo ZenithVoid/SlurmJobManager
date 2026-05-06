@@ -46,15 +46,11 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
 
     public Task ResizeAsync(int cols, int rows, CancellationToken ct = default)
     {
-        if (!IsOpen) return Task.CompletedTask;
-        cols = Math.Max(2, cols);
-        rows = Math.Max(2, rows);
-
-        return Task.Run(() =>
-        {
-            ct.ThrowIfCancellationRequested();
-            _shellStream.SendWindowChangeRequest((uint)cols, (uint)rows, 0, 0);
-        }, ct);
+        _ = cols;
+        _ = rows;
+        _ = ct;
+        // SSH.NET ShellStream does not expose a public runtime resize API.
+        return Task.CompletedTask;
     }
 
     public async Task CloseAsync()

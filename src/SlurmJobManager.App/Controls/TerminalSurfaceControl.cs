@@ -95,7 +95,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         var modifiers = ConvertModifiers(Keyboard.Modifiers);
 
         if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control &&
-            e.Key == Key.C)
+            e.Key == System.Windows.Input.Key.C)
         {
             EmitInput("\u0003");
             e.Handled = true;
@@ -103,7 +103,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         }
 
         if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control &&
-            e.Key == Key.L)
+            e.Key == System.Windows.Input.Key.L)
         {
             EmitInput("\u000c");
             e.Handled = true;
@@ -280,28 +280,31 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         return result;
     }
 
-    private static bool TryMapKey(Key key, out XTerm.Input.Key mapped)
+    private static bool TryMapKey(System.Windows.Input.Key key, out XTerm.Input.Key mapped)
     {
         mapped = key switch
         {
-            Key.Enter => XTerm.Input.Key.Enter,
-            Key.Tab => XTerm.Input.Key.Tab,
-            Key.Back => XTerm.Input.Key.Backspace,
-            Key.Escape => XTerm.Input.Key.Escape,
-            Key.Left => XTerm.Input.Key.LeftArrow,
-            Key.Right => XTerm.Input.Key.RightArrow,
-            Key.Up => XTerm.Input.Key.UpArrow,
-            Key.Down => XTerm.Input.Key.DownArrow,
-            Key.Delete => XTerm.Input.Key.Delete,
-            Key.Home => XTerm.Input.Key.Home,
-            Key.End => XTerm.Input.Key.End,
-            Key.PageUp => XTerm.Input.Key.PageUp,
-            Key.PageDown => XTerm.Input.Key.PageDown,
-            Key.Insert => XTerm.Input.Key.Insert,
+            System.Windows.Input.Key.Enter => XTerm.Input.Key.Enter,
+            System.Windows.Input.Key.Tab => XTerm.Input.Key.Tab,
+            System.Windows.Input.Key.Back => XTerm.Input.Key.Backspace,
+            System.Windows.Input.Key.Escape => XTerm.Input.Key.Escape,
+            System.Windows.Input.Key.Left => XTerm.Input.Key.LeftArrow,
+            System.Windows.Input.Key.Right => XTerm.Input.Key.RightArrow,
+            System.Windows.Input.Key.Up => XTerm.Input.Key.UpArrow,
+            System.Windows.Input.Key.Down => XTerm.Input.Key.DownArrow,
+            System.Windows.Input.Key.Delete => XTerm.Input.Key.Delete,
+            System.Windows.Input.Key.Home => XTerm.Input.Key.Home,
+            System.Windows.Input.Key.End => XTerm.Input.Key.End,
+            System.Windows.Input.Key.PageUp => XTerm.Input.Key.PageUp,
+            System.Windows.Input.Key.PageDown => XTerm.Input.Key.PageDown,
+            System.Windows.Input.Key.Insert => XTerm.Input.Key.Insert,
             _ => default
         };
-        return key is Key.Enter or Key.Tab or Key.Back or Key.Escape or Key.Left or Key.Right or Key.Up or Key.Down
-            or Key.Delete or Key.Home or Key.End or Key.PageUp or Key.PageDown or Key.Insert;
+        return key is System.Windows.Input.Key.Enter or System.Windows.Input.Key.Tab or System.Windows.Input.Key.Back
+            or System.Windows.Input.Key.Escape or System.Windows.Input.Key.Left or System.Windows.Input.Key.Right
+            or System.Windows.Input.Key.Up or System.Windows.Input.Key.Down or System.Windows.Input.Key.Delete
+            or System.Windows.Input.Key.Home or System.Windows.Input.Key.End or System.Windows.Input.Key.PageUp
+            or System.Windows.Input.Key.PageDown or System.Windows.Input.Key.Insert;
     }
 
     private void EmitInput(string? data)
