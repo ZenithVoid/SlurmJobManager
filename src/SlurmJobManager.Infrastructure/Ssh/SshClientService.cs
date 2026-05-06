@@ -30,21 +30,18 @@ public sealed class SshClientService : ISshClientService
     {
         get
         {
-            SshClient? sshClient;
             lock (_clientLock)
             {
                 if (_disposed) return false;
-                sshClient = _sshClient;
-            }
-
-            if (sshClient == null) return false;
-            try
-            {
-                return sshClient.IsConnected;
-            }
-            catch (ObjectDisposedException)
-            {
-                return false;
+                if (_sshClient == null) return false;
+                try
+                {
+                    return _sshClient.IsConnected;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return false;
+                }
             }
         }
     }
@@ -336,8 +333,11 @@ public sealed class SshClientService : ISshClientService
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
+        lock (_clientLock)
+        {
+            if (_disposed) return;
+            _disposed = true;
+        }
         Disconnect();
     }
 

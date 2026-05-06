@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.App.Services;
@@ -75,7 +76,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private bool? _taskIdDirectoryExists;
     private string _taskIdDirectoryStatus = string.Empty;
     private CancellationTokenSource? _taskIdValidationCts;
-    private bool _isDisposed;
+    private int _disposeState;
+    private bool IsDisposed => Volatile.Read(ref _disposeState) != 0;
 
     // ── Workspace / active task-unit state ──────────────────────────────────
     // Each TaskId has exactly ONE active task unit.  Legacy workspaces with
@@ -632,7 +634,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     public async void OnConnectionEstablished(string hostOrAddress, string username)
     {
-        if (_isDisposed) return;
+        if (IsDisposed) return;
         try
         {
             _connectedHostOrAddress = hostOrAddress?.Trim() ?? string.Empty;
@@ -649,12 +651,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
             await RefreshAppCandidatesAsync(CancellationToken.None);
             await RefreshTemplateCandidatesAsync(CancellationToken.None);
-            if (!_isDisposed)
+            if (!IsDisposed)
                 CommandManager.InvalidateRequerySuggested();
         }
         catch (Exception ex)
         {
-            if (!_isDisposed)
+            if (!IsDisposed)
                 SetStatus(string.Format(L("Task.InitAfterConnectFailed"), ex.Message), "ErrorTextStyle", localize: false);
         }
     }
@@ -742,7 +744,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private void ScheduleTaskIdDirectoryCheck()
     {
-        if (_isDisposed) return;
+        if (IsDisposed) return;
         _taskIdValidationCts?.Cancel();
         _taskIdValidationCts?.Dispose();
         _taskIdValidationCts = null;
@@ -778,7 +780,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 if (dispatcher == null || dispatcher.HasShutdownStarted) return;
                 dispatcher.Invoke(() =>
                 {
-                    if (cts.IsCancellationRequested || _isDisposed) return;
+                    if (cts.IsCancellationRequested || IsDisposed) return;
                     _taskIdDirectoryExists = exists;
                     TaskIdDirectoryStatus  = exists
                         ? L("Task.TaskIdDirExists")
@@ -793,7 +795,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 if (dispatcher == null || dispatcher.HasShutdownStarted) return;
                 dispatcher.Invoke(() =>
                 {
-                    if (cts.IsCancellationRequested || _isDisposed) return;
+                    if (cts.IsCancellationRequested || IsDisposed) return;
                     _taskIdDirectoryExists = null;
                     TaskIdDirectoryStatus  = L("Task.TaskIdDirCheckFailed");
                     System.Diagnostics.Debug.WriteLine($"[TaskIdValidation] {ex.Message}");
@@ -915,7 +917,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private void LoadSelectedRemoteTemplate()
     {
-        if (_isDisposed || string.IsNullOrEmpty(_selectedTemplate)) return;
+        if (IsDisposed || string.IsNullOrEmpty(_selectedTemplate)) return;
         _ = Task.Run(async () =>
         {
             try
@@ -926,7 +928,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 if (dispatcher == null || dispatcher.HasShutdownStarted) return;
                 dispatcher.Invoke(() =>
                 {
-                    if (_isDisposed) return;
+                    if (IsDisposed) return;
                     TemplateContent = content;
                 });
             }
@@ -936,7 +938,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 if (dispatcher == null || dispatcher.HasShutdownStarted) return;
                 dispatcher.Invoke(() =>
                 {
-                    if (_isDisposed) return;
+                    if (IsDisposed) return;
                     SetStatus(string.Format(L("Task.LoadTemplateFailed"), ex.Message), "ErrorTextStyle", localize: false);
                 });
             }
@@ -2096,14 +2098,14 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     }
 
     private bool CanBrowseRootDirectory()
-        => !_isDisposed && IsSshConnectedSafe();
+        => !IsDisposed && IsSshConnectedSafe();
 
     private bool CanRunSshCommand()
-        => !_isDisposed && !IsBusy && IsSshConnectedSafe();
+        => !IsDisposed && !IsBusy && IsSshConnectedSafe();
 
     private bool IsSshConnectedSafe()
     {
-        if (_isDisposed) return false;
+        if (IsDisposed) return false;
         try
         {
             return _ssh.IsConnected;
@@ -2115,7 +2117,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     }
 
     private bool CanSubmit() =>
-        !_isDisposed
+        !IsDisposed
         && !IsBusy
         && IsSshConnectedSafe()
         && !string.IsNullOrWhiteSpace(RootDirectory)
@@ -2612,8 +2614,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
-        if (_isDisposed) return;
-        _isDisposed = true;
+        if (Interlocked.Exchange(ref _disposeState, 1) != 0) return;
         _taskIdValidationCts?.Cancel();
         _taskIdValidationCts?.Dispose();
         _taskIdValidationCts = null;
