@@ -31,6 +31,7 @@
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
         <conv:ZeroCountToVisibilityConverter x:Key="ZeroCountToVis" />
         <conv:ConnectionStatusToBrushConverter x:Key="ConnStatusToBrush" />
+        <conv:StyleKeyToStyleConverter x:Key="StyleKeyToStyle" />
     </Window.Resources>
 
     <Grid>
@@ -203,70 +204,57 @@
                             BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="0,0,0,0">
                         <DockPanel Margin="12">
-                            <!-- Header + refresh -->
-                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
-                                <TextBlock Text="{DynamicResource Task.TaskFiles}"
-                                           Style="{StaticResource SectionHeaderStyle}"
-                                           DockPanel.Dock="Left"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,0,0" />
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button Content="⬆"
-                                            Command="{Binding TaskEditor.GoUpTaskFilesPathCommand}"
-                                            Style="{StaticResource NeutralButtonStyle}"
-                                            Padding="6,3"
-                                            Margin="0,0,4,0"
-                                            ToolTip="{DynamicResource Task.PathUp}" />
-                                    <Button Content="⟳"
-                                            Command="{Binding TaskEditor.RefreshTaskFilesCommand}"
-                                            Style="{StaticResource NeutralButtonStyle}"
-                                            HorizontalAlignment="Right"
-                                            Padding="6,3"
-                                            ToolTip="{DynamicResource Task.Refresh}" />
+                            <Border DockPanel.Dock="Top" Style="{StaticResource PageHeaderCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource Task.SideTitle}" Style="{StaticResource SectionHeaderStyle}" />
+                                    <TextBlock Text="{Binding TaskEditor.TaskContextSummary}" Style="{StaticResource PageContextSummaryStyle}" />
                                 </StackPanel>
-                            </DockPanel>
+                            </Border>
 
                             <TextBlock DockPanel.Dock="Top"
-                                       Text="{DynamicResource Task.CurrentPath}"
-                                       Foreground="{DynamicResource TextMutedBrush}"
-                                       FontSize="11"
+                                        Text="{DynamicResource Task.CurrentPath}"
+                                       Style="{StaticResource MutedTextStyle}"
                                        Margin="0,0,0,3" />
                             <TextBox DockPanel.Dock="Top"
-                                     Text="{Binding TaskEditor.CurrentTaskFilesPathDisplay, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="{Binding TaskEditor.CurrentTaskFilesPath}"
-                                     FontFamily="Consolas"
-                                     FontSize="11"
-                                     Margin="0,0,0,6">
+                                      Text="{Binding TaskEditor.CurrentTaskFilesPathDisplay, UpdateSourceTrigger=PropertyChanged}"
+                                      ToolTip="{Binding TaskEditor.CurrentTaskFilesPath}"
+                                      FontFamily="Consolas"
+                                      FontSize="11"
+                                      Margin="0,0,0,6">
                                 <TextBox.InputBindings>
                                     <KeyBinding Key="Enter" Command="{Binding TaskEditor.RefreshTaskFilesCommand}" />
                                 </TextBox.InputBindings>
                             </TextBox>
 
-                            <!-- Status message from TaskEditor -->
-                            <TextBlock DockPanel.Dock="Top"
-                                       Text="{Binding TaskEditor.StatusMessage}"
-                                       Foreground="{DynamicResource TextMutedBrush}"
-                                       FontSize="11"
-                                       TextWrapping="Wrap"
-                                       Margin="0,0,0,4" />
+                            <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="⬆"
+                                        Command="{Binding TaskEditor.GoUpTaskFilesPathCommand}"
+                                        Style="{StaticResource NeutralButtonStyle}"
+                                        Padding="6,3"
+                                        Margin="0,0,4,0"
+                                        ToolTip="{DynamicResource Task.PathUp}" />
+                                <Button Grid.Column="1" Content="{DynamicResource Btn.Refresh}"
+                                        Command="{Binding TaskEditor.RefreshTaskFilesCommand}"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        Padding="8,4"
+                                        Margin="0,0,4,0" />
+                                <Button Grid.Column="2"
+                                        Content="{DynamicResource Btn.OpenInTerminal}"
+                                        Command="{Binding TaskEditor.OpenInConsoleCommand}"
+                                        Style="{StaticResource NeutralButtonStyle}"
+                                        ToolTip="{DynamicResource Task.OpenInTerminalHint}"
+                                        Padding="8,4" />
+                            </Grid>
 
-                            <Button DockPanel.Dock="Top"
-                                    Content="{DynamicResource Btn.OpenInTerminal}"
-                                    Command="{Binding TaskEditor.OpenInConsoleCommand}"
-                                    Style="{StaticResource AccentButtonStyle}"
-                                    ToolTip="{DynamicResource Task.OpenInTerminalHint}"
-                                    Padding="8,4"
-                                    Margin="0,0,0,6" />
-
-                            <!-- Empty-state hint (shown when TaskFiles list is empty) -->
-                            <TextBlock DockPanel.Dock="Top"
-                                       Text="{DynamicResource Task.TaskFilesHint}"
-                                       Foreground="{DynamicResource TextMutedBrush}"
-                                       FontSize="11"
-                                       TextWrapping="Wrap"
-                                       Margin="0,0,0,4"
-                                       Visibility="{Binding TaskEditor.TaskFiles.Count,
-                                                            Converter={StaticResource ZeroCountToVis}}" />
+                            <Border DockPanel.Dock="Top" Style="{StaticResource StatusPanelStyle}">
+                                <TextBlock Text="{Binding TaskEditor.EffectiveStatusMessage}"
+                                           Style="{Binding TaskEditor.EffectiveStatusStyleKey, Converter={StaticResource StyleKeyToStyle}}" />
+                            </Border>
 
                             <!-- File list: outer ScrollViewer owns smooth + routing so hover-scroll works without focus -->
                             <ScrollViewer b:SmoothScrollBehavior.IsEnabled="True"
@@ -274,37 +262,56 @@
                                           b:MouseWheelRoutingBehavior.IsEnabled="True"
                                           VerticalScrollBarVisibility="Auto"
                                           HorizontalScrollBarVisibility="Disabled">
-                                <ListBox x:Name="TaskFileListBox"
-                                         ItemsSource="{Binding TaskEditor.TaskFiles}"
-                                         SelectedItem="{Binding TaskEditor.SelectedTaskFile}"
-                                         Background="{DynamicResource BgCrustBrush}"
-                                         Foreground="{DynamicResource TextPrimaryBrush}"
-                                         BorderBrush="{DynamicResource BorderBrush}"
-                                         BorderThickness="1"
-                                         FontFamily="Consolas" FontSize="12"
-                                         ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                         MouseDoubleClick="TaskFileListBox_MouseDoubleClick">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="📄 " FontSize="12">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Text" Value="📄 " />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsDirectory}" Value="True">
-                                                                    <Setter Property="Text" Value="📁 " />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-                                                <TextBlock Text="{Binding DisplayName}" FontSize="12" />
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
+                                <Grid>
+                                    <shared:EmptyStateView
+                                        Icon="🗃"
+                                        EmptyTitle="{DynamicResource Task.TaskFilesEmptyTitle}"
+                                        EmptyHint="{DynamicResource Task.TaskFilesHint}"
+                                        Margin="0,24,0,0"
+                                        Visibility="{Binding TaskEditor.TaskFiles.Count,
+                                                             Converter={StaticResource ZeroCountToVis}}" />
+                                    <ListBox x:Name="TaskFileListBox"
+                                             ItemsSource="{Binding TaskEditor.TaskFiles}"
+                                             SelectedItem="{Binding TaskEditor.SelectedTaskFile}"
+                                             Background="{DynamicResource BgCrustBrush}"
+                                             Foreground="{DynamicResource TextPrimaryBrush}"
+                                             BorderBrush="{DynamicResource BorderBrush}"
+                                             BorderThickness="1"
+                                             FontFamily="Consolas" FontSize="12"
+                                             ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             MouseDoubleClick="TaskFileListBox_MouseDoubleClick">
+                                        <ListBox.Style>
+                                            <Style TargetType="ListBox">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding TaskEditor.TaskFiles.Count}" Value="0">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ListBox.Style>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" ToolTip="{Binding RemotePath}">
+                                                    <TextBlock Text="📄 " FontSize="12">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Text" Value="📄 " />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                                                                        <Setter Property="Text" Value="📁 " />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding DisplayName}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
                             </ScrollViewer>
                         </DockPanel>
                     </Border>

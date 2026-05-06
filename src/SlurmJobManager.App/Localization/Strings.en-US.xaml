@@ -166,6 +166,9 @@
 
     <!-- ── Task editor ──────────────────────────────────────────────────── -->
     <sys:String x:Key="Task.Setup">Task Setup</sys:String>
+    <sys:String x:Key="Task.Title">Task</sys:String>
+    <sys:String x:Key="Task.SideTitle">Task Context &amp; Files</sys:String>
+    <sys:String x:Key="Task.ContextSummary">TaskId: {0}   Work Dir: {1}   Files Path: {2}   State: {3}</sys:String>
     <sys:String x:Key="Task.RootDirectory">Root Directory (remote)</sys:String>
     <sys:String x:Key="Task.BrowseRemote">Browse remote directory (constrained to user home)</sys:String>
     <sys:String x:Key="Task.TaskId">Task ID</sys:String>
@@ -183,6 +186,7 @@
     <sys:String x:Key="Task.ParamValue">Value</sys:String>
     <sys:String x:Key="Task.Submit">Submit</sys:String>
     <sys:String x:Key="Task.TaskFiles">Task Directory Files</sys:String>
+    <sys:String x:Key="Task.TaskFilesEmptyTitle">No files in current path</sys:String>
     <sys:String x:Key="Task.TaskFilesHint">Connect and set the task directory first, then click ⟳ refresh.</sys:String>
     <sys:String x:Key="Task.CurrentPath">Current Path</sys:String>
     <sys:String x:Key="Task.PathUp">Go to parent directory</sys:String>
@@ -398,6 +402,8 @@
     <sys:String x:Key="Console.StatusDisconnected">Disconnected</sys:String>
     <sys:String x:Key="Console.StatusBusy">Running</sys:String>
     <sys:String x:Key="Console.StatusIdle">Idle</sys:String>
+    <sys:String x:Key="Console.HeaderBusy">Session is busy. Wait for the running command or stop it before switching context.</sys:String>
+    <sys:String x:Key="Console.HeaderReady">Session is connected and ready for command input.</sys:String>
     <sys:String x:Key="Console.BusySwitchDirectoryTitle">Terminal Is Busy</sys:String>
     <sys:String x:Key="Console.BusySwitchDirectoryPrompt">The terminal is currently occupied by an interactive program. Interrupt and switch to {0}?</sys:String>
     <sys:String x:Key="Console.CdPathMissing">[cd] Directory does not exist.</sys:String>
@@ -429,6 +435,18 @@
     <sys:String x:Key="Monitor.CancelFailed">Failed to cancel job {0}: {1}</sys:String>
     <sys:String x:Key="Monitor.CancelStale">Job {0} is no longer cancellable (it may have already finished).</sys:String>
     <sys:String x:Key="Monitor.FilterAll">All</sys:String>
+    <sys:String x:Key="Monitor.ContextSummary">Scope: {0}   History: {1}   Refresh: {2}</sys:String>
+    <sys:String x:Key="Monitor.ScopeAllUsers">all users</sys:String>
+    <sys:String x:Key="Monitor.ScopeSingleUser">user '{0}'</sys:String>
+    <sys:String x:Key="Monitor.ScopeUnset">user not configured</sys:String>
+    <sys:String x:Key="Monitor.HistoryQueryUnset">history query user not ready</sys:String>
+    <sys:String x:Key="Monitor.HistoryQueryUser">history user '{0}'</sys:String>
+    <sys:String x:Key="Monitor.RefreshPolling">polling every {0}s</sys:String>
+    <sys:String x:Key="Monitor.RefreshManual">manual refresh</sys:String>
+    <sys:String x:Key="Monitor.CurrentEmptyTitle">No current jobs</sys:String>
+    <sys:String x:Key="Monitor.CurrentEmptyHint">Try refreshing, changing filters, or broadening the query scope.</sys:String>
+    <sys:String x:Key="Monitor.HistoryEmptyTitle">No history jobs</sys:String>
+    <sys:String x:Key="Monitor.HistoryEmptyHint">Query history after specifying a valid user.</sys:String>
     <sys:String x:Key="Monitor.CurrentRefreshing">Refreshing current jobs…</sys:String>
     <sys:String x:Key="Monitor.CurrentUpdated">Current jobs updated: {0:HH:mm:ss} ({1} job(s))</sys:String>
     <sys:String x:Key="Monitor.CurrentRefreshFailed">Current jobs refresh failed: {0}</sys:String>

@@ -51,6 +51,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             {
                 OnPropertyChanged(nameof(IsEmptyState));
                 OnPropertyChanged(nameof(CanQueryHistory));
+                OnPropertyChanged(nameof(MonitorContextSummary));
                 CommandManager.InvalidateRequerySuggested();
             }
         }
@@ -62,7 +63,10 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         set
         {
             if (SetField(ref _pollIntervalSeconds, value))
+            {
                 UpdatePollTimerInterval();
+                OnPropertyChanged(nameof(MonitorContextSummary));
+            }
         }
     }
 
@@ -72,20 +76,32 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         private set
         {
             if (SetField(ref _isPolling, value))
+            {
+                OnPropertyChanged(nameof(MonitorContextSummary));
+                OnPropertyChanged(nameof(EffectiveStatusStyleKey));
                 CommandManager.InvalidateRequerySuggested();
+            }
         }
     }
 
     public string StatusMessage
     {
         get => _statusMessage;
-        private set => SetField(ref _statusMessage, value);
+        private set
+        {
+            if (SetField(ref _statusMessage, value))
+                OnPropertyChanged(nameof(EffectiveStatusMessage));
+        }
     }
 
     public string StatusStyleKey
     {
         get => _statusStyleKey;
-        private set => SetField(ref _statusStyleKey, value);
+        private set
+        {
+            if (SetField(ref _statusStyleKey, value))
+                OnPropertyChanged(nameof(EffectiveStatusStyleKey));
+        }
     }
 
     public JobRow? SelectedCurrentJob
@@ -124,6 +140,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             {
                 OnPropertyChanged(nameof(IsEmptyState));
                 OnPropertyChanged(nameof(CanQueryHistory));
+                OnPropertyChanged(nameof(MonitorContextSummary));
                 CommandManager.InvalidateRequerySuggested();
                 RefreshCommand.Execute(null);
             }
@@ -135,6 +152,31 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
     /// <summary>True when a concrete username is available for history lookup.</summary>
     public bool CanQueryHistory => !string.IsNullOrWhiteSpace(GetHistoryQueryUser());
+    public string MonitorContextSummary
+    {
+        get
+        {
+            var scope = ShowAllUsers ? L("Monitor.ScopeAllUsers") : string.Format(L("Monitor.ScopeSingleUser"), WatchedUser.Trim());
+            if (!ShowAllUsers && string.IsNullOrWhiteSpace(WatchedUser))
+                scope = L("Monitor.ScopeUnset");
+            var historyUser = GetHistoryQueryUser();
+            var query = string.IsNullOrWhiteSpace(historyUser)
+                ? L("Monitor.HistoryQueryUnset")
+                : string.Format(L("Monitor.HistoryQueryUser"), historyUser);
+            var refresh = IsPolling
+                ? string.Format(L("Monitor.RefreshPolling"), PollIntervalSeconds)
+                : L("Monitor.RefreshManual");
+            return string.Format(L("Monitor.ContextSummary"), scope, query, refresh);
+        }
+    }
+    public string EffectiveStatusStyleKey
+        => (_isRefreshing || IsPolling) && StatusStyleKey == "InfoTextStyle"
+            ? "BusyTextStyle"
+            : StatusStyleKey;
+    public string EffectiveStatusMessage
+        => !string.IsNullOrWhiteSpace(StatusMessage)
+            ? StatusMessage
+            : (_isRefreshing ? L("Status.Loading") : string.Empty);
 
     public string StatusFilter
     {
@@ -321,6 +363,8 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     {
         if (_isRefreshing) return;
         _isRefreshing = true;
+        OnPropertyChanged(nameof(EffectiveStatusStyleKey));
+        OnPropertyChanged(nameof(EffectiveStatusMessage));
 
         try
         {
@@ -356,6 +400,8 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         finally
         {
             _isRefreshing = false;
+            OnPropertyChanged(nameof(EffectiveStatusStyleKey));
+            OnPropertyChanged(nameof(EffectiveStatusMessage));
         }
     }
 
@@ -537,6 +583,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             StatusFilter = _allStatusFilter;
         OnPropertyChanged(nameof(StatusFilterOptions));
         OnPropertyChanged(nameof(StatusMessage));
+        OnPropertyChanged(nameof(MonitorContextSummary));
     }
 
     private void ResetFilterOptions()

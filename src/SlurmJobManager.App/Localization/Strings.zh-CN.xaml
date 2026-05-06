@@ -166,6 +166,9 @@
 
     <!-- ── 任务编辑器 ────────────────────────────────────────────────────── -->
     <sys:String x:Key="Task.Setup">任务配置</sys:String>
+    <sys:String x:Key="Task.Title">任务</sys:String>
+    <sys:String x:Key="Task.SideTitle">任务上下文与文件</sys:String>
+    <sys:String x:Key="Task.ContextSummary">TaskId：{0}   工作目录：{1}   文件路径：{2}   状态：{3}</sys:String>
     <sys:String x:Key="Task.RootDirectory">根目录（远程）</sys:String>
     <sys:String x:Key="Task.BrowseRemote">浏览远程目录（仅限用户主目录）</sys:String>
     <sys:String x:Key="Task.TaskId">任务 ID</sys:String>
@@ -183,6 +186,7 @@
     <sys:String x:Key="Task.ParamValue">值</sys:String>
     <sys:String x:Key="Task.Submit">提交</sys:String>
     <sys:String x:Key="Task.TaskFiles">任务目录文件</sys:String>
+    <sys:String x:Key="Task.TaskFilesEmptyTitle">当前路径暂无文件</sys:String>
     <sys:String x:Key="Task.TaskFilesHint">请先建立连接并设置任务目录，然后点击 ⟳ 刷新。</sys:String>
     <sys:String x:Key="Task.CurrentPath">当前路径</sys:String>
     <sys:String x:Key="Task.PathUp">返回上一级目录</sys:String>
@@ -398,6 +402,8 @@
     <sys:String x:Key="Console.StatusDisconnected">未连接</sys:String>
     <sys:String x:Key="Console.StatusBusy">执行中</sys:String>
     <sys:String x:Key="Console.StatusIdle">空闲</sys:String>
+    <sys:String x:Key="Console.HeaderBusy">当前会话正忙，请等待命令执行完成或手动停止后再切换上下文。</sys:String>
+    <sys:String x:Key="Console.HeaderReady">会话已连接，可直接输入命令执行。</sys:String>
     <sys:String x:Key="Console.BusySwitchDirectoryTitle">终端正忙</sys:String>
     <sys:String x:Key="Console.BusySwitchDirectoryPrompt">终端当前被交互式程序占用。是否先中断并切换到目录 {0}？</sys:String>
     <sys:String x:Key="Console.CdPathMissing">[cd] 目录不存在。</sys:String>
@@ -429,6 +435,18 @@
     <sys:String x:Key="Monitor.CancelFailed">取消作业 {0} 失败：{1}</sys:String>
     <sys:String x:Key="Monitor.CancelStale">作业 {0} 已不可取消（可能已结束）。</sys:String>
     <sys:String x:Key="Monitor.FilterAll">全部</sys:String>
+    <sys:String x:Key="Monitor.ContextSummary">范围：{0}   历史查询：{1}   刷新：{2}</sys:String>
+    <sys:String x:Key="Monitor.ScopeAllUsers">全部用户</sys:String>
+    <sys:String x:Key="Monitor.ScopeSingleUser">用户“{0}”</sys:String>
+    <sys:String x:Key="Monitor.ScopeUnset">未配置监控用户</sys:String>
+    <sys:String x:Key="Monitor.HistoryQueryUnset">历史查询用户未就绪</sys:String>
+    <sys:String x:Key="Monitor.HistoryQueryUser">历史用户“{0}”</sys:String>
+    <sys:String x:Key="Monitor.RefreshPolling">每 {0} 秒轮询</sys:String>
+    <sys:String x:Key="Monitor.RefreshManual">手动刷新</sys:String>
+    <sys:String x:Key="Monitor.CurrentEmptyTitle">当前任务为空</sys:String>
+    <sys:String x:Key="Monitor.CurrentEmptyHint">请尝试刷新、调整筛选条件，或扩大查询范围。</sys:String>
+    <sys:String x:Key="Monitor.HistoryEmptyTitle">历史任务为空</sys:String>
+    <sys:String x:Key="Monitor.HistoryEmptyHint">请先指定有效用户后再查询历史任务。</sys:String>
     <sys:String x:Key="Monitor.CurrentRefreshing">正在刷新当前任务…</sys:String>
     <sys:String x:Key="Monitor.CurrentUpdated">当前任务已更新：{0:HH:mm:ss}（{1} 个作业）</sys:String>
     <sys:String x:Key="Monitor.CurrentRefreshFailed">当前任务刷新失败：{0}</sys:String>

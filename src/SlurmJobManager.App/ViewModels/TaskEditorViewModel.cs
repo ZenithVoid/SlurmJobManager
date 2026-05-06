@@ -96,6 +96,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 CommandManager.InvalidateRequerySuggested();
                 TryAutoFillRemoteWorkDir();
                 ScheduleTaskIdDirectoryCheck();
+                OnPropertyChanged(nameof(TaskContextSummary));
             }
         }
     }
@@ -130,6 +131,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             {
                 OnPropertyChanged(nameof(RemoteWorkDirDisplay));
                 OnPropertyChanged(nameof(TaskFilesRootPathDisplay));
+                OnPropertyChanged(nameof(TaskContextSummary));
                 if (!_isAutoUpdatingRemoteWorkDir)
                 {
                     var normalizedCurrent = NormalizeRemotePath(expanded);
@@ -161,11 +163,52 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     }
 
     public string SbatchTemplate    { get => _sbatchTemplate;    set => SetField(ref _sbatchTemplate, value); }
-    public bool IsBusy              { get => _isBusy;            set => SetField(ref _isBusy, value); }
-    public string StatusMessage     { get => _statusMessage;     set => SetField(ref _statusMessage, value); }
-    public string StatusStyleKey    { get => _statusStyleKey;    private set => SetField(ref _statusStyleKey, value); }
+    public bool IsBusy
+    {
+        get => _isBusy;
+        set
+        {
+            if (SetField(ref _isBusy, value))
+            {
+                OnPropertyChanged(nameof(EffectiveStatusStyleKey));
+                OnPropertyChanged(nameof(EffectiveStatusMessage));
+                OnPropertyChanged(nameof(TaskContextSummary));
+            }
+        }
+    }
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        set
+        {
+            if (SetField(ref _statusMessage, value))
+            {
+                OnPropertyChanged(nameof(EffectiveStatusMessage));
+                OnPropertyChanged(nameof(TaskContextSummary));
+            }
+        }
+    }
+    public string StatusStyleKey
+    {
+        get => _statusStyleKey;
+        private set
+        {
+            if (SetField(ref _statusStyleKey, value))
+                OnPropertyChanged(nameof(EffectiveStatusStyleKey));
+        }
+    }
     public long? LastJobId          { get => _lastJobId;         set { SetField(ref _lastJobId, value); OnPropertyChanged(nameof(LastJobIdText)); } }
     public string LastJobIdText     => _lastJobId.HasValue ? string.Format(L("Task.LastJobId"), _lastJobId) : string.Empty;
+    public string EffectiveStatusStyleKey => IsBusy ? "BusyTextStyle" : StatusStyleKey;
+    public string EffectiveStatusMessage
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(StatusMessage))
+                return StatusMessage;
+            return IsBusy ? L("Status.Loading") : string.Empty;
+        }
+    }
 
     public string TaskIdDirectoryStatus
     {
@@ -180,7 +223,10 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         {
             var expanded = ExpandHomePath(value);
             if (SetField(ref _currentTaskFilesPath, expanded))
+            {
                 OnPropertyChanged(nameof(CurrentTaskFilesPathDisplay));
+                OnPropertyChanged(nameof(TaskContextSummary));
+            }
         }
     }
 
@@ -203,6 +249,17 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     }
 
     public string TaskFilesRootPathDisplay => CollapseHomePath(RemoteWorkDir);
+    public string TaskContextSummary
+    {
+        get
+        {
+            var taskId = string.IsNullOrWhiteSpace(TaskId) ? "-" : TaskId.Trim();
+            var workDir = string.IsNullOrWhiteSpace(RemoteWorkDirDisplay) ? "-" : RemoteWorkDirDisplay;
+            var filePath = string.IsNullOrWhiteSpace(CurrentTaskFilesPathDisplay) ? "-" : CurrentTaskFilesPathDisplay;
+            var status = IsBusy ? L("Status.Loading") : L("Status.Ready");
+            return string.Format(L("Task.ContextSummary"), taskId, workDir, filePath, status);
+        }
+    }
 
     public TaskFileEntry? SelectedTaskFile
     {
@@ -1739,6 +1796,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     {
         OnPropertyChanged(nameof(LastJobIdText));
         OnPropertyChanged(nameof(TaskIdDirectoryStatus));
+        OnPropertyChanged(nameof(TaskContextSummary));
+        OnPropertyChanged(nameof(EffectiveStatusMessage));
     }
 
     private TaskRecord BuildTaskRecord() => new()
