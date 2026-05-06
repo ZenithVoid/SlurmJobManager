@@ -5,6 +5,7 @@
     xmlns:b="clr-namespace:SlurmJobManager.App.Behaviors"
     xmlns:conv="clr-namespace:SlurmJobManager.App.Converters"
     xmlns:shared="clr-namespace:SlurmJobManager.App.Views.Shared"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -68,6 +69,8 @@
             <Setter Property="TextWrapping" Value="NoWrap" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
+
+        <sys:Double x:Key="MonitorJobsRowHeight">36</sys:Double>
     </UserControl.Resources>
 
     <DockPanel Margin="12">
@@ -200,7 +203,7 @@
                                       RowStyle="{StaticResource CurrentJobsRowStyle}"
                                       AutoGenerateColumns="False"
                                       IsReadOnly="True"
-                                      RowHeight="36"
+                                      RowHeight="{StaticResource MonitorJobsRowHeight}"
                                       ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <DataGrid.Columns>
@@ -318,11 +321,11 @@
                                       RowStyle="{StaticResource HistoryJobsRowStyle}"
                                       AutoGenerateColumns="False"
                                       IsReadOnly="True"
-                                      RowHeight="36"
+                                      RowHeight="{StaticResource MonitorJobsRowHeight}"
                                       ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="90" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="80" />
 
                                 <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="2*">
                                     <DataGridTemplateColumn.CellTemplate>
