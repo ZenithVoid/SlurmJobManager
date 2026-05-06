@@ -15,8 +15,12 @@ namespace SlurmJobManager.App;
 public partial class App : Application
 {
     private MainViewModel?      _mainVm;
+    private ISshClientService?  _sshService;
     private SerilogAppLogger?   _logger;
     private CrashHandler?       _crashHandler;
+    private readonly SemaphoreSlim _shutdownGate = new(1, 1);
+    private bool _shutdownCompleted;
+    private bool _closeAfterCleanup;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -40,6 +44,7 @@ public partial class App : Application
 
         // Infrastructure services (one SSH client shared across all consumers)
         var ssh      = new SshClientService(settings);
+        _sshService = ssh;
         var slurm    = new SlurmService(ssh, settings, _logger);
         var storage  = new TaskStorageService();
         var blueprints = new TaskBlueprintService();
@@ -123,29 +128,9 @@ public partial class App : Application
 
     private void OnMainWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        // Gracefully stop background tasks before the process exits
-        if (_mainVm?.Monitor is MonitorViewModel monitor)
-        {
-            if (monitor.IsPolling)
-            {
-                _logger?.Info("Application closing — stopping monitor polling.");
-                monitor.StopPollingCommand.Execute(null);
-            }
-            monitor.Dispose();
-        }
-
-        if (_mainVm?.LogViewer is LogViewerViewModel logViewer)
-        {
-            logViewer.Dispose();
-        }
-
-        if (_mainVm?.Console is ConsoleViewModel console)
-        {
-            console.Dispose();
-        }
-
-        _logger?.Info("SlurmJobManager shut down.");
-        _logger?.Dispose();
+        if (_closeAfterCleanup) return;
+        e.Cancel = true;
+        _ = ShutdownAndCloseMainWindowAsync(sender as Window);
     }
 
     // ── Global exception hooks ───────────────────────────────────────────────
@@ -193,43 +178,122 @@ public partial class App : Application
     /// </summary>
     private void GracefulShutdown()
     {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ShutdownAsync();
+                _logger?.Info("GracefulShutdown invoked after fatal error.");
+            }
+            catch
+            {
+                // best effort
+            }
+            finally
+            {
+                try
+                {
+                    var dispatcher = Current?.Dispatcher;
+                    if (dispatcher != null && !dispatcher.HasShutdownStarted)
+                    {
+                        if (dispatcher.CheckAccess())
+                            Current?.Shutdown(1);
+                        else
+                            _ = dispatcher.BeginInvoke(() => Current?.Shutdown(1));
+                    }
+                }
+                catch
+                {
+                    // best effort
+                }
+            }
+        });
+    }
+
+    private async Task ShutdownAndCloseMainWindowAsync(Window? window)
+    {
+        await ShutdownAsync();
+        if (window == null) return;
+
+        _closeAfterCleanup = true;
         try
         {
-            if (_mainVm?.Monitor is MonitorViewModel monitor)
-            {
-                try { if (monitor.IsPolling) monitor.StopPollingCommand.Execute(null); } catch { }
-                try { monitor.Dispose(); } catch { }
-            }
-            try { _mainVm?.LogViewer?.Dispose(); } catch { }
-            try { _mainVm?.Console?.Dispose();   } catch { }
-            _logger?.Info("GracefulShutdown invoked after fatal error.");
-            try { _logger?.Dispose(); } catch { }
+            window.Closing -= OnMainWindowClosing;
+            window.Close();
         }
         catch
         {
-            // Best-effort: we must always exit
+            // best effort
+        }
+    }
+
+    private async Task ShutdownAsync()
+    {
+        await _shutdownGate.WaitAsync();
+        try
+        {
+            if (_shutdownCompleted) return;
+            _shutdownCompleted = true;
+
+            if (_mainVm?.Monitor is MonitorViewModel monitor)
+            {
+                try
+                {
+                    if (monitor.IsPolling)
+                    {
+                        _logger?.Info("Application closing — stopping monitor polling.");
+                        monitor.StopPollingCommand.Execute(null);
+                    }
+                }
+                catch { /* best effort */ }
+
+                await RunBoundedAsync(() => Task.Run(monitor.Dispose), TimeSpan.FromSeconds(2));
+            }
+
+            if (_mainVm?.LogViewer is LogViewerViewModel logViewer)
+                await RunBoundedAsync(() => Task.Run(logViewer.Dispose), TimeSpan.FromSeconds(2));
+
+            if (_mainVm?.Console is ConsoleViewModel console)
+                await RunBoundedAsync(() => Task.Run(console.Dispose), TimeSpan.FromSeconds(3));
+
+            if (_mainVm?.TaskEditor is TaskEditorViewModel taskEditor)
+                await RunBoundedAsync(() => Task.Run(taskEditor.Dispose), TimeSpan.FromSeconds(1));
+
+            if (_sshService != null)
+                await RunBoundedAsync(() => Task.Run(_sshService.Dispose), TimeSpan.FromSeconds(3));
+
+            _logger?.Info("SlurmJobManager shut down.");
+            try { _logger?.Dispose(); } catch { /* best effort */ }
         }
         finally
         {
-            try
+            _shutdownGate.Release();
+        }
+    }
+
+    private static async Task RunBoundedAsync(Func<Task> action, TimeSpan timeout)
+    {
+        try
         {
-            var dispatcher = Current?.Dispatcher;
-            if (dispatcher != null && !dispatcher.HasShutdownStarted)
+            var task = action();
+            using var timeoutCts = new CancellationTokenSource(timeout);
+            var timeoutTask = Task.Delay(Timeout.InfiniteTimeSpan, timeoutCts.Token);
+            var completed = await Task.WhenAny(task, timeoutTask);
+            if (completed == task)
             {
-                if (dispatcher.CheckAccess())
-                    Current?.Shutdown(1);           // Already on UI thread — call directly
-                else
-                    dispatcher.BeginInvoke(() => Current?.Shutdown(1));  // Schedule from background
-            }
-            else
-            {
-                Environment.Exit(1);
+                timeoutCts.Cancel();
+                await task;
             }
         }
         catch
         {
-            Environment.Exit(1);
+            // best effort
         }
-        }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _shutdownGate.Dispose();
+        base.OnExit(e);
     }
 }

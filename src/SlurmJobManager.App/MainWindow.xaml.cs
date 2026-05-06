@@ -13,12 +13,15 @@ public partial class MainWindow : Window
 {
     // Map tab IDs to page grids and their ScaleTransforms
     private IReadOnlyDictionary<string, (System.Windows.Controls.Grid Page, ScaleTransform Scale)>? _pages;
+    private MainViewModel? _subscribedVm;
 
     public MainWindow()
     {
         InitializeComponent();
         StateChanged += MainWindow_StateChanged;
         Loaded        += MainWindow_Loaded;
+        DataContextChanged += (_, _) => SubscribeToViewModel();
+        Closed += MainWindow_Closed;
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -38,21 +41,7 @@ public partial class MainWindow : Window
         };
 
         // Subscribe to navigation changes for page transitions
-        if (DataContext is MainViewModel vm)
-        {
-            vm.PropertyChanged += (_, args) =>
-            {
-                if (args.PropertyName == nameof(MainViewModel.ActiveTab))
-                {
-                    AnimatePageIn(vm.ActiveTab);
-                    ApplyTabFocus(vm.ActiveTab);
-                }
-            };
-
-            // Animate the initial page
-            AnimatePageIn(vm.ActiveTab);
-            ApplyTabFocus(vm.ActiveTab);
-        }
+        SubscribeToViewModel();
     }
 
     // ── Page transition animation ─────────────────────────────────────────
@@ -83,11 +72,19 @@ public partial class MainWindow : Window
 
     private void TaskFileListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (sender is ListBox lb && lb.SelectedItem is TaskFileEntry fileEntry
-            && DataContext is MainViewModel vm)
+        if (sender is not ListBox lb || DataContext is not MainViewModel vm)
+            return;
+
+        var source = e.OriginalSource as DependencyObject;
+        while (source != null && source is not ListBoxItem)
+            source = VisualTreeHelper.GetParent(source);
+        if (source is not ListBoxItem item || item.DataContext is not TaskFileEntry fileEntry)
+            return;
+
+        if (vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
         {
-            if (vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
-                vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
+            lb.SelectedItem = fileEntry;
+            vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
         }
     }
 
@@ -101,13 +98,38 @@ public partial class MainWindow : Window
                     PageConsole.Focus();
                     Keyboard.Focus(PageConsole);
                     ConsolePageView.RequestTerminalFocus();
+                    Dispatcher.BeginInvoke(() => ConsolePageView.RequestTerminalFocus(), DispatcherPriority.ContextIdle);
                     break;
                 case "Tasks":
                     PageTasks.Focus();
                     Keyboard.Focus(PageTasks);
+                    Dispatcher.BeginInvoke(() => Keyboard.Focus(PageTasks), DispatcherPriority.ContextIdle);
                     break;
             }
         }, DispatcherPriority.Input);
+    }
+
+    private void SubscribeToViewModel()
+    {
+        if (_subscribedVm != null)
+            _subscribedVm.PropertyChanged -= OnMainViewModelPropertyChanged;
+
+        _subscribedVm = DataContext as MainViewModel;
+        if (_subscribedVm == null)
+            return;
+
+        _subscribedVm.PropertyChanged += OnMainViewModelPropertyChanged;
+        AnimatePageIn(_subscribedVm.ActiveTab);
+        ApplyTabFocus(_subscribedVm.ActiveTab);
+    }
+
+    private void OnMainViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (sender is not MainViewModel vm) return;
+        if (args.PropertyName != nameof(MainViewModel.ActiveTab)) return;
+
+        AnimatePageIn(vm.ActiveTab);
+        ApplyTabFocus(vm.ActiveTab);
     }
 
     // ── Custom title-bar interactions ─────────────────────────────────────
@@ -164,5 +186,12 @@ public partial class MainWindow : Window
             BtnMaximize.ToolTip = Application.Current?.TryFindResource(tooltipKey) as string
                                   ?? (WindowState == WindowState.Maximized ? "Restore" : "Maximize");
         }
+    }
+
+    private void MainWindow_Closed(object? sender, EventArgs e)
+    {
+        if (_subscribedVm != null)
+            _subscribedVm.PropertyChanged -= OnMainViewModelPropertyChanged;
+        _subscribedVm = null;
     }
 }

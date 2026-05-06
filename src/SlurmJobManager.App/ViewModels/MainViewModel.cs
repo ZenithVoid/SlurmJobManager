@@ -138,7 +138,7 @@ public sealed class MainViewModel : ViewModelBase
         Console    = console    ?? throw new ArgumentNullException(nameof(console));
 
         ToggleThemeCommand  = new RelayCommand(() => IsDarkTheme = !IsDarkTheme);
-        NavigateCommand     = new RelayCommand<string>(tab => { if (tab != null) ActiveTab = tab; });
+        NavigateCommand     = new RelayCommand<string>(tab => { if (tab != null) ActivateTab(tab); });
         SwitchLocaleCommand = new RelayCommand<string>(locale => { if (locale != null) ApplyLocale(locale); });
 
         NavItems = new NavItem[]
@@ -165,11 +165,21 @@ public sealed class MainViewModel : ViewModelBase
         if (!Console.IsConnected || string.IsNullOrWhiteSpace(remoteDirectory))
             return false;
 
-        ActiveTab = "Console";
-        if (ActiveNavItem?.TabId != "Console")
-            ActiveNavItem = NavItems.FirstOrDefault(n => n.TabId == "Console");
+        var opened = await Console.OpenAtDirectoryAsync(remoteDirectory);
+        if (!opened) return false;
 
-        return await Console.OpenAtDirectoryAsync(remoteDirectory);
+        ActivateTab("Console");
+        return true;
+    }
+
+    private void ActivateTab(string tabId)
+    {
+        if (string.IsNullOrWhiteSpace(tabId))
+            return;
+
+        ActiveTab = tabId;
+        if (ActiveNavItem?.TabId != tabId)
+            ActiveNavItem = NavItems.FirstOrDefault(n => n.TabId == tabId);
     }
 
     private static void ApplyTheme(bool dark)
