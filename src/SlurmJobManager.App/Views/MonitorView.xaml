@@ -18,6 +18,56 @@
         <conv:InverseBoolConverter x:Key="InvBool" />
         <conv:StyleKeyToStyleConverter x:Key="StyleKeyToStyle" />
         <conv:ZeroCountToVisibilityConverter x:Key="ZeroCountToVis" />
+
+        <Style x:Key="CurrentJobsGridStyle" TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
+            <Setter Property="Visibility" Value="Visible" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CurrentJobs.Count}" Value="0">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="HistoryJobsGridStyle" TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
+            <Setter Property="Visibility" Value="Visible" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HistoryJobs.Count}" Value="0">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="CurrentJobsRowStyle" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+            <Setter Property="Foreground"
+                    Value="{Binding State, Converter={StaticResource StateToBrush}}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding State}" Value="RUNNING">
+                    <DataTrigger.EnterActions>
+                        <BeginStoryboard x:Name="RunningPulseCurrent">
+                            <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                 From="1.0" To="0.85"
+                                                 Duration="0:0:1.5" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.EnterActions>
+                    <DataTrigger.ExitActions>
+                        <StopStoryboard BeginStoryboardName="RunningPulseCurrent" />
+                    </DataTrigger.ExitActions>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="HistoryJobsRowStyle" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+            <Setter Property="Foreground"
+                    Value="{Binding State, Converter={StaticResource StateToBrush}}" />
+        </Style>
+
+        <Style x:Key="TrimmedJobCellTextStyle" TargetType="TextBlock">
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
     </UserControl.Resources>
 
     <DockPanel Margin="12">
@@ -131,12 +181,13 @@
                     </Grid>
 
                     <ScrollViewer Grid.Row="1"
+                                  Background="{DynamicResource BgSurface0Brush}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Auto"
                                   CanContentScroll="False"
                                   b:SmoothScrollBehavior.IsEnabled="True"
                                   b:SmoothScrollBehavior.ScrollAmount="60">
-                        <Grid>
+                        <Grid Background="{DynamicResource BgSurface0Brush}">
                             <shared:EmptyStateView
                                 Icon="📭"
                                 EmptyTitle="{DynamicResource Monitor.CurrentEmptyTitle}"
@@ -145,81 +196,59 @@
                                 Visibility="{Binding CurrentJobs.Count, Converter={StaticResource ZeroCountToVis}}" />
                             <DataGrid ItemsSource="{Binding CurrentJobs}"
                                       SelectedItem="{Binding SelectedCurrentJob}"
+                                      Style="{StaticResource CurrentJobsGridStyle}"
+                                      RowStyle="{StaticResource CurrentJobsRowStyle}"
                                       AutoGenerateColumns="False"
                                       IsReadOnly="True"
                                       RowHeight="38"
                                       ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                            <DataGrid.Style>
-                                <Style TargetType="DataGrid">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding CurrentJobs.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </DataGrid.Style>
-                            <DataGrid.RowStyle>
-                                <Style TargetType="DataGridRow">
-                                    <Setter Property="Foreground"
-                                            Value="{Binding State, Converter={StaticResource StateToBrush}}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding State}" Value="RUNNING">
-                                            <DataTrigger.EnterActions>
-                                                <BeginStoryboard x:Name="RunningPulseCurrent">
-                                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                         From="1.0" To="0.85"
-                                                                         Duration="0:0:1.5" />
-                                                    </Storyboard>
-                                                </BeginStoryboard>
-                                            </DataTrigger.EnterActions>
-                                            <DataTrigger.ExitActions>
-                                                <StopStoryboard BeginStoryboardName="RunningPulseCurrent" />
-                                            </DataTrigger.ExitActions>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </DataGrid.RowStyle>
-
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="90" />
 
-                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="2*">
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="2*" MinWidth="230">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding JobName}"
-                                                       TextTrimming="CharacterEllipsis"
+                                                       Style="{StaticResource TrimmedJobCellTextStyle}"
                                                        ToolTip="{Binding JobName}" />
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColState}" Width="110">
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColState}" Width="100">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding State}"
+                                                       Style="{StaticResource TrimmedJobCellTextStyle}"
                                                        ToolTip="{Binding Reason}" />
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="{DynamicResource Monitor.ColPartition}" Binding="{Binding Partition}" Width="110" />
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColPartition}" Width="110">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Partition}"
+                                                       Style="{StaticResource TrimmedJobCellTextStyle}"
+                                                       ToolTip="{Binding Partition}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
 
-                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColNodes}" Width="1.5*">
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColNodes}" Width="1.5*" MinWidth="190">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding NodeList}"
-                                                       TextTrimming="CharacterEllipsis"
+                                                       Style="{StaticResource TrimmedJobCellTextStyle}"
                                                        ToolTip="{Binding NodeList}" />
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTextColumn Header="{DynamicResource Monitor.ColRunTime}" Binding="{Binding RunTimeDisplay}" Width="110" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColRunTime}" Binding="{Binding RunTimeDisplay}" Width="90" />
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColStartTime}" Binding="{Binding StartTimeDisplay}" Width="170" />
 
-                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColAction}" Width="120">
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColAction}" Width="102">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Button Content="{DynamicResource Monitor.ActionCancelJob}"
@@ -270,12 +299,13 @@
                     </StackPanel>
 
                     <ScrollViewer Grid.Row="1"
+                                  Background="{DynamicResource BgSurface0Brush}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Auto"
                                   CanContentScroll="False"
                                   b:SmoothScrollBehavior.IsEnabled="True"
                                   b:SmoothScrollBehavior.ScrollAmount="60">
-                        <Grid>
+                        <Grid Background="{DynamicResource BgSurface0Brush}">
                             <shared:EmptyStateView
                                 Icon="🗂"
                                 EmptyTitle="{DynamicResource Monitor.HistoryEmptyTitle}"
@@ -284,28 +314,13 @@
                                 Visibility="{Binding HistoryJobs.Count, Converter={StaticResource ZeroCountToVis}}" />
                             <DataGrid ItemsSource="{Binding HistoryJobs}"
                                       SelectedItem="{Binding SelectedHistoryJob}"
+                                      Style="{StaticResource HistoryJobsGridStyle}"
+                                      RowStyle="{StaticResource HistoryJobsRowStyle}"
                                       AutoGenerateColumns="False"
                                       IsReadOnly="True"
                                       RowHeight="38"
                                       ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                            <DataGrid.Style>
-                                <Style TargetType="DataGrid">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HistoryJobs.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </DataGrid.Style>
-                            <DataGrid.RowStyle>
-                                <Style TargetType="DataGridRow">
-                                    <Setter Property="Foreground"
-                                            Value="{Binding State, Converter={StaticResource StateToBrush}}" />
-                                </Style>
-                            </DataGrid.RowStyle>
-
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="90" />
 
