@@ -153,17 +153,6 @@ public partial class MainWindow : Window
             deleteItem.IsEnabled = selectedCount > 0;
     }
 
-    private void TaskFileContextOpen_Click(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is not MainViewModel vm || TaskFileListBox.SelectedItem is not TaskFileEntry fileEntry)
-            return;
-
-        if (!vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
-            return;
-
-        vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
-    }
-
     private void TaskFileContextDelete_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel vm)

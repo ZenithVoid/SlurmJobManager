@@ -348,14 +348,15 @@
                                                 FontFamily="Consolas" FontSize="12"
                                                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                        <ListBox.ContextMenu>
-                                            <ContextMenu Opened="TaskFileContextMenu_Opened">
-                                                <MenuItem x:Name="TaskFileContextOpenMenuItem"
-                                                          Header="{DynamicResource Task.FileMenuOpen}"
-                                                          Click="TaskFileContextOpen_Click" />
-                                                <MenuItem x:Name="TaskFileContextDeleteMenuItem"
-                                                          Header="{DynamicResource Task.FileMenuDelete}"
-                                                          Click="TaskFileContextDelete_Click" />
+                                         <ListBox.ContextMenu>
+                                             <ContextMenu Opened="TaskFileContextMenu_Opened">
+                                                 <MenuItem x:Name="TaskFileContextOpenMenuItem"
+                                                           Header="{DynamicResource Task.FileMenuOpen}"
+                                                           Command="{Binding PlacementTarget.DataContext.TaskEditor.OpenTaskFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                           CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                 <MenuItem x:Name="TaskFileContextDeleteMenuItem"
+                                                           Header="{DynamicResource Task.FileMenuDelete}"
+                                                           Click="TaskFileContextDelete_Click" />
                                                 <MenuItem x:Name="TaskFileContextTimeInfoMenuItem"
                                                           Header="{DynamicResource Task.FileMenuViewTimeInfo}"
                                                           Click="TaskFileContextViewTimeInfo_Click" />

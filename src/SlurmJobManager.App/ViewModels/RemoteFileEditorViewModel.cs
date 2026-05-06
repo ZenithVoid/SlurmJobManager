@@ -88,6 +88,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
 
     /// <summary>Set to <c>true</c> after a successful save so the view can close.</summary>
     public bool SaveCompleted { get; private set; }
+    public bool LoadSucceeded { get; private set; }
 
     public ICommand SaveCommand { get; }
 
@@ -101,6 +102,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
+        LoadSucceeded = false;
         IsBusy = true;
         SetStatus("RemoteEditor.ProbingFile", "InfoTextStyle");
         try
@@ -166,6 +168,8 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
             {
                 SetStatus(string.Empty, "InfoTextStyle");
             }
+
+            LoadSucceeded = true;
         }
         catch (Exception ex)
         {

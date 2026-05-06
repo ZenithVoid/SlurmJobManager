@@ -24,6 +24,8 @@
 
     <!-- ── Common buttons ───────────────────────────────────────────────── -->
     <sys:String x:Key="Btn.Refresh">Refresh</sys:String>
+    <sys:String x:Key="Dialog.Confirm">Confirm</sys:String>
+    <sys:String x:Key="Dialog.OK">OK</sys:String>
     <sys:String x:Key="Btn.Cancel">Cancel</sys:String>
     <sys:String x:Key="Btn.Connect">Connect</sys:String>
     <sys:String x:Key="Btn.Disconnect">Disconnect</sys:String>
@@ -204,8 +206,8 @@
     <sys:String x:Key="Task.FileMenuDelete">Delete</sys:String>
     <sys:String x:Key="Task.FileMenuViewTimeInfo">View time info</sys:String>
     <sys:String x:Key="Task.FileDeleteConfirmTitle">Confirm delete</sys:String>
-    <sys:String x:Key="Task.FileDeleteConfirmSingle">Delete this item?\n\nName: {0}\nPath: {1}\n\n{2}</sys:String>
-    <sys:String x:Key="Task.FileDeleteConfirmBatch">Delete {0} selected items?\n\n{1}\n\n{2}</sys:String>
+    <sys:String x:Key="Task.FileDeleteConfirmSingle">Delete this item?</sys:String>
+    <sys:String x:Key="Task.FileDeleteConfirmBatch">Delete {0} selected items?</sys:String>
     <sys:String x:Key="Task.FileDeleteConfirmMoreItems">... and {0} more item(s)</sys:String>
     <sys:String x:Key="Task.FileDeleteIrreversibleHint">This action cannot be undone.</sys:String>
     <sys:String x:Key="Task.FileDeleteCancelled">Delete cancelled.</sys:String>
@@ -214,7 +216,11 @@
     <sys:String x:Key="Task.FileDeleteAllFailedSummary">Failed to delete all selected items ({0}).</sys:String>
     <sys:String x:Key="Task.FileDeletePartialSummary">Deleted {0} item(s), {1} item(s) failed.</sys:String>
     <sys:String x:Key="Task.FileDeleteResultTitle">Delete result details</sys:String>
-    <sys:String x:Key="Task.FileDeleteFailureDetail">Some items failed to delete:\n{0}</sys:String>
+    <sys:String x:Key="Task.FileDeleteFailureSummaryTitle">Some items failed to delete.</sys:String>
+    <sys:String x:Key="Task.FileDeleteFailureDetail">Failed items: {0}</sys:String>
+    <sys:String x:Key="Task.TaskFileMissing">Remote file does not exist: {0}</sys:String>
+    <sys:String x:Key="Task.RemoteFileOpenFailed">Failed to open remote file {0}: {1}</sys:String>
+    <sys:String x:Key="Task.RemoteFileOpenLoadUnknownError">Unknown remote file load error.</sys:String>
     <sys:String x:Key="Task.FileTimeInfoTitle">File time info</sys:String>
     <sys:String x:Key="Task.FileTimeNameLabel">Name:</sys:String>
     <sys:String x:Key="Task.FileTimePathLabel">Path:</sys:String>
