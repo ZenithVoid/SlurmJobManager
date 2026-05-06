@@ -235,7 +235,7 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColNodes}" Width="1.4*" MinWidth="140" MaxWidth="260">
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColNodes}" Width="1.5*" MinWidth="140" MaxWidth="260">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding NodeList}"
