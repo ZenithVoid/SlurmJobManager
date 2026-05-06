@@ -44,6 +44,7 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         if (!IsOpen) throw new InvalidOperationException("Interactive shell session is closed.");
         if (string.IsNullOrEmpty(data)) return;
         if (TryWrite(data)) return;
+        if (!IsOpen) throw new InvalidOperationException("Interactive shell session is closed.");
 
         while (await _writeQueue.Writer.WaitToWriteAsync(ct))
         {

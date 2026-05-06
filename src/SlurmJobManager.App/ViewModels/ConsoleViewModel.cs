@@ -143,7 +143,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         if (TryForwardTerminalInput(data)) return;
         if (!await EnsureShellSessionAsync(ct)) return;
 
-        if (data.Contains('\r') || data.Contains('\n'))
+        if (ShouldSetBusyForInput(data))
             SetBusy(true);
 
         await SendRawInputAsync(data, ct);
@@ -158,7 +158,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         if (session?.IsOpen != true)
             return false;
 
-        if (data.Contains('\r') || data.Contains('\n'))
+        if (ShouldSetBusyForInput(data))
             SetBusy(true);
 
         return session.TryWrite(data);
@@ -499,6 +499,9 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         if (string.IsNullOrEmpty(input)) return string.Empty;
         return ControlCharRegex.Replace(input, string.Empty).Trim();
     }
+
+    private static bool ShouldSetBusyForInput(string data)
+        => data.IndexOfAny(new[] { '\r', '\n' }) >= 0;
 
     private void SetBusy(bool value)
     {

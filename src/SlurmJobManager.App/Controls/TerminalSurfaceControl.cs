@@ -235,6 +235,8 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         var buffer = _terminal.Buffer;
         var rows = _terminal.Rows;
         var cols = _terminal.Cols;
+        if (_rowHashes.Length != rows)
+            EnsureRowVisuals(rows, true);
         var yDisp = buffer.YDisp;
         var forceFull = _fullRenderRequested;
         _fullRenderRequested = false;
@@ -318,9 +320,18 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
     private void DrawCursor(TerminalBuffer buffer, int cols, int rows)
     {
+        if (cols <= 0 || rows <= 0)
+        {
+            _lastCursorVisible = false;
+            _lastCursorX = -1;
+            _lastCursorY = -1;
+            using var clearDc = _cursorVisual.RenderOpen();
+            return;
+        }
+
         var cursorVisible = _terminal.CursorVisible;
-        var cursorX = Math.Clamp(buffer.X, 0, Math.Max(cols - 1, 0));
-        var cursorY = Math.Clamp(buffer.Y, 0, Math.Max(rows - 1, 0));
+        var cursorX = Math.Clamp(buffer.X, 0, cols - 1);
+        var cursorY = Math.Clamp(buffer.Y, 0, rows - 1);
 
         if (_lastCursorVisible == cursorVisible && _lastCursorX == cursorX && _lastCursorY == cursorY)
             return;
@@ -330,13 +341,14 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         _lastCursorY = cursorY;
 
         using var dc = _cursorVisual.RenderOpen();
-        if (!cursorVisible || rows <= 0 || cols <= 0)
+        if (!cursorVisible)
             return;
 
         var cursorRect = new Rect(cursorX * _cellWidth, cursorY * _cellHeight, _cellWidth, _cellHeight);
         dc.DrawRectangle(_cursorBrush, null, cursorRect);
     }
 
+    // FNV-1a is used here for a fast per-row fingerprint so unchanged rows skip redraw; a rare collision only causes a missed single-frame update.
     private static ulong ComputeLineHash(BufferLine? line, int cols)
     {
         const ulong offset = 14695981039346656037ul;
