@@ -232,7 +232,8 @@
                                        FontSize="11"
                                        Margin="0,0,0,3" />
                             <TextBox DockPanel.Dock="Top"
-                                     Text="{Binding TaskEditor.CurrentTaskFilesPath, UpdateSourceTrigger=PropertyChanged}"
+                                     Text="{Binding TaskEditor.CurrentTaskFilesPathDisplay, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="{Binding TaskEditor.CurrentTaskFilesPath}"
                                      FontFamily="Consolas"
                                      FontSize="11"
                                      Margin="0,0,0,6">

@@ -54,17 +54,38 @@ public partial class ConsoleView : UserControl
 
     private void OnTerminalOutputReceived(object? sender, string text)
     {
-        Dispatcher.Invoke(() => TerminalSurface.Write(text));
+        if (Dispatcher.CheckAccess())
+            TerminalSurface.Write(text);
+        else
+            Dispatcher.BeginInvoke(() =>
+            {
+                try { TerminalSurface.Write(text); }
+                catch { /* best effort */ }
+            });
     }
 
     private void OnFocusRequested(object? sender, EventArgs e)
     {
-        Dispatcher.Invoke(FocusTerminal);
+        if (Dispatcher.CheckAccess())
+            FocusTerminal();
+        else
+            Dispatcher.BeginInvoke(() =>
+            {
+                try { FocusTerminal(); }
+                catch { /* best effort */ }
+            });
     }
 
     private void OnClearRequested(object? sender, EventArgs e)
     {
-        Dispatcher.Invoke(TerminalSurface.Clear);
+        if (Dispatcher.CheckAccess())
+            TerminalSurface.Clear();
+        else
+            Dispatcher.BeginInvoke(() =>
+            {
+                try { TerminalSurface.Clear(); }
+                catch { /* best effort */ }
+            });
     }
 
     private void FocusTerminal()

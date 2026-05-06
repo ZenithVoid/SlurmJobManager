@@ -198,11 +198,9 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
             var decision = MessageBox.Show(askText, askTitle, MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (decision != MessageBoxResult.Yes)
                 return false;
-
-            await SendRawInputAsync("\u0003", ct);
-            await Task.Delay(120, ct);
         }
 
+        await ClearShellInputLineAsync(ct);
         SetBusy(true);
         await SendRawInputAsync($"cd -- {escapedTarget}\n", ct);
         FocusRequested?.Invoke(this, EventArgs.Empty);
@@ -274,6 +272,12 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         {
             _logger?.Warning($"Console send input failed: {ex.Message}");
         }
+    }
+
+    private async Task ClearShellInputLineAsync(CancellationToken ct)
+    {
+        await SendRawInputAsync("\u0003", ct);
+        await Task.Delay(80, ct);
     }
 
     private async Task ResetSessionAsync(CancellationToken ct)

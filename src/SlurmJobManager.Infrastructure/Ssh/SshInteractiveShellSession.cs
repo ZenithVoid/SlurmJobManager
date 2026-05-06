@@ -2,6 +2,7 @@ using System.Text;
 using System.Reflection;
 using System.Diagnostics;
 using Renci.SshNet;
+using Renci.SshNet.Common;
 using SlurmJobManager.Core.Interfaces;
 
 namespace SlurmJobManager.Infrastructure.Ssh;
@@ -10,6 +11,7 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
 {
     // Reflection-based PTY resize is currently validated with SSH.NET 2024.2.0.
     private static readonly TimeSpan ReaderShutdownTimeout = TimeSpan.FromSeconds(2);
+    private const int ReadPollTimeoutMs = 200;
     private readonly ShellStream _shellStream;
     private readonly CancellationTokenSource _readerCts = new();
     private readonly SemaphoreSlim _writeGate = new(1, 1);
@@ -24,7 +26,8 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
     public SshInteractiveShellSession(ShellStream shellStream)
     {
         _shellStream = shellStream ?? throw new ArgumentNullException(nameof(shellStream));
-        _readerTask = Task.Run(() => ReaderLoopAsync(_readerCts.Token));
+        try { _shellStream.ReadTimeout = ReadPollTimeoutMs; } catch { /* best effort */ }
+        _readerTask = Task.Run(() => ReaderLoop(_readerCts.Token));
     }
 
     public async Task WriteAsync(string data, CancellationToken ct = default)
@@ -36,11 +39,8 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         try
         {
             ct.ThrowIfCancellationRequested();
-            await Task.Run(() =>
-            {
-                _shellStream.Write(data);
-                _shellStream.Flush();
-            }, ct);
+            _shellStream.Write(data);
+            _shellStream.Flush();
         }
         finally
         {
@@ -130,7 +130,7 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         Closed?.Invoke(this, EventArgs.Empty);
     }
 
-    private async Task ReaderLoopAsync(CancellationToken ct)
+    private Task ReaderLoop(CancellationToken ct)
     {
         var buffer = new byte[4096];
         var utf8 = new UTF8Encoding(false);
@@ -139,18 +139,9 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         {
             try
             {
-                if (!_shellStream.DataAvailable)
-                {
-                    await Task.Delay(50, ct);
-                    continue;
-                }
-
                 var read = _shellStream.Read(buffer, 0, buffer.Length);
                 if (read <= 0)
-                {
-                    await Task.Delay(50, ct);
-                    continue;
-                }
+                    break;
 
                 var text = utf8.GetString(buffer, 0, read);
                 if (text.Length > 0)
@@ -164,15 +155,22 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
             {
                 break;
             }
+            catch (SshOperationTimeoutException)
+            {
+                continue;
+            }
             catch
             {
-                await Task.Delay(80, ct);
+                break;
             }
         }
+
+        return Task.CompletedTask;
     }
 
     public void Dispose()
     {
         try { CloseAsync().GetAwaiter().GetResult(); } catch { /* best effort */ }
     }
+
 }

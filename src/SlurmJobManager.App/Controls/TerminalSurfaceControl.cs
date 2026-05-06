@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using XTerm;
 using XTerm.Buffer;
 using XTerm.Common;
@@ -31,6 +32,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
     private readonly Terminal _terminal;
     private readonly int _fontSize = 14;
+    private int _renderQueued;
     private bool _isDisposed;
 
     public event EventHandler<string>? InputGenerated;
@@ -56,11 +58,11 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
             FontSize = _fontSize,
         });
 
-        _terminal.LineFed += (_, _) => InvalidateVisual();
-        _terminal.BufferChanged += (_, _) => InvalidateVisual();
-        _terminal.Resized += (_, _) => InvalidateVisual();
-        _terminal.Scrolled += (_, _) => InvalidateVisual();
-        _terminal.CursorStyleChanged += (_, _) => InvalidateVisual();
+        _terminal.LineFed += (_, _) => RequestRender();
+        _terminal.BufferChanged += (_, _) => RequestRender();
+        _terminal.Resized += (_, _) => RequestRender();
+        _terminal.Scrolled += (_, _) => RequestRender();
+        _terminal.CursorStyleChanged += (_, _) => RequestRender();
 
         Loaded += (_, _) =>
         {
@@ -74,14 +76,14 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     {
         if (string.IsNullOrEmpty(data) || _isDisposed) return;
         _terminal.Write(data);
-        InvalidateVisual();
+        RequestRender();
     }
 
     public void Clear()
     {
         if (_isDisposed) return;
         _terminal.Clear();
-        InvalidateVisual();
+        RequestRender();
     }
 
     public string GetVisibleText()
@@ -126,6 +128,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     protected override void OnRender(DrawingContext dc)
     {
         base.OnRender(dc);
+        Interlocked.Exchange(ref _renderQueued, 0);
         dc.DrawRectangle(new SolidColorBrush(DefaultBackground), null, new Rect(0, 0, ActualWidth, ActualHeight));
 
         if (_isDisposed) return;
@@ -332,6 +335,20 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         }
 
         return false;
+    }
+
+    private void RequestRender()
+    {
+        if (_isDisposed)
+            return;
+        if (Interlocked.CompareExchange(ref _renderQueued, 1, 0) != 0)
+            return;
+
+        Dispatcher.BeginInvoke(() =>
+        {
+            try { InvalidateVisual(); }
+            catch { Interlocked.Exchange(ref _renderQueued, 0); }
+        }, DispatcherPriority.Render);
     }
 
     public void Dispose()
