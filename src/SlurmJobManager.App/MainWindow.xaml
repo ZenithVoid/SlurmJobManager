@@ -337,16 +337,31 @@
                                         Margin="0,24,0,0"
                                         Visibility="{Binding TaskEditor.TaskFiles.Count,
                                                              Converter={StaticResource ZeroCountToVis}}" />
-                                    <ListBox x:Name="TaskFileListBox"
-                                              ItemsSource="{Binding TaskEditor.TaskFiles}"
-                                              SelectedItem="{Binding TaskEditor.SelectedTaskFile}"
-                                              Background="{DynamicResource BgCrustBrush}"
-                                              Foreground="{DynamicResource TextPrimaryBrush}"
-                                              BorderBrush="{DynamicResource BorderBrush}"
-                                              BorderThickness="1"
-                                              FontFamily="Consolas" FontSize="12"
-                                              ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                     <ListBox x:Name="TaskFileListBox"
+                                               ItemsSource="{Binding TaskEditor.TaskFiles}"
+                                               SelectedItem="{Binding TaskEditor.SelectedTaskFile}"
+                                               SelectionMode="Extended"
+                                               PreviewMouseRightButtonDown="TaskFileListBox_PreviewMouseRightButtonDown"
+                                               Background="{DynamicResource BgCrustBrush}"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"
+                                               BorderBrush="{DynamicResource BorderBrush}"
+                                               BorderThickness="1"
+                                               FontFamily="Consolas" FontSize="12"
+                                               ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                        <ListBox.ContextMenu>
+                                            <ContextMenu Opened="TaskFileContextMenu_Opened">
+                                                <MenuItem x:Name="TaskFileContextOpenMenuItem"
+                                                          Header="{DynamicResource Task.FileMenuOpen}"
+                                                          Click="TaskFileContextOpen_Click" />
+                                                <MenuItem x:Name="TaskFileContextDeleteMenuItem"
+                                                          Header="{DynamicResource Task.FileMenuDelete}"
+                                                          Click="TaskFileContextDelete_Click" />
+                                                <MenuItem x:Name="TaskFileContextTimeInfoMenuItem"
+                                                          Header="{DynamicResource Task.FileMenuViewTimeInfo}"
+                                                          Click="TaskFileContextViewTimeInfo_Click" />
+                                            </ContextMenu>
+                                        </ListBox.ContextMenu>
                                         <ListBox.Style>
                                             <Style TargetType="ListBox">
                                                 <Setter Property="Visibility" Value="Visible" />
@@ -359,6 +374,8 @@
                                         </ListBox.Style>
                                         <ListBox.ItemContainerStyle>
                                             <Style TargetType="ListBoxItem">
+                                                <EventSetter Event="PreviewMouseRightButtonDown"
+                                                             Handler="TaskFileListItem_PreviewMouseRightButtonDown" />
                                                 <EventSetter Event="MouseDoubleClick"
                                                              Handler="TaskFileListItem_MouseDoubleClick" />
                                             </Style>

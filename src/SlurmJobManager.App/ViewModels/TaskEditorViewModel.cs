@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -411,6 +412,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     public ICommand TogglePinTemplateCommand          { get; }
     public ICommand RefreshTaskFilesCommand           { get; }
     public ICommand OpenTaskFileCommand               { get; }
+    public ICommand DeleteTaskFilesCommand            { get; }
+    public ICommand ViewTaskFileTimeInfoCommand       { get; }
     public ICommand GoUpTaskFilesPathCommand          { get; }
     public ICommand OpenInConsoleCommand              { get; }
     public ICommand OpenLastSubmitScriptCommand       { get; }
@@ -454,6 +457,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         TogglePinTemplateCommand         = new RelayCommand(TogglePinTemplate,                     () => !string.IsNullOrWhiteSpace(SelectedTemplate));
         RefreshTaskFilesCommand          = new AsyncRelayCommand(RefreshTaskFilesAsync,             () => _ssh.IsConnected && !IsBusy);
         OpenTaskFileCommand              = new AsyncRelayCommand<TaskFileEntry>(OpenTaskFileAsync);
+        DeleteTaskFilesCommand           = new AsyncRelayCommand<IReadOnlyList<TaskFileEntry>>(DeleteTaskFilesAsync);
+        ViewTaskFileTimeInfoCommand      = new AsyncRelayCommand<TaskFileEntry>(ViewTaskFileTimeInfoAsync);
         GoUpTaskFilesPathCommand         = new AsyncRelayCommand(GoUpTaskFilesPathAsync,            () => _ssh.IsConnected && !IsBusy);
         OpenInConsoleCommand             = new AsyncRelayCommand(OpenInConsoleAsync,                 () => !IsBusy);
         OpenLastSubmitScriptCommand      = new AsyncRelayCommand(OpenLastSubmitScriptAsync,          () => !IsBusy);
@@ -1126,6 +1131,165 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         }
 
         win.ShowDialog();
+    }
+
+    private async Task DeleteTaskFilesAsync(IReadOnlyList<TaskFileEntry>? entries, CancellationToken ct)
+    {
+        if (entries == null || entries.Count == 0)
+            return;
+        if (!_ssh.IsConnected)
+        {
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
+            return;
+        }
+
+        var targets = entries
+            .Where(static e => e != null)
+            .GroupBy(static e => e.RemotePath, StringComparer.Ordinal)
+            .Select(static g => g.First())
+            .ToList();
+        if (targets.Count == 0)
+            return;
+
+        var confirm = MessageBox.Show(
+            BuildDeleteConfirmationMessage(targets),
+            L("Task.FileDeleteConfirmTitle"),
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning,
+            MessageBoxResult.Cancel);
+        if (confirm != MessageBoxResult.OK)
+        {
+            SetStatus("Task.FileDeleteCancelled", "InfoTextStyle");
+            return;
+        }
+
+        IsBusy = true;
+        var deletedCount = 0;
+        var failures = new List<(TaskFileEntry Entry, string Reason)>();
+        try
+        {
+            foreach (var entry in targets)
+            {
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    var command = entry.IsDirectory
+                        ? $"rm -rf -- {EscapeShellArg(entry.RemotePath)}"
+                        : $"rm -f -- {EscapeShellArg(entry.RemotePath)}";
+
+                    var (_, stderr, exitCode) = await _ssh.ExecuteAsync(command, ct);
+                    if (exitCode == 0)
+                    {
+                        deletedCount++;
+                    }
+                    else
+                    {
+                        var reason = string.IsNullOrWhiteSpace(stderr)
+                            ? L("Task.FileDeleteUnknownError")
+                            : stderr.Trim();
+                        failures.Add((entry, reason));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failures.Add((entry, ex.Message));
+                }
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        await RefreshTaskFilesAsync(ct);
+
+        if (failures.Count == 0)
+        {
+            SetStatus(string.Format(L("Task.FileDeleteSuccessCount"), deletedCount), "SuccessTextStyle", localize: false);
+            return;
+        }
+
+        if (deletedCount == 0)
+            SetStatus(string.Format(L("Task.FileDeleteAllFailedSummary"), failures.Count), "ErrorTextStyle", localize: false);
+        else
+            SetStatus(string.Format(L("Task.FileDeletePartialSummary"), deletedCount, failures.Count), "WarningTextStyle", localize: false);
+
+        var detailLines = failures.Select(static f => $"{f.Entry.DisplayName}: {f.Reason}");
+        var detailText = string.Join(Environment.NewLine, detailLines);
+        MessageBox.Show(
+            string.Format(L("Task.FileDeleteFailureDetail"), detailText),
+            L("Task.FileDeleteResultTitle"),
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+    }
+
+    private async Task ViewTaskFileTimeInfoAsync(TaskFileEntry? fileEntry, CancellationToken ct)
+    {
+        if (fileEntry == null)
+            return;
+        if (!_ssh.IsConnected)
+        {
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
+            return;
+        }
+
+        try
+        {
+            var escapedPath = EscapeShellArg(fileEntry.RemotePath);
+            var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(
+                $"if [ -e {escapedPath} ] || [ -L {escapedPath} ]; then " +
+                $"stat -c '%Y|%W|%s' {escapedPath}; " +
+                $"else echo MISSING; fi", ct);
+
+            if (exitCode != 0)
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(stderr) ? L("Task.FileTimeReadFailedNoDetail") : stderr.Trim());
+
+            var raw = stdout.Trim();
+            if (string.Equals(raw, "MISSING", StringComparison.Ordinal))
+            {
+                SetStatus("Task.PathMissing", "ErrorTextStyle");
+                return;
+            }
+
+            var parts = raw.Split('|');
+            if (parts.Length < 3)
+                throw new InvalidOperationException(L("Task.FileTimeReadInvalidResult"));
+
+            var parseModified = long.TryParse(parts[0], out var modifiedTimeUnix);
+            var parseCreation = long.TryParse(parts[1], out var creationTimeUnix);
+            var parseSize = long.TryParse(parts[2], out var sizeBytes);
+            if (!parseModified || !parseSize)
+                throw new InvalidOperationException(L("Task.FileTimeReadInvalidResult"));
+
+            var modifiedTimeText = FormatUnixTimeOrUnavailable(modifiedTimeUnix);
+            var creationTimeText = creationTimeUnix > 0
+                ? FormatUnixTimeOrUnavailable(creationTimeUnix)
+                : L("Task.FileTimeCreationUnavailable");
+            var sizeText = fileEntry.IsDirectory
+                ? L("Task.FileTimeSizeForDirectory")
+                : (sizeBytes >= 0 ? $"{sizeBytes} B" : L("Task.FileTimeUnavailable"));
+            var typeText = fileEntry.IsDirectory ? L("Task.FileTypeDirectory") : L("Task.FileTypeFile");
+
+            var lines = new[]
+            {
+                $"{L("Task.FileTimeNameLabel")} {fileEntry.Name}",
+                $"{L("Task.FileTimePathLabel")} {fileEntry.DisplayRemotePath}",
+                $"{L("Task.FileTimeTypeLabel")} {typeText}",
+                $"{L("Task.FileTimeSizeLabel")} {sizeText}",
+                $"{L("Task.FileTimeModifiedLabel")} {modifiedTimeText}",
+                $"{L("Task.FileTimeCreatedLabel")} {creationTimeText}",
+            };
+
+            MessageBox.Show(
+                string.Join(Environment.NewLine, lines),
+                L("Task.FileTimeInfoTitle"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.FileTimeReadFailed"), ex.Message), "ErrorTextStyle", localize: false);
+        }
     }
 
     private async Task OpenInConsoleAsync(CancellationToken ct)
@@ -2368,6 +2532,43 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private static string EscapeShellArg(string arg)
         => "'" + arg.Replace("'", "'\\''") + "'";
+
+    private string BuildDeleteConfirmationMessage(IReadOnlyList<TaskFileEntry> entries)
+    {
+        if (entries.Count == 1)
+        {
+            var entry = entries[0];
+            return string.Format(
+                L("Task.FileDeleteConfirmSingle"),
+                entry.DisplayName,
+                entry.DisplayRemotePath,
+                L("Task.FileDeleteIrreversibleHint"));
+        }
+
+        const int deletePreviewCount = 8;
+        var preview = entries
+            .Take(deletePreviewCount)
+            .Select(static e => $"• {e.DisplayName}")
+            .ToList();
+        if (entries.Count > deletePreviewCount)
+            preview.Add(string.Format(L("Task.FileDeleteConfirmMoreItems"), entries.Count - deletePreviewCount));
+
+        return string.Format(
+            L("Task.FileDeleteConfirmBatch"),
+            entries.Count,
+            string.Join(Environment.NewLine, preview),
+            L("Task.FileDeleteIrreversibleHint"));
+    }
+
+    private string FormatUnixTimeOrUnavailable(long unixTime)
+    {
+        if (unixTime <= 0)
+            return L("Task.FileTimeUnavailable");
+
+        return DateTimeOffset.FromUnixTimeSeconds(unixTime)
+            .ToLocalTime()
+            .ToString(CultureInfo.CurrentCulture);
+    }
 
     public void Dispose()
     {
