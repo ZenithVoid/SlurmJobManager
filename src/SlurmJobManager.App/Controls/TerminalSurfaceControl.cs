@@ -101,22 +101,6 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
             return;
         }
 
-        if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control &&
-            e.Key == System.Windows.Input.Key.C)
-        {
-            EmitInput("\u0003");
-            e.Handled = true;
-            return;
-        }
-
-        if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control &&
-            e.Key == System.Windows.Input.Key.L)
-        {
-            EmitInput("\u000c");
-            e.Handled = true;
-            return;
-        }
-
         if (TryMapKey(e.Key, out var terminalKey))
         {
             var data = _terminal.GenerateKeyInput(terminalKey, modifiers);
@@ -335,6 +319,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
         if (key is >= System.Windows.Input.Key.A and <= System.Windows.Input.Key.Z)
         {
+            // Standard terminal control codes: Ctrl+A => 0x01 ... Ctrl+Z => 0x1A.
             var letterIndex = key - System.Windows.Input.Key.A + 1;
             data = new string((char)letterIndex, 1);
             return true;
@@ -345,12 +330,6 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
             data = "\u0000"; // Ctrl+2 / Ctrl+Space
             return true;
         }
-
-        if (key == System.Windows.Input.Key.Oem4) { data = "\u001B"; return true; } // Ctrl+[
-        if (key == System.Windows.Input.Key.Oem5) { data = "\u001C"; return true; } // Ctrl+\
-        if (key == System.Windows.Input.Key.Oem6) { data = "\u001D"; return true; } // Ctrl+]
-        if (key == System.Windows.Input.Key.D6) { data = "\u001E"; return true; }   // Ctrl+^
-        if (key == System.Windows.Input.Key.OemMinus) { data = "\u001F"; return true; } // Ctrl+_
 
         return false;
     }
