@@ -242,12 +242,12 @@
                             </TextBox>
 
                             <!-- Status message from TaskEditor -->
-                             <TextBlock DockPanel.Dock="Top"
-                                        Text="{Binding TaskEditor.StatusMessage}"
-                                        Foreground="{DynamicResource TextMutedBrush}"
-                                        FontSize="11"
-                                        TextWrapping="Wrap"
-                                        Margin="0,0,0,4" />
+                            <TextBlock DockPanel.Dock="Top"
+                                       Text="{Binding TaskEditor.StatusMessage}"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       FontSize="11"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,4" />
 
                             <Button DockPanel.Dock="Top"
                                     Content="{DynamicResource Btn.OpenInTerminal}"
@@ -341,7 +341,7 @@
                     </Grid.RenderTransform>
                     <views:ConsoleView x:Name="ConsolePageView"
                                        DataContext="{Binding Console}"
-                                        Margin="24,20,24,20" />
+                                       Margin="24,20,24,20" />
                 </Grid>
 
                 <!-- Settings -->
