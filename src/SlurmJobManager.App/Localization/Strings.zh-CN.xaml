@@ -56,6 +56,7 @@
     <sys:String x:Key="Btn.Run">运行</sys:String>
     <sys:String x:Key="Btn.CancelCmd">✕ 取消</sys:String>
     <sys:String x:Key="Btn.StopCmd">⏹ 停止</sys:String>
+    <sys:String x:Key="Btn.ResetTerminal">重置终端</sys:String>
     <sys:String x:Key="Btn.Copy">复制</sys:String>
     <sys:String x:Key="Btn.Clear">清除</sys:String>
     <sys:String x:Key="Btn.OpenInTerminal">在终端中打开</sys:String>
@@ -397,6 +398,8 @@
     <sys:String x:Key="Console.StatusDisconnected">未连接</sys:String>
     <sys:String x:Key="Console.StatusBusy">执行中</sys:String>
     <sys:String x:Key="Console.StatusIdle">空闲</sys:String>
+    <sys:String x:Key="Console.BusySwitchDirectoryTitle">终端正忙</sys:String>
+    <sys:String x:Key="Console.BusySwitchDirectoryPrompt">终端当前被交互式程序占用。是否先中断并切换到目录 {0}？</sys:String>
     <sys:String x:Key="Console.CdPathMissing">[cd] 目录不存在。</sys:String>
     <sys:String x:Key="Console.CdPermissionDenied">[cd] 没有目标目录的访问权限。</sys:String>
     <sys:String x:Key="Console.CdNotDirectory">[cd] 目标路径不是目录。</sys:String>

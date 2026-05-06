@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
@@ -8,33 +8,40 @@ using SlurmJobManager.Core.Models;
 
 namespace SlurmJobManager.App.ViewModels;
 
-/// <summary>
-/// Embedded remote-command console with ↑/↓ history (max 50 entries),
-/// stderr/stdout visual distinction, execution time, exit code display,
-/// and a cancel button for the currently running command.
-/// </summary>
 public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 {
     private readonly ISshClientService _ssh;
-    private readonly IAppLogger?       _logger;
+    private readonly IAppLogger? _logger;
     private readonly ConnectionViewModel? _connection;
-    private readonly AppSettings      _settings;
+    private readonly AppSettings _settings;
+    private readonly object _markerSync = new();
+
     private const int MaxHistory = 50;
-    private static readonly Regex BuiltinCdRegex = new(@"^cd(?:\s+(.*))?$", RegexOptions.Compiled);
+    private const string CwdMarker = "__SJM_CWD__";
+    private static readonly Regex MarkerRegex = new($"{CwdMarker}(?<cwd>[^\\r\\n]*)\\r?\\n", RegexOptions.Compiled);
+    private static readonly Regex ControlCharRegex = new(@"[\x00-\x08\x0A-\x1F\x7F]", RegexOptions.Compiled);
 
     private string _commandInput = string.Empty;
     private bool _isBusy;
     private bool _isConnected;
-    private bool _isAutoScrollEnabled = true;
     private string _homeDirectory = string.Empty;
     private string _currentWorkingDirectory = string.Empty;
     private int _historyIndex = -1;
     private string _historyDraftInput = string.Empty;
-    private CancellationTokenSource? _executeCts;
+    private string _markerCarry = string.Empty;
+    private IInteractiveShellSession? _shellSession;
+    private int _terminalCols = 120;
+    private int _terminalRows = 36;
+    private bool _isInitializingSession;
+
+    public event EventHandler<string>? TerminalOutputReceived;
+    public event EventHandler? FocusRequested;
+    public event EventHandler? ClearRequested;
 
     public string CommandInput { get => _commandInput; set => SetField(ref _commandInput, value); }
-    public bool IsBusy         { get => _isBusy;        private set => SetField(ref _isBusy, value); }
-    public bool IsAutoScrollEnabled { get => _isAutoScrollEnabled; set => SetField(ref _isAutoScrollEnabled, value); }
+    public bool IsBusy { get => _isBusy; private set => SetField(ref _isBusy, value); }
+    public bool IsConnected { get => _isConnected; private set => SetField(ref _isConnected, value); }
+
     public string CurrentWorkingDirectoryDisplay => GetDisplayWorkingDirectory();
     public string PromptText => $"{GetPromptUser()}@{GetPromptHost()}:{CurrentWorkingDirectoryDisplay}$ ";
     public string ConsoleStatusSummary => string.Format(
@@ -43,28 +50,22 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         CurrentWorkingDirectoryDisplay,
         IsBusy ? L("Console.StatusBusy") : L("Console.StatusIdle"));
 
-    /// <summary>True when the SSH connection is active — used to drive the connection-hint banner.</summary>
-    public bool IsConnected    { get => _isConnected;   private set => SetField(ref _isConnected, value); }
-
-    public ObservableCollection<ConsoleLine> OutputLines { get; } = new();
     public List<string> CommandHistory { get; } = new();
 
-    public ICommand ExecuteCommand     { get; }
-    public ICommand CancelCommand      { get; }
-    public ICommand ClearCommand       { get; }
-    public ICommand HistoryUpCommand   { get; }
+    public ICommand ExecuteCommand { get; }
+    public ICommand CancelCommand { get; }
+    public ICommand ClearCommand { get; }
+    public ICommand ResetSessionCommand { get; }
+    public ICommand HistoryUpCommand { get; }
     public ICommand HistoryDownCommand { get; }
-    public ICommand CopyOutputCommand  { get; }
 
     public ConsoleViewModel(ISshClientService ssh, IAppLogger? logger = null, ConnectionViewModel? connection = null, AppSettings? settings = null)
     {
-        _ssh        = ssh    ?? throw new ArgumentNullException(nameof(ssh));
-        _logger     = logger;
+        _ssh = ssh ?? throw new ArgumentNullException(nameof(ssh));
+        _logger = logger;
         _connection = connection;
-        _settings   = settings ?? new AppSettings();
+        _settings = settings ?? new AppSettings();
 
-        // Subscribe before reading the initial value to avoid a race between
-        // subscribing and querying, then seed from the connection view-model.
         if (_connection != null)
         {
             _connection.PropertyChanged += OnConnectionPropertyChanged;
@@ -76,12 +77,18 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
             _isConnected = _ssh.IsConnected;
         }
 
-        ExecuteCommand     = new AsyncRelayCommand(ExecuteAsync, () => !IsBusy);
-        CancelCommand      = new RelayCommand(CancelExecution,  () => IsBusy);
-        ClearCommand       = new RelayCommand(() => OutputLines.Clear());
-        HistoryUpCommand   = new RelayCommand(HistoryUp);
+        ExecuteCommand = new AsyncRelayCommand(ExecuteAsync, () => IsConnected);
+        CancelCommand = new RelayCommand(CancelExecution, () => IsConnected);
+        ClearCommand = new RelayCommand(() => ClearRequested?.Invoke(this, EventArgs.Empty));
+        ResetSessionCommand = new AsyncRelayCommand(ResetSessionAsync, () => IsConnected);
+        HistoryUpCommand = new RelayCommand(HistoryUp);
         HistoryDownCommand = new RelayCommand(HistoryDown);
-        CopyOutputCommand  = new RelayCommand(CopyOutput);
+    }
+
+    public async Task EnsureInteractiveShellReadyAsync(CancellationToken ct = default)
+    {
+        await EnsureShellSessionAsync(ct);
+        FocusRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private async Task ExecuteAsync(CancellationToken ct)
@@ -90,101 +97,167 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         if (string.IsNullOrEmpty(cmd))
         {
             if (!string.IsNullOrWhiteSpace(CommandInput))
-                AppendLine(ConsoleLine.Error(L("Console.ErrInvalidCommand")));
+                PublishSystemMessage(L("Console.ErrInvalidCommand"));
             return;
         }
 
-        if (!_ssh.IsConnected)
-        {
-            AppendLine(ConsoleLine.Error(L("Console.ErrNotConnected")));
-            return;
-        }
+        if (!await EnsureShellSessionAsync(ct)) return;
 
         AddToHistory(cmd);
-        CommandInput  = string.Empty;
+        CommandInput = string.Empty;
         _historyDraftInput = string.Empty;
         _historyIndex = -1;
 
-        var promptAtSubmission = PromptText;
-        AppendLine(ConsoleLine.Command($"{promptAtSubmission}{cmd}"));
+        SetBusy(true);
+        await SendRawInputAsync($"{cmd}\n", ct);
+        FocusRequested?.Invoke(this, EventArgs.Empty);
+    }
 
-        await EnsureShellContextAsync(ct);
+    public async Task ForwardTerminalInputAsync(string data, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(data)) return;
+        if (!await EnsureShellSessionAsync(ct)) return;
 
-        if (TryParseBuiltinCd(cmd, out var cdTarget))
-        {
-            var changed = await TryChangeDirectoryAsync(cdTarget, ct, appendFriendlyError: true);
-            if (changed)
-                AppendLine(ConsoleLine.Meta($"[cwd] {CurrentWorkingDirectoryDisplay}"));
-            return;
-        }
+        if (data.Contains('\r') || data.Contains('\n'))
+            SetBusy(true);
 
-        IsBusy = true;
-        // Manage lifetimes explicitly: dispose linked source before the source it wraps
-        var timeoutCts = new CancellationTokenSource(_settings.CommandTimeout);
-        _executeCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        await SendRawInputAsync(data, ct);
+    }
+
+    public async Task ResizeTerminalAsync(int cols, int rows, CancellationToken ct = default)
+    {
+        _terminalCols = Math.Max(2, cols);
+        _terminalRows = Math.Max(2, rows);
+
+        var session = _shellSession;
+        if (session?.IsOpen != true) return;
+
         try
         {
-            var effectiveCommand = BuildCommandInCurrentDirectory(cmd);
-            var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(effectiveCommand, _executeCts.Token);
-            sw.Stop();
-
-            foreach (var line in stdout.Split('\n'))
-                if (line.Length > 0) AppendLine(ConsoleLine.Stdout(line));
-
-            if (!string.IsNullOrWhiteSpace(stderr))
-                foreach (var line in stderr.Split('\n'))
-                    if (line.Length > 0) AppendLine(ConsoleLine.Stderr(line));
-
-            var meta = $"[exit {exitCode} | {sw.ElapsedMilliseconds} ms]";
-            AppendLine(ConsoleLine.Meta(meta));
-            _logger?.Debug($"Console cmd '{cmd}': exit {exitCode}, {sw.ElapsedMilliseconds} ms");
-        }
-        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
-        {
-            sw.Stop();
-            AppendLine(ConsoleLine.Error(string.Format(L("Console.Timeout"), _settings.CommandTimeout.TotalSeconds)));
-            _logger?.Warning($"Console cmd '{cmd}' timed out after {sw.ElapsedMilliseconds} ms");
-        }
-        catch (OperationCanceledException)
-        {
-            sw.Stop();
-            AppendLine(ConsoleLine.Meta($"[cancelled after {sw.ElapsedMilliseconds} ms]"));
+            await session.ResizeAsync(_terminalCols, _terminalRows, ct);
         }
         catch (Exception ex)
         {
-            sw.Stop();
-            AppendLine(ConsoleLine.Error($"[error] {ex.Message}"));
-            _logger?.Error($"Console cmd '{cmd}' failed", ex);
-        }
-        finally
-        {
-            // Dispose linked source first, then the source it links to
-            _executeCts.Dispose();
-            _executeCts = null;
-            timeoutCts.Dispose();
-            SetBusy(false);
+            _logger?.Warning($"Console terminal resize failed: {ex.Message}");
         }
     }
 
-    /// <summary>
-    /// Strips control characters (except tab) that could cause terminal injection or crashes.
-    /// Returns null-equivalent empty string if the resulting command is blank.
-    /// </summary>
-    private static readonly Regex ControlCharRegex =
-        new(@"[\x00-\x08\x0A-\x1F\x7F]", RegexOptions.Compiled);
-
-    private static string SanitizeCommand(string input)
+    public async Task<bool> OpenAtDirectoryAsync(string remoteDirectory, CancellationToken ct = default)
     {
-        if (string.IsNullOrEmpty(input)) return string.Empty;
-        // Remove characters below 0x20 except horizontal tab (0x09), and remove DEL (0x7F)
-        return ControlCharRegex.Replace(input, string.Empty).Trim();
+        if (!_ssh.IsConnected)
+        {
+            PublishSystemMessage(L("Console.ErrNotConnected"));
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(remoteDirectory))
+        {
+            PublishSystemMessage(L("Console.ErrNoTargetDirectory"));
+            return false;
+        }
+
+        if (!await EnsureShellSessionAsync(ct)) return false;
+
+        await EnsureHomeDirectoryLoadedAsync(ct);
+        var target = NormalizeRemotePath(ExpandHomePath(remoteDirectory));
+        if (string.IsNullOrWhiteSpace(target))
+            return false;
+
+        if (IsBusy)
+        {
+            var askText = string.Format(L("Console.BusySwitchDirectoryPrompt"), CollapseHomePath(target));
+            var askTitle = L("Console.BusySwitchDirectoryTitle");
+            var decision = MessageBox.Show(askText, askTitle, MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (decision != MessageBoxResult.Yes)
+                return false;
+
+            await SendRawInputAsync("\u0003", ct);
+            await Task.Delay(120, ct);
+        }
+
+        SetBusy(true);
+        await SendRawInputAsync($"cd -- {EscapeShellArg(target)}\n", ct);
+        FocusRequested?.Invoke(this, EventArgs.Empty);
+        return true;
+    }
+
+    private async Task<bool> EnsureShellSessionAsync(CancellationToken ct)
+    {
+        if (_shellSession?.IsOpen == true) return true;
+        if (!_ssh.IsConnected)
+        {
+            PublishSystemMessage(L("Console.ErrNotConnected"));
+            return false;
+        }
+
+        if (_isInitializingSession) return false;
+        _isInitializingSession = true;
+        try
+        {
+            var session = await _ssh.StartInteractiveShellSessionAsync("xterm-256color", _terminalCols, _terminalRows, ct);
+            session.OutputReceived += OnShellOutputReceived;
+            session.Closed += OnShellClosed;
+            _shellSession = session;
+            lock (_markerSync)
+                _markerCarry = string.Empty;
+
+            await EnsureHomeDirectoryLoadedAsync(ct);
+            await InitializeShellPromptAsync(ct);
+            SetBusy(false);
+            NotifyPromptContextChanged();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error("Failed to start interactive shell session.", ex);
+            PublishSystemMessage($"[error] {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            _isInitializingSession = false;
+        }
+    }
+
+    private async Task InitializeShellPromptAsync(CancellationToken ct)
+    {
+        var initScript = string.Join(
+            "\n",
+            "export TERM=xterm-256color",
+            "export PS1='\\u@\\h:\\w$ '",
+            $"PROMPT_COMMAND='printf \"{CwdMarker}%s\\\\n\" \"$PWD\"'",
+            $"printf \"{CwdMarker}%s\\n\" \"$PWD\"") + "\n";
+
+        await SendRawInputAsync(initScript, ct);
+    }
+
+    private async Task SendRawInputAsync(string data, CancellationToken ct)
+    {
+        var session = _shellSession;
+        if (session?.IsOpen != true) return;
+
+        try
+        {
+            await session.WriteAsync(data, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger?.Warning($"Console send input failed: {ex.Message}");
+        }
+    }
+
+    private async Task ResetSessionAsync(CancellationToken ct)
+    {
+        await CloseShellSessionAsync();
+        await EnsureShellSessionAsync(ct);
+        ClearRequested?.Invoke(this, EventArgs.Empty);
+        FocusRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void CancelExecution()
     {
-        _executeCts?.Cancel();
-        AppendLine(ConsoleLine.Meta(L("Console.Cancelling")));
+        _ = ForwardTerminalInputAsync("\u0003");
+        PublishSystemMessage(L("Console.Cancelling"));
     }
 
     private void AddToHistory(string cmd)
@@ -200,8 +273,9 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         if (CommandHistory.Count == 0) return;
         if (_historyIndex == -1)
             _historyDraftInput = CommandInput;
+
         _historyIndex = Math.Min(_historyIndex + 1, CommandHistory.Count - 1);
-        CommandInput  = CommandHistory[_historyIndex];
+        CommandInput = CommandHistory[_historyIndex];
     }
 
     private void HistoryDown()
@@ -212,17 +286,12 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
             CommandInput = _historyDraftInput;
             return;
         }
+
         _historyIndex--;
         CommandInput = CommandHistory[_historyIndex];
     }
 
-    private void CopyOutput()
-    {
-        var text = string.Join(Environment.NewLine, OutputLines.Select(l => l.Text));
-        System.Windows.Clipboard.SetText(text);
-    }
-
-    private void OnConnectionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private async void OnConnectionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (_connection == null) return;
 
@@ -230,51 +299,140 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         {
             IsConnected = _connection.IsConnected;
             if (IsConnected)
-                _ = InitializeShellContextAsync();
+                await EnsureInteractiveShellReadyAsync();
             else
+            {
+                await CloseShellSessionAsync();
                 ResetShellContext();
+            }
         }
 
         if (e.PropertyName is nameof(ConnectionViewModel.Username) or nameof(ConnectionViewModel.Host))
             NotifyPromptContextChanged();
     }
 
-    public void Dispose()
+    private void OnShellOutputReceived(object? sender, string output)
     {
-        if (_connection != null)
-            _connection.PropertyChanged -= OnConnectionPropertyChanged;
-        _executeCts?.Cancel();
-        _executeCts?.Dispose();
+        if (string.IsNullOrEmpty(output)) return;
+
+        var filtered = FilterMarkers(output);
+        if (filtered.Length > 0)
+            TerminalOutputReceived?.Invoke(this, filtered);
     }
 
-    // ── Thread-safe UI helpers ───────────────────────────────────────────────
-
-    /// <summary>
-    /// Appends a line to <see cref="OutputLines"/> ensuring execution on the UI thread.
-    /// Protects against the rare case where an SSH library callback or continuation
-    /// fires on a thread-pool thread.
-    /// </summary>
-    private void AppendLine(ConsoleLine line)
+    private void OnShellClosed(object? sender, EventArgs e)
     {
-        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (sender is not IInteractiveShellSession session) return;
+        if (!ReferenceEquals(session, _shellSession)) return;
+        _shellSession = null;
+        SetBusy(false);
+    }
+
+    private string FilterMarkers(string chunk)
+    {
+        lock (_markerSync)
+        {
+            var combined = _markerCarry + chunk;
+            var sb = new StringBuilder();
+            var last = 0;
+
+            foreach (Match m in MarkerRegex.Matches(combined))
+            {
+                sb.Append(combined, last, m.Index - last);
+                last = m.Index + m.Length;
+
+                var cwd = NormalizeRemotePath(m.Groups["cwd"].Value);
+                if (!string.IsNullOrWhiteSpace(cwd))
+                    SetCurrentWorkingDirectory(cwd);
+                SetBusy(false);
+            }
+
+            var remainder = combined[last..];
+            var markerStart = remainder.LastIndexOf(CwdMarker, StringComparison.Ordinal);
+            if (markerStart >= 0)
+            {
+                sb.Append(remainder[..markerStart]);
+                _markerCarry = remainder[markerStart..];
+            }
+            else
+            {
+                sb.Append(remainder);
+                _markerCarry = string.Empty;
+            }
+
+            return sb.ToString();
+        }
+    }
+
+    private void SetCurrentWorkingDirectory(string cwd)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher != null && !dispatcher.CheckAccess())
-            dispatcher.InvokeAsync(() => OutputLines.Add(line));
+        {
+            _ = dispatcher.InvokeAsync(() =>
+            {
+                _currentWorkingDirectory = cwd;
+                NotifyPromptContextChanged();
+            });
+        }
         else
-            OutputLines.Add(line);
+        {
+            _currentWorkingDirectory = cwd;
+            NotifyPromptContextChanged();
+        }
     }
 
-    /// <summary>
-    /// Sets <see cref="IsBusy"/> on the UI thread to keep WPF bindings happy.
-    /// </summary>
+    private async Task EnsureHomeDirectoryLoadedAsync(CancellationToken ct)
+    {
+        if (!_ssh.IsConnected || !string.IsNullOrWhiteSpace(_homeDirectory)) return;
+        var home = await _ssh.GetHomeDirectoryAsync(ct);
+        _homeDirectory = NormalizeRemotePath(home);
+        if (string.IsNullOrWhiteSpace(_currentWorkingDirectory))
+            _currentWorkingDirectory = _homeDirectory;
+        NotifyPromptContextChanged();
+    }
+
+    private async Task CloseShellSessionAsync()
+    {
+        var session = _shellSession;
+        _shellSession = null;
+        if (session == null) return;
+
+        try
+        {
+            session.OutputReceived -= OnShellOutputReceived;
+            session.Closed -= OnShellClosed;
+            await session.CloseAsync();
+            session.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _logger?.Warning($"Console shell session close failed: {ex.Message}");
+        }
+    }
+
+    private void PublishSystemMessage(string message)
+    {
+        TerminalOutputReceived?.Invoke(this, $"{message}{Environment.NewLine}");
+    }
+
+    private static string SanitizeCommand(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return string.Empty;
+        return ControlCharRegex.Replace(input, string.Empty).Trim();
+    }
+
     private void SetBusy(bool value)
     {
-        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher != null && !dispatcher.CheckAccess())
-            dispatcher.InvokeAsync(() =>
+        {
+            _ = dispatcher.InvokeAsync(() =>
             {
                 IsBusy = value;
                 OnPropertyChanged(nameof(ConsoleStatusSummary));
             });
+        }
         else
         {
             IsBusy = value;
@@ -282,146 +440,12 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public async Task<bool> OpenAtDirectoryAsync(string remoteDirectory, CancellationToken ct = default)
-    {
-        if (!_ssh.IsConnected)
-        {
-            AppendLine(ConsoleLine.Error(L("Console.ErrNotConnected")));
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(remoteDirectory))
-        {
-            AppendLine(ConsoleLine.Error(L("Console.ErrNoTargetDirectory")));
-            return false;
-        }
-
-        await EnsureShellContextAsync(ct);
-        return await TryChangeDirectoryAsync(remoteDirectory, ct, appendFriendlyError: true);
-    }
-
-    private async Task InitializeShellContextAsync()
-    {
-        try
-        {
-            await EnsureShellContextAsync(CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            _logger?.Warning($"Console shell context init failed: {ex.Message}");
-        }
-    }
-
-    private async Task EnsureShellContextAsync(CancellationToken ct)
-    {
-        if (!_ssh.IsConnected) return;
-
-        if (string.IsNullOrWhiteSpace(_homeDirectory))
-        {
-            var home = await _ssh.GetHomeDirectoryAsync(ct);
-            _homeDirectory = NormalizeRemotePath(home);
-        }
-
-        if (string.IsNullOrWhiteSpace(_currentWorkingDirectory))
-            _currentWorkingDirectory = !string.IsNullOrWhiteSpace(_homeDirectory) ? _homeDirectory : "/";
-
-        NotifyPromptContextChanged();
-    }
-
-    private async Task<bool> TryChangeDirectoryAsync(string? requestedDirectory, CancellationToken ct, bool appendFriendlyError)
-    {
-        await EnsureShellContextAsync(ct);
-
-        var target = string.IsNullOrWhiteSpace(requestedDirectory)
-            ? "~"
-            : StripWrappingQuotes(requestedDirectory.Trim());
-        target = ExpandHomePath(target);
-
-        var current = string.IsNullOrWhiteSpace(_currentWorkingDirectory)
-            ? (!string.IsNullOrWhiteSpace(_homeDirectory) ? _homeDirectory : "/")
-            : _currentWorkingDirectory;
-
-        var command =
-            $"cd -- {EscapeShellArg(current)} && " +
-            $"cd -- {EscapeShellArg(target)} && " +
-            "pwd";
-
-        var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(command, ct);
-        if (exitCode != 0)
-        {
-            if (appendFriendlyError)
-                AppendCdError(stderr);
-            return false;
-        }
-
-        var resolvedPath = NormalizeRemotePath(
-            stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .FirstOrDefault());
-
-        if (string.IsNullOrWhiteSpace(resolvedPath))
-        {
-            if (appendFriendlyError)
-                AppendLine(ConsoleLine.Error(L("Console.CdFailedNoDetail")));
-            return false;
-        }
-
-        _currentWorkingDirectory = resolvedPath;
-        NotifyPromptContextChanged();
-        return true;
-    }
-
-    private void AppendCdError(string stderr)
-    {
-        var detail = stderr.Trim();
-        if (detail.Contains("No such file or directory", StringComparison.OrdinalIgnoreCase))
-        {
-            AppendLine(ConsoleLine.Error(L("Console.CdPathMissing")));
-            return;
-        }
-
-        if (detail.Contains("Permission denied", StringComparison.OrdinalIgnoreCase))
-        {
-            AppendLine(ConsoleLine.Error(L("Console.CdPermissionDenied")));
-            return;
-        }
-
-        if (detail.Contains("Not a directory", StringComparison.OrdinalIgnoreCase))
-        {
-            AppendLine(ConsoleLine.Error(L("Console.CdNotDirectory")));
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(detail))
-        {
-            AppendLine(ConsoleLine.Error(L("Console.CdFailedNoDetail")));
-            return;
-        }
-
-        AppendLine(ConsoleLine.Error(string.Format(L("Console.CdFailed"), detail)));
-    }
-
-    private static bool TryParseBuiltinCd(string command, out string targetDirectory)
-    {
-        targetDirectory = string.Empty;
-        var match = BuiltinCdRegex.Match(command);
-        if (!match.Success) return false;
-
-        targetDirectory = match.Groups.Count > 1 && match.Groups[1].Success ? match.Groups[1].Value : string.Empty;
-        return true;
-    }
-
-    private string BuildCommandInCurrentDirectory(string command)
-    {
-        var cwd = string.IsNullOrWhiteSpace(_currentWorkingDirectory)
-            ? (!string.IsNullOrWhiteSpace(_homeDirectory) ? _homeDirectory : "/")
-            : _currentWorkingDirectory;
-        return $"cd -- {EscapeShellArg(cwd)} && {command}";
-    }
-
     private void ResetShellContext()
     {
         _homeDirectory = string.Empty;
         _currentWorkingDirectory = string.Empty;
+        lock (_markerSync)
+            _markerCarry = string.Empty;
         NotifyPromptContextChanged();
     }
 
@@ -447,20 +471,11 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         return "'" + sanitized.Replace("'", "'\\''") + "'";
     }
 
-    private static string StripWrappingQuotes(string input)
-    {
-        if (input.Length < 2) return input;
-        if ((input[0] == '\'' && input[^1] == '\'') || (input[0] == '"' && input[^1] == '"'))
-            return input[1..^1];
-        return input;
-    }
-
     private string GetDisplayWorkingDirectory()
     {
         var cwd = string.IsNullOrWhiteSpace(_currentWorkingDirectory)
             ? (!string.IsNullOrWhiteSpace(_homeDirectory) ? _homeDirectory : "~")
             : _currentWorkingDirectory;
-
         var display = CollapseHomePath(cwd);
         return string.IsNullOrWhiteSpace(display) ? "~" : display;
     }
@@ -473,4 +488,11 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
     private static string L(string key)
         => Application.Current?.TryFindResource(key) as string ?? key;
+
+    public void Dispose()
+    {
+        if (_connection != null)
+            _connection.PropertyChanged -= OnConnectionPropertyChanged;
+        try { CloseShellSessionAsync().GetAwaiter().GetResult(); } catch { /* best effort */ }
+    }
 }

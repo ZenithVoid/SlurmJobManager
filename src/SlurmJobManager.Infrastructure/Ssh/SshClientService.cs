@@ -13,6 +13,8 @@ namespace SlurmJobManager.Infrastructure.Ssh;
 public sealed class SshClientService : ISshClientService
 {
     private readonly AppSettings _settings;
+    private readonly List<IInteractiveShellSession> _interactiveSessions = new();
+    private readonly object _sessionLock = new();
 
     private SshClient? _sshClient;
     private SftpClient? _sftpClient;
@@ -63,6 +65,35 @@ public sealed class SshClientService : ISshClientService
 
         await Task.Run(() => cmd.Execute(), linked.Token);
         return (cmd.Result, cmd.Error, cmd.ExitStatus ?? -1);
+    }
+
+    public Task<IInteractiveShellSession> StartInteractiveShellSessionAsync(
+        string terminalName = "xterm-256color",
+        int cols = 120,
+        int rows = 36,
+        CancellationToken ct = default)
+    {
+        EnsureConnected();
+        cols = Math.Max(2, cols);
+        rows = Math.Max(2, rows);
+
+        return Task.Run<IInteractiveShellSession>(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            var stream = _sshClient!.CreateShellStream(
+                terminalName,
+                (uint)cols,
+                (uint)rows,
+                0,
+                0,
+                4096);
+
+            var session = new SshInteractiveShellSession(stream);
+            session.Closed += OnInteractiveSessionClosed;
+            lock (_sessionLock)
+                _interactiveSessions.Add(session);
+            return session;
+        }, ct);
     }
 
     public Task UploadFileAsync(string localPath, string remotePath, CancellationToken ct = default)
@@ -215,8 +246,28 @@ public sealed class SshClientService : ISshClientService
 
     private void Disconnect()
     {
+        List<IInteractiveShellSession> sessionsToClose;
+        lock (_sessionLock)
+        {
+            sessionsToClose = _interactiveSessions.ToList();
+            _interactiveSessions.Clear();
+        }
+
+        foreach (var session in sessionsToClose)
+        {
+            try { session.Closed -= OnInteractiveSessionClosed; } catch { /* best effort */ }
+            try { session.Dispose(); } catch (Exception) { /* best-effort cleanup */ }
+        }
+
         try { _sftpClient?.Disconnect(); } catch (Exception) { /* best-effort cleanup */ }
         try { _sshClient?.Disconnect(); } catch (Exception) { /* best-effort cleanup */ }
+    }
+
+    private void OnInteractiveSessionClosed(object? sender, EventArgs e)
+    {
+        if (sender is not IInteractiveShellSession session) return;
+        lock (_sessionLock)
+            _interactiveSessions.Remove(session);
     }
 
     private void EnsureConnected()
