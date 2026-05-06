@@ -20,6 +20,8 @@ public sealed class AppPreferencesService
     };
 
     private AppPrefsDto _dto;
+    public bool LastSaveSucceeded { get; private set; } = true;
+    public string? LastSaveError { get; private set; }
 
     public AppPreferencesService()
     {
@@ -39,6 +41,23 @@ public sealed class AppPreferencesService
             _dto = _dto with { AutoConnectOnStartup = value };
             Save();
         }
+    }
+
+    public bool TrySetAutoConnectOnStartup(bool value, out string? error)
+    {
+        if (_dto.AutoConnectOnStartup != value)
+        {
+            _dto = _dto with { AutoConnectOnStartup = value };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
     }
 
     // ── Persistence ──────────────────────────────────────────────────────────
@@ -66,9 +85,13 @@ public sealed class AppPreferencesService
         {
             Directory.CreateDirectory(Path.GetDirectoryName(PrefsPath)!);
             File.WriteAllText(PrefsPath, JsonSerializer.Serialize(_dto, JsonOptions));
+            LastSaveSucceeded = true;
+            LastSaveError = null;
         }
         catch (Exception ex)
         {
+            LastSaveSucceeded = false;
+            LastSaveError = ex.Message;
             System.Diagnostics.Debug.WriteLine($"[AppPreferencesService.Save] {ex.Message}");
         }
     }

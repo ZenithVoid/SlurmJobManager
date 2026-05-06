@@ -62,8 +62,16 @@
                                Cursor="Hand"
                                Padding="0" />
                     </StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.AutoConnectDesc}"
+                     <TextBlock Text="{DynamicResource Settings.AutoConnectDesc}"
+                                Style="{StaticResource MutedTextStyle}"
+                                TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.AutoConnectEffect}"
                                Style="{StaticResource MutedTextStyle}"
+                               Margin="0,6,0,0"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.AutoSaveHint}"
+                               Style="{StaticResource MutedTextStyle}"
+                               Margin="0,2,0,0"
                                TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
@@ -84,8 +92,12 @@
                                 Style="{StaticResource NeutralButtonStyle}"
                                 Padding="12,6" />
                     </StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.ThemeDesc}"
+                     <TextBlock Text="{DynamicResource Settings.ThemeDesc}"
+                                Style="{StaticResource MutedTextStyle}"
+                                TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.ThemeEffect}"
                                Style="{StaticResource MutedTextStyle}"
+                               Margin="0,6,0,0"
                                TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
@@ -96,7 +108,7 @@
                     <TextBlock Text="{DynamicResource Settings.Language}"
                                Style="{StaticResource SectionHeaderStyle}" />
 
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                     <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                         <TextBlock Text="{DynamicResource Settings.LanguageLabel}"
                                    Style="{StaticResource FieldLabelStyle}"
                                    VerticalAlignment="Center"
@@ -109,9 +121,24 @@
                         <Button Content="{DynamicResource Settings.LangEnUS}"
                                 Command="{Binding SwitchLocaleCommand}"
                                 CommandParameter="en-US"
-                                Style="{StaticResource LocaleEnButtonStyle}"
-                                Padding="10,5" />
-                    </StackPanel>
+                                 Style="{StaticResource LocaleEnButtonStyle}"
+                                 Padding="10,5" />
+                     </StackPanel>
+                    <Border Background="{DynamicResource BgPanelBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,8"
+                            Margin="0,0,0,6">
+                        <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
+                                   TextWrapping="Wrap">
+                            <Run Text="{DynamicResource Settings.CurrentLanguage}" />
+                            <Run Text="{Binding CurrentLocaleDisplayName}" />
+                        </TextBlock>
+                    </Border>
+                    <TextBlock Text="{DynamicResource Settings.LanguageEffect}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
@@ -137,9 +164,81 @@
                                     Style="{StaticResource MutedTextStyle}"
                                     VerticalAlignment="Center" />
                     </StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.PollIntervalDesc}"
+                     <TextBlock Text="{DynamicResource Settings.PollIntervalDesc}"
+                                Style="{StaticResource MutedTextStyle}"
+                                TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.PollIntervalEffect}"
+                               Style="{StaticResource MutedTextStyle}"
+                               Margin="0,6,0,0"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.HistoryQueryRangeDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               Margin="0,2,0,0"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── Local Data ─────────────────────────────────────────────── -->
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.LocalData}"
+                               Style="{StaticResource SectionHeaderStyle}" />
+
+                    <TextBlock Text="{DynamicResource Settings.LocalDataRootLabel}"
+                               Style="{StaticResource FieldLabelStyle}" />
+
+                    <TextBox Text="{Binding LocalDataDirectory}"
+                             IsReadOnly="True"
+                             Margin="0,0,0,8"
+                             ToolTip="{Binding LocalDataDirectory}" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="{DynamicResource Settings.OpenDataDirectory}"
+                                Command="{Binding OpenDataDirectoryCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="10,5"
+                                Margin="0,0,6,0" />
+                        <Button Content="{DynamicResource Settings.CopyDataDirectory}"
+                                Command="{Binding CopyDataDirectoryCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="10,5" />
+                    </StackPanel>
+
+                    <TextBlock Text="{DynamicResource Settings.LocalDataDesc}"
                                Style="{StaticResource MutedTextStyle}"
                                TextWrapping="Wrap" />
+                    <TextBlock Margin="0,6,0,0"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               TextWrapping="Wrap"
+                               ToolTip="{Binding TasksDirectory}">
+                        <Run Text="• " />
+                        <Run Text="{DynamicResource Settings.LocalDataTasks}" />
+                        <Run Text="{Binding TasksDirectory}" />
+                    </TextBlock>
+                    <TextBlock Margin="0,2,0,0"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               TextWrapping="Wrap"
+                               ToolTip="{Binding BlueprintsDirectory}">
+                        <Run Text="• " />
+                        <Run Text="{DynamicResource Settings.LocalDataBlueprints}" />
+                        <Run Text="{Binding BlueprintsDirectory}" />
+                    </TextBlock>
+                    <TextBlock Margin="0,2,0,0"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               TextWrapping="Wrap"
+                               ToolTip="{Binding RecentConnectionsFilePath}">
+                        <Run Text="• " />
+                        <Run Text="{DynamicResource Settings.LocalDataRecentConnections}" />
+                        <Run Text="{Binding RecentConnectionsFilePath}" />
+                    </TextBlock>
+                    <TextBlock Margin="0,2,0,0"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               TextWrapping="Wrap"
+                               ToolTip="{Binding PreferencesFilePath}">
+                        <Run Text="• " />
+                        <Run Text="{DynamicResource Settings.LocalDataPreferences}" />
+                        <Run Text="{Binding PreferencesFilePath}" />
+                    </TextBlock>
                 </StackPanel>
             </Border>
 
