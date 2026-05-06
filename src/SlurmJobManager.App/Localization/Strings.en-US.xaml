@@ -172,6 +172,12 @@
     <sys:String x:Key="Task.Title">Task</sys:String>
     <sys:String x:Key="Task.SideTitle">Task Context &amp; Files</sys:String>
     <sys:String x:Key="Task.ContextSummary">TaskId: {0}   Work Dir: {1}   Files Path: {2}   State: {3}</sys:String>
+    <sys:String x:Key="Task.ContextInfoButtonHint">Show task context details</sys:String>
+    <sys:String x:Key="Task.ContextInfoTitle">Task context details</sys:String>
+    <sys:String x:Key="Task.ContextInfoTaskIdLabel">Task ID:</sys:String>
+    <sys:String x:Key="Task.ContextInfoWorkDirLabel">Work Dir:</sys:String>
+    <sys:String x:Key="Task.ContextInfoFilePathLabel">Current File Path:</sys:String>
+    <sys:String x:Key="Task.ContextValueEmpty">Not set</sys:String>
     <sys:String x:Key="Task.RootDirectory">Root Directory (remote)</sys:String>
     <sys:String x:Key="Task.BrowseRemote">Browse remote directory (constrained to user home)</sys:String>
     <sys:String x:Key="Task.TaskId">Task ID</sys:String>

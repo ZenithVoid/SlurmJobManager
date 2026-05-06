@@ -68,24 +68,23 @@ public partial class MainWindow : Window
         scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY);
     }
 
-    // ── B5: Task file list double-click handler ───────────────────────────
-
-    private void TaskFileListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private void TaskFileListItem_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not ListBox lb || DataContext is not MainViewModel vm)
+        if (sender is not ListBoxItem item
+            || item.DataContext is not TaskFileEntry fileEntry
+            || DataContext is not MainViewModel vm)
             return;
 
-        var source = e.OriginalSource as DependencyObject;
-        while (source != null && source is not ListBoxItem)
-            source = VisualTreeHelper.GetParent(source);
-        if (source is not ListBoxItem item || item.DataContext is not TaskFileEntry fileEntry)
+        if (ItemsControl.ItemsControlFromItemContainer(item) is not ListBox listBox)
             return;
 
-        if (vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
-        {
-            lb.SelectedItem = fileEntry;
-            vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
-        }
+        listBox.SelectedItem = fileEntry;
+
+        if (!vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
+            return;
+
+        vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
+        e.Handled = true;
     }
 
     private void ApplyTabFocus(string tabId)

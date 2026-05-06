@@ -172,6 +172,12 @@
     <sys:String x:Key="Task.Title">任务</sys:String>
     <sys:String x:Key="Task.SideTitle">任务上下文与文件</sys:String>
     <sys:String x:Key="Task.ContextSummary">TaskId：{0}   工作目录：{1}   文件路径：{2}   状态：{3}</sys:String>
+    <sys:String x:Key="Task.ContextInfoButtonHint">查看任务上下文详情</sys:String>
+    <sys:String x:Key="Task.ContextInfoTitle">任务上下文详情</sys:String>
+    <sys:String x:Key="Task.ContextInfoTaskIdLabel">Task ID：</sys:String>
+    <sys:String x:Key="Task.ContextInfoWorkDirLabel">工作目录：</sys:String>
+    <sys:String x:Key="Task.ContextInfoFilePathLabel">当前文件路径：</sys:String>
+    <sys:String x:Key="Task.ContextValueEmpty">未设置</sys:String>
     <sys:String x:Key="Task.RootDirectory">根目录（远程）</sys:String>
     <sys:String x:Key="Task.BrowseRemote">浏览远程目录（仅限用户主目录）</sys:String>
     <sys:String x:Key="Task.TaskId">任务 ID</sys:String>

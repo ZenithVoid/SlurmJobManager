@@ -43,7 +43,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     public string FileName   => RemotePath.Contains('/') ? RemotePath[(RemotePath.LastIndexOf('/') + 1)..] : RemotePath;
 
     /// <summary>Formatted window title including the filename, resolved from localization resources at runtime.</summary>
-    public string WindowTitle => $"{L("RemoteEditor.Title")} {FileName} - {DisplayRemotePath}";
+    public string WindowTitle => $"{L("RemoteEditor.Title")} {FileName} - {RemotePath}";
 
     public string Content
     {
