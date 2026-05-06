@@ -212,6 +212,19 @@ public partial class App : Application
 
     private async Task ShutdownAndCloseMainWindowAsync(Window? window)
     {
+        if (window != null)
+        {
+            try
+            {
+                window.IsEnabled = false;
+                window.DataContext = null;
+            }
+            catch
+            {
+                // best effort
+            }
+        }
+
         await ShutdownAsync();
         if (window == null) return;
 

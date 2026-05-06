@@ -75,6 +75,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private bool? _taskIdDirectoryExists;
     private string _taskIdDirectoryStatus = string.Empty;
     private CancellationTokenSource? _taskIdValidationCts;
+    private bool _isDisposed;
 
     // ── Workspace / active task-unit state ──────────────────────────────────
     // Each TaskId has exactly ONE active task unit.  Legacy workspaces with
@@ -443,7 +444,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         _blueprints = blueprints ?? throw new ArgumentNullException(nameof(blueprints));
         _openInConsoleAsync = openInConsoleAsync;
 
-        BrowseRootDirectoryCommand       = new AsyncRelayCommand(BrowseRootDirectoryAsync, () => _ssh.IsConnected);
+        BrowseRootDirectoryCommand       = new AsyncRelayCommand(BrowseRootDirectoryAsync, CanBrowseRootDirectory);
         NewTaskIdCommand                 = new RelayCommand(GenerateNewTaskId, () => _taskIdDirectoryExists != true);
         SaveTaskCommand                  = new AsyncRelayCommand(SaveTaskAsync,     () => !IsBusy);
         LoadTaskCommand                  = new AsyncRelayCommand(LoadTaskAsync,     () => !IsBusy);
@@ -451,15 +452,15 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         SubmitJobCommand                 = new AsyncRelayCommand(SubmitJobAsync,    CanSubmit);
         AddParamCommand                  = new RelayCommand(AddParam);
         RemoveParamCommand               = new RelayCommand<ParameterEntry>(p => { if (p != null) Parameters.Remove(p); });
-        RefreshAppCandidatesCommand      = new AsyncRelayCommand(RefreshAppCandidatesAsync,       () => _ssh.IsConnected && !IsBusy);
+        RefreshAppCandidatesCommand      = new AsyncRelayCommand(RefreshAppCandidatesAsync,       CanRunSshCommand);
         TogglePinAppCommand              = new RelayCommand(TogglePinApp,                          () => !string.IsNullOrWhiteSpace(AppPath));
-        RefreshTemplateCandidatesCommand = new AsyncRelayCommand(RefreshTemplateCandidatesAsync,   () => _ssh.IsConnected && !IsBusy);
+        RefreshTemplateCandidatesCommand = new AsyncRelayCommand(RefreshTemplateCandidatesAsync,   CanRunSshCommand);
         TogglePinTemplateCommand         = new RelayCommand(TogglePinTemplate,                     () => !string.IsNullOrWhiteSpace(SelectedTemplate));
-        RefreshTaskFilesCommand          = new AsyncRelayCommand(RefreshTaskFilesAsync,             () => _ssh.IsConnected && !IsBusy);
+        RefreshTaskFilesCommand          = new AsyncRelayCommand(RefreshTaskFilesAsync,             CanRunSshCommand);
         OpenTaskFileCommand              = new AsyncRelayCommand<TaskFileEntry>(OpenTaskFileAsync);
         DeleteTaskFilesCommand           = new AsyncRelayCommand<IReadOnlyList<TaskFileEntry>>(DeleteTaskFilesAsync);
         ViewTaskFileTimeInfoCommand      = new AsyncRelayCommand<TaskFileEntry>(ViewTaskFileTimeInfoAsync);
-        GoUpTaskFilesPathCommand         = new AsyncRelayCommand(GoUpTaskFilesPathAsync,            () => _ssh.IsConnected && !IsBusy);
+        GoUpTaskFilesPathCommand         = new AsyncRelayCommand(GoUpTaskFilesPathAsync,            CanRunSshCommand);
         OpenInConsoleCommand             = new AsyncRelayCommand(OpenInConsoleAsync,                 () => !IsBusy);
         OpenLastSubmitScriptCommand      = new AsyncRelayCommand(OpenLastSubmitScriptAsync,          () => !IsBusy);
         OpenLastSubmitLogCommand         = new AsyncRelayCommand(OpenLastSubmitLogAsync,             () => !IsBusy);
@@ -631,6 +632,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     public async void OnConnectionEstablished(string hostOrAddress, string username)
     {
+        if (_isDisposed) return;
         try
         {
             _connectedHostOrAddress = hostOrAddress?.Trim() ?? string.Empty;
@@ -647,17 +649,19 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
             await RefreshAppCandidatesAsync(CancellationToken.None);
             await RefreshTemplateCandidatesAsync(CancellationToken.None);
-            CommandManager.InvalidateRequerySuggested();
+            if (!_isDisposed)
+                CommandManager.InvalidateRequerySuggested();
         }
         catch (Exception ex)
         {
-            SetStatus(string.Format(L("Task.InitAfterConnectFailed"), ex.Message), "ErrorTextStyle", localize: false);
+            if (!_isDisposed)
+                SetStatus(string.Format(L("Task.InitAfterConnectFailed"), ex.Message), "ErrorTextStyle", localize: false);
         }
     }
 
     private async Task BrowseRootDirectoryAsync(CancellationToken ct)
     {
-        if (!_ssh.IsConnected)
+        if (!IsSshConnectedSafe())
         {
             SetStatus("Task.RequireConnectionForBrowse", "WarningTextStyle");
             return;
@@ -738,6 +742,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private void ScheduleTaskIdDirectoryCheck()
     {
+        if (_isDisposed) return;
         _taskIdValidationCts?.Cancel();
         _taskIdValidationCts?.Dispose();
         _taskIdValidationCts = null;
@@ -746,7 +751,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         TaskIdDirectoryStatus  = string.Empty;
         CommandManager.InvalidateRequerySuggested();
 
-        if (!_ssh.IsConnected
+        if (!IsSshConnectedSafe()
             || string.IsNullOrWhiteSpace(RootDirectory)
             || string.IsNullOrWhiteSpace(TaskId))
         {
@@ -769,9 +774,11 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             try
             {
                 var exists = await _ssh.RemoteDirectoryExistsAsync(path, cts.Token);
-                Application.Current.Dispatcher.Invoke(() =>
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher == null || dispatcher.HasShutdownStarted) return;
+                dispatcher.Invoke(() =>
                 {
-                    if (cts.IsCancellationRequested) return;
+                    if (cts.IsCancellationRequested || _isDisposed) return;
                     _taskIdDirectoryExists = exists;
                     TaskIdDirectoryStatus  = exists
                         ? L("Task.TaskIdDirExists")
@@ -782,9 +789,11 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                Application.Current.Dispatcher.Invoke(() =>
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher == null || dispatcher.HasShutdownStarted) return;
+                dispatcher.Invoke(() =>
                 {
-                    if (cts.IsCancellationRequested) return;
+                    if (cts.IsCancellationRequested || _isDisposed) return;
                     _taskIdDirectoryExists = null;
                     TaskIdDirectoryStatus  = L("Task.TaskIdDirCheckFailed");
                     System.Diagnostics.Debug.WriteLine($"[TaskIdValidation] {ex.Message}");
@@ -906,19 +915,30 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private void LoadSelectedRemoteTemplate()
     {
-        if (string.IsNullOrEmpty(_selectedTemplate)) return;
+        if (_isDisposed || string.IsNullOrEmpty(_selectedTemplate)) return;
         _ = Task.Run(async () =>
         {
             try
             {
                 var remotePath = $"{RemoteTemplateDir}/{_selectedTemplate}";
                 var content    = await _ssh.ReadTextFileAsync(remotePath);
-                Application.Current.Dispatcher.Invoke(() => TemplateContent = content);
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher == null || dispatcher.HasShutdownStarted) return;
+                dispatcher.Invoke(() =>
+                {
+                    if (_isDisposed) return;
+                    TemplateContent = content;
+                });
             }
             catch (Exception ex)
             {
-                Application.Current.Dispatcher.Invoke(() =>
-                    SetStatus(string.Format(L("Task.LoadTemplateFailed"), ex.Message), "ErrorTextStyle", localize: false));
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher == null || dispatcher.HasShutdownStarted) return;
+                dispatcher.Invoke(() =>
+                {
+                    if (_isDisposed) return;
+                    SetStatus(string.Format(L("Task.LoadTemplateFailed"), ex.Message), "ErrorTextStyle", localize: false);
+                });
             }
         });
     }
@@ -966,7 +986,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        if (!_ssh.IsConnected)
+        if (!IsSshConnectedSafe())
         {
             SetStatus("Task.RequireConnectionForSaveParam", "WarningTextStyle");
             return;
@@ -1017,7 +1037,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     {
         await EnsureHomeDirectoryLoadedAsync(ct);
 
-        if (!_ssh.IsConnected)
+        if (!IsSshConnectedSafe())
         {
             SetStatus("Task.RequireConnection", "WarningTextStyle");
             return;
@@ -1108,7 +1128,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private async Task OpenTaskFileAsync(TaskFileEntry? fileEntry, CancellationToken ct)
     {
         if (fileEntry == null) return;
-        if (!_ssh.IsConnected) { SetStatus("Task.RequireConnection", "WarningTextStyle"); return; }
+        if (!IsSshConnectedSafe()) { SetStatus("Task.RequireConnection", "WarningTextStyle"); return; }
 
         if (fileEntry.IsDirectory)
         {
@@ -1137,7 +1157,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     {
         if (entries == null || entries.Count == 0)
             return;
-        if (!_ssh.IsConnected)
+        if (!IsSshConnectedSafe())
         {
             SetStatus("Task.RequireConnection", "WarningTextStyle");
             return;
@@ -1227,7 +1247,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     {
         if (fileEntry == null)
             return;
-        if (!_ssh.IsConnected)
+        if (!IsSshConnectedSafe())
         {
             SetStatus("Task.RequireConnection", "WarningTextStyle");
             return;
@@ -1296,7 +1316,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     {
         await EnsureHomeDirectoryLoadedAsync(ct);
 
-        if (!_ssh.IsConnected)
+        if (!IsSshConnectedSafe())
         {
             SetStatus("Task.RequireConnection", "WarningTextStyle");
             return;
@@ -1344,7 +1364,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         var win = new CommandBuilderView { DataContext = dlgVm };
         if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
 
-        if (_ssh.IsConnected)
+        if (IsSshConnectedSafe())
             await dlgVm.LoadInitialAsync(ct);
 
         if (win.ShowDialog() == true && dlgVm.Confirmed)
@@ -1937,7 +1957,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         if (string.IsNullOrWhiteSpace(appPath))
             throw new SubmitStageException(SubmitFailureStage.LocalContextMissing, L("Task.RequireAppPath"));
 
-        if (!_ssh.IsConnected)
+        if (!IsSshConnectedSafe())
             throw new SubmitStageException(SubmitFailureStage.SshConnectionFailed, L("Task.RequireConnection"));
 
         var paramFile = GetParameterFilePath(unit, workDir);
@@ -2075,9 +2095,29 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         return string.Empty;
     }
 
+    private bool CanBrowseRootDirectory()
+        => !_isDisposed && IsSshConnectedSafe();
+
+    private bool CanRunSshCommand()
+        => !_isDisposed && !IsBusy && IsSshConnectedSafe();
+
+    private bool IsSshConnectedSafe()
+    {
+        if (_isDisposed) return false;
+        try
+        {
+            return _ssh.IsConnected;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+    }
+
     private bool CanSubmit() =>
-        !IsBusy
-        && _ssh.IsConnected
+        !_isDisposed
+        && !IsBusy
+        && IsSshConnectedSafe()
         && !string.IsNullOrWhiteSpace(RootDirectory)
         && !string.IsNullOrWhiteSpace(TaskId)
         && !string.IsNullOrWhiteSpace(ResolveWorkDirForSubmit(_selectedTaskUnit))
@@ -2112,7 +2152,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private bool ValidateSubmitRequirements()
     {
-        if (!_ssh.IsConnected)
+        if (!IsSshConnectedSafe())
         {
             SetStatus("Task.SubmitValidationNeedConnection", "WarningTextStyle");
             LastSubmitStatusStyleKey = "WarningTextStyle";
@@ -2278,7 +2318,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private async Task<bool> OpenRemoteDiagnosticFileAsync(string remotePath, string missingResourceKey, CancellationToken ct)
     {
-        if (!_ssh.IsConnected)
+        if (!IsSshConnectedSafe())
         {
             SetStatus("Task.RequireConnection", "WarningTextStyle");
             return false;
@@ -2418,7 +2458,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private async Task EnsureHomeDirectoryLoadedAsync(CancellationToken ct)
     {
-        if (!_ssh.IsConnected || !string.IsNullOrWhiteSpace(_homeDirectory))
+        if (!IsSshConnectedSafe() || !string.IsNullOrWhiteSpace(_homeDirectory))
             return;
 
         try
@@ -2572,9 +2612,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        if (_isDisposed) return;
+        _isDisposed = true;
         _taskIdValidationCts?.Cancel();
         _taskIdValidationCts?.Dispose();
         _taskIdValidationCts = null;
+        try { CommandManager.InvalidateRequerySuggested(); } catch { /* best effort */ }
     }
 
     // ── Default sbatch template ──────────────────────────────────────────────
