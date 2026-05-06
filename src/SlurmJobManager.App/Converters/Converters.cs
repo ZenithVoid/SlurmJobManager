@@ -122,8 +122,9 @@ public sealed class ConnectionStatusToBrushConverter : IValueConverter
             {
                 ConnectionStatus.Connected                  => "AccentGreenBrush",
                 ConnectionStatus.Disconnected               => "TextMutedBrush",
-                ConnectionStatus.Error                      => "AccentRedBrush",
-                ConnectionStatus.Connecting or ConnectionStatus.Reconnecting => "AccentYellowBrush",
+                ConnectionStatus.TestSucceeded              => "AccentGreenBrush",
+                ConnectionStatus.Error or ConnectionStatus.ConnectFailed or ConnectionStatus.TestFailed => "AccentRedBrush",
+                ConnectionStatus.Connecting or ConnectionStatus.Reconnecting or ConnectionStatus.Testing => "AccentYellowBrush",
                 _                                           => "TextMutedBrush",
             }
             : "TextMutedBrush";

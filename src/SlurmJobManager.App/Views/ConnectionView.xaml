@@ -12,6 +12,10 @@
 
         <TextBlock Text="{DynamicResource Conn.SshConnection}"
                    Style="{StaticResource SectionHeaderStyle}" />
+        <TextBlock Text="{Binding StatusText}"
+                   Foreground="{DynamicResource TextMutedBrush}"
+                   FontSize="12"
+                   Margin="0,0,0,6" />
 
         <!-- Host + Port -->
         <Grid Margin="0,0,0,6">
@@ -97,6 +101,106 @@
                     Padding="6,4"
                     ToolTip="{DynamicResource Tooltip.LoadProfile}" />
         </Grid>
+
+        <TextBlock Text="{DynamicResource Conn.RecentConnections}"
+                   Style="{StaticResource FieldLabelStyle}"
+                   Margin="0,8,0,4" />
+        <Border BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Background="{DynamicResource BgCrustBrush}">
+            <Grid>
+                <TextBlock Text="{DynamicResource Conn.NoRecentConnections}"
+                           Margin="8"
+                           Foreground="{DynamicResource TextMutedBrush}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding RecentConnections.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <ListBox ItemsSource="{Binding RecentConnections}"
+                         SelectedItem="{Binding SelectedRecentConnection}"
+                         MaxHeight="180"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Foreground="{DynamicResource TextPrimaryBrush}">
+                    <ListBox.Style>
+                        <Style TargetType="ListBox">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding RecentConnections.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ListBox.Style>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="0,0,0,1"
+                                    Padding="8,6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock>
+                                            <TextBlock.Inlines>
+                                                <Run Text="{Binding Username}" />
+                                                <Run Text="@" />
+                                                <Run Text="{Binding Host}" />
+                                                <Run Text=":" />
+                                                <Run Text="{Binding Port}" />
+                                            </TextBlock.Inlines>
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding LastUsedAt, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}"
+                                                   Style="{StaticResource MutedTextStyle}" />
+                                        <TextBlock Text="{Binding Label}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource MutedTextStyle}">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Label}" Value="">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Label}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <Button Grid.Column="1"
+                                            Content="{DynamicResource Conn.UseRecent}"
+                                            Command="{Binding DataContext.ApplyRecentConnectionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource NeutralButtonStyle}"
+                                            Padding="8,4"
+                                            Margin="8,0,4,0"
+                                            VerticalAlignment="Center" />
+                                    <Button Grid.Column="2"
+                                            Content="{DynamicResource Conn.DeleteRecent}"
+                                            Command="{Binding DataContext.DeleteRecentConnectionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource DangerButtonStyle}"
+                                            Padding="8,4"
+                                            VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
 
         <!-- Status message -->
         <TextBlock Text="{Binding StatusMessage}"
