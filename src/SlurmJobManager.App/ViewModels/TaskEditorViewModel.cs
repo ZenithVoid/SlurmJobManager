@@ -1326,7 +1326,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             ActiveTaskUnitName = SelectedTaskUnit?.TaskName,
             ScopeHostOrAddress = scope.HostOrAddress,
             ScopeUsername = scope.Username,
-            ScopeKey = BuildScopeKey(scope),
+            ScopeKey = TaskBlueprintScope.BuildScopeKey(scope.HostOrAddress, scope.Username),
             TaskUnits = workspace.Tasks.Select(CloneTaskUnit).ToList(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -1344,9 +1344,6 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             Username = _connectedUsername,
         };
     }
-
-    private static string BuildScopeKey(TaskBlueprintScope scope)
-        => $"{scope.HostOrAddress.Trim().ToLowerInvariant()}__{scope.Username.Trim().ToLowerInvariant()}";
 
     private List<string> ApplyBlueprintToEditor(TaskBlueprintRecord blueprint, string newTaskId)
     {

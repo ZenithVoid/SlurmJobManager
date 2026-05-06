@@ -47,4 +47,7 @@ public sealed class TaskBlueprintScope
 {
     public string HostOrAddress { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
+
+    public static string BuildScopeKey(string hostOrAddress, string username)
+        => $"{(hostOrAddress ?? string.Empty).Trim().ToLowerInvariant()}__{(username ?? string.Empty).Trim().ToLowerInvariant()}";
 }

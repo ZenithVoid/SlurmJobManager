@@ -153,11 +153,15 @@ public sealed class TaskBlueprintService : ITaskBlueprintService
         var host = scope.HostOrAddress?.Trim() ?? string.Empty;
         var username = scope.Username?.Trim() ?? string.Empty;
         if (host.Length == 0 || username.Length == 0)
-            throw new InvalidOperationException("Blueprint scope host and username are required.");
+        {
+            if (host.Length == 0 && username.Length == 0)
+                throw new InvalidOperationException("Blueprint scope host and username are required.");
+            if (host.Length == 0)
+                throw new InvalidOperationException("Blueprint scope host is required.");
+            throw new InvalidOperationException("Blueprint scope username is required.");
+        }
 
-        var normalizedHost = host.ToLowerInvariant();
-        var normalizedUser = username.ToLowerInvariant();
-        return (host, username, $"{normalizedHost}__{normalizedUser}");
+        return (host, username, TaskBlueprintScope.BuildScopeKey(host, username));
     }
 
     private static string GetBlueprintPath(string scopeDirectory, string blueprintId)
