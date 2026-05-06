@@ -1,5 +1,8 @@
+using System.Diagnostics;
+using System.IO;
 using System.Windows.Input;
 using SlurmJobManager.App.Services;
+using SlurmJobManager.Core.Services;
 using System.Windows;
 
 namespace SlurmJobManager.App.ViewModels;
@@ -35,6 +38,16 @@ public sealed class SettingsViewModel : ViewModelBase
         set
         {
             _prefs.AutoConnectOnStartup = value;
+            if (_prefs.LastSaveSucceeded)
+            {
+                ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+            }
+            else
+            {
+                ToastService.Instance.Error(string.Format(
+                    L("Settings.AutoSaveFailedFormat"),
+                    _prefs.LastSaveError ?? L("Settings.UnknownError")));
+            }
             OnPropertyChanged();
         }
     }
@@ -76,13 +89,65 @@ public sealed class SettingsViewModel : ViewModelBase
     // ── Locale ────────────────────────────────────────────────────────────
 
     public string CurrentLocale => _main.CurrentLocale;
+    public string CurrentLocaleDisplayName => CurrentLocale == "en-US"
+        ? L("Settings.LangEnUS")
+        : L("Settings.LangZhCN");
 
     public ICommand SwitchLocaleCommand => _main.SwitchLocaleCommand;
+    public ICommand OpenDataDirectoryCommand => new RelayCommand(OpenDataDirectory);
+    public ICommand CopyDataDirectoryCommand => new RelayCommand(CopyDataDirectory);
+
+    // ── Local data paths ───────────────────────────────────────────────────
+
+    public string LocalDataDirectory => LocalDataPaths.DataDirectory;
+    public string TasksDirectory => LocalDataPaths.TasksDirectory;
+    public string BlueprintsDirectory => LocalDataPaths.BlueprintsDirectory;
+    public string RecentConnectionsFilePath => LocalDataPaths.RecentConnectionsFilePath;
+    public string PreferencesFilePath => LocalDataPaths.PreferencesFilePath;
 
     internal void NotifyLocaleChanged()
     {
         OnPropertyChanged(nameof(CurrentLocale));
+        OnPropertyChanged(nameof(CurrentLocaleDisplayName));
         OnPropertyChanged(nameof(ThemeLabel));
+    }
+
+    private void OpenDataDirectory()
+    {
+        try
+        {
+            Directory.CreateDirectory(LocalDataDirectory);
+            var started = Process.Start(new ProcessStartInfo
+            {
+                FileName = LocalDataDirectory,
+                UseShellExecute = true,
+            });
+
+            if (started == null)
+            {
+                ToastService.Instance.Error(L("Settings.OpenDataDirFailed"));
+                return;
+            }
+
+            ToastService.Instance.Info(L("Settings.OpenDataDirSuccess"));
+        }
+        catch (Exception ex)
+        {
+            ToastService.Instance.Error(string.Format(L("Settings.OpenDataDirFailedFormat"), ex.Message));
+        }
+    }
+
+    private void CopyDataDirectory()
+    {
+        try
+        {
+            Clipboard.SetText(LocalDataDirectory);
+            ToastService.Instance.Success(L("Settings.CopyDataDirSuccess"));
+        }
+        catch (Exception ex)
+        {
+            ToastService.Instance.Error(string.Format(L("Settings.CopyDataDirFailedFormat"), ex.Message));
+        }
     }
 
     private static string L(string key)

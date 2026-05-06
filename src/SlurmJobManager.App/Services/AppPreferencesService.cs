@@ -20,6 +20,8 @@ public sealed class AppPreferencesService
     };
 
     private AppPrefsDto _dto;
+    public bool LastSaveSucceeded { get; private set; } = true;
+    public string? LastSaveError { get; private set; }
 
     public AppPreferencesService()
     {
@@ -66,9 +68,13 @@ public sealed class AppPreferencesService
         {
             Directory.CreateDirectory(Path.GetDirectoryName(PrefsPath)!);
             File.WriteAllText(PrefsPath, JsonSerializer.Serialize(_dto, JsonOptions));
+            LastSaveSucceeded = true;
+            LastSaveError = null;
         }
         catch (Exception ex)
         {
+            LastSaveSucceeded = false;
+            LastSaveError = ex.Message;
             System.Diagnostics.Debug.WriteLine($"[AppPreferencesService.Save] {ex.Message}");
         }
     }
