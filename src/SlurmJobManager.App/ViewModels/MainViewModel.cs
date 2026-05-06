@@ -157,6 +157,12 @@ public sealed class MainViewModel : ViewModelBase
         Dashboard = new DashboardViewModel(connection, monitor, tab => ActiveTab = tab);
         Settings  = new SettingsViewModel(this, prefs);
         TaskEditor.SetOpenInConsoleHandler(OpenConsoleAtDirectoryAsync);
+        Monitor.SetDiagnosticNavigationHandlers(
+            row => row != null && TaskEditor.LastJobId.HasValue && TaskEditor.LastJobId.Value == row.JobId
+                ? TaskEditor.GetCurrentRemoteWorkDirForDiagnostics()
+                : string.Empty,
+            TaskEditor.OpenRemoteDiagnosticFileFromMonitorAsync,
+            TaskEditor.OpenDirectoryInConsoleFromMonitorAsync);
         StatusMessage = Application.Current?.TryFindResource("Status.Ready") as string ?? "Status.Ready";
     }
 

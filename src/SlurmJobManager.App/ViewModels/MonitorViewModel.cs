@@ -20,6 +20,9 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private readonly AppSettings _settings;
     private readonly IAppLogger? _logger;
     private readonly ConnectionViewModel? _connection;
+    private Func<JobRow?, string?>? _resolveHistoryWorkDir;
+    private Func<string, CancellationToken, Task<bool>>? _openRemoteFileAsync;
+    private Func<string, CancellationToken, Task<bool>>? _openInConsoleAsync;
 
     // Polling infrastructure
     private DispatcherTimer? _pollTimer;
@@ -221,6 +224,9 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     public ICommand RefreshHistoryJobsCommand { get; }
     public ICommand CancelCurrentJobCommand { get; }
     public ICommand ViewHistoryDetailCommand { get; }
+    public ICommand OpenHistoryStdoutCommand { get; }
+    public ICommand OpenHistoryStderrCommand { get; }
+    public ICommand OpenHistoryWorkDirCommand { get; }
 
     public MonitorViewModel(
         ISlurmService slurm,
@@ -244,6 +250,9 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         CancelJobCommand = new AsyncRelayCommand(ct => CancelJobAsync(SelectedCurrentJob, ct), () => SelectedCurrentJob != null);
         CancelCurrentJobCommand = new AsyncRelayCommand<JobRow>((row, ct) => CancelJobAsync(row, ct), row => row is not null);
         ViewHistoryDetailCommand = new RelayCommand<JobRow>(ShowHistoryDetail, row => row is not null);
+        OpenHistoryStdoutCommand = new AsyncRelayCommand<JobRow>((row, ct) => OpenHistoryStdoutAsync(row, ct), row => row is not null);
+        OpenHistoryStderrCommand = new AsyncRelayCommand<JobRow>((row, ct) => OpenHistoryStderrAsync(row, ct), row => row is not null);
+        OpenHistoryWorkDirCommand = new AsyncRelayCommand<JobRow>((row, ct) => OpenHistoryWorkDirAsync(row, ct), row => row is not null);
 
         _elapsedTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _elapsedTimer.Tick += OnElapsedTick;
@@ -500,7 +509,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     {
         if (row is null) return;
 
-        var details = string.Join(Environment.NewLine, new[]
+        var detailLines = new List<string>
         {
             $"{L("Monitor.ColJobId")}: {row.JobId}",
             $"{L("Monitor.ColName")}: {ValueOrDash(row.JobName)}",
@@ -512,9 +521,122 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             $"{L("Monitor.ColStartTime")}: {ValueOrDash(row.StartTimeDisplay)}",
             $"{L("Monitor.ColEndTime")}: {ValueOrDash(row.EndTimeDisplay)}",
             $"{L("Monitor.ColRunTime")}: {ValueOrDash(row.RunTimeDisplay)}",
-        });
+        };
+
+        if (TryBuildHistoryDiagnosticPaths(row, out var workDir, out var stdoutPath, out var stderrPath))
+        {
+            detailLines.Add($"{L("Monitor.DetailTaskWorkDir")}: {workDir}");
+            detailLines.Add($"{L("Monitor.DetailStdoutPath")}: {stdoutPath}");
+            detailLines.Add($"{L("Monitor.DetailStderrPath")}: {stderrPath}");
+        }
+        else
+        {
+            detailLines.Add(L("Monitor.HistoryLogsHint"));
+        }
+
+        var details = string.Join(Environment.NewLine, detailLines);
 
         MessageBox.Show(details, L("Monitor.HistoryDetailTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    public void SetDiagnosticNavigationHandlers(
+        Func<JobRow?, string?>? resolveHistoryWorkDir,
+        Func<string, CancellationToken, Task<bool>>? openRemoteFileAsync,
+        Func<string, CancellationToken, Task<bool>>? openInConsoleAsync)
+    {
+        _resolveHistoryWorkDir = resolveHistoryWorkDir;
+        _openRemoteFileAsync = openRemoteFileAsync;
+        _openInConsoleAsync = openInConsoleAsync;
+    }
+
+    private async Task OpenHistoryStdoutAsync(JobRow? row, CancellationToken ct)
+    {
+        if (row is null) return;
+        if (_openRemoteFileAsync == null)
+        {
+            SetStatus("Monitor.HistoryOpenUnavailable", "WarningTextStyle");
+            return;
+        }
+
+        if (!TryBuildHistoryDiagnosticPaths(row, out _, out var stdoutPath, out _))
+        {
+            SetStatus("Monitor.HistoryNoTaskContext", "WarningTextStyle");
+            return;
+        }
+
+        var opened = await _openRemoteFileAsync(stdoutPath, ct);
+        SetStatus(
+            opened
+                ? string.Format(L("Monitor.HistoryOpenedPath"), stdoutPath)
+                : string.Format(L("Monitor.HistoryOpenPathFailed"), stdoutPath),
+            opened ? "SuccessTextStyle" : "WarningTextStyle",
+            localize: false);
+    }
+
+    private async Task OpenHistoryStderrAsync(JobRow? row, CancellationToken ct)
+    {
+        if (row is null) return;
+        if (_openRemoteFileAsync == null)
+        {
+            SetStatus("Monitor.HistoryOpenUnavailable", "WarningTextStyle");
+            return;
+        }
+
+        if (!TryBuildHistoryDiagnosticPaths(row, out _, out _, out var stderrPath))
+        {
+            SetStatus("Monitor.HistoryNoTaskContext", "WarningTextStyle");
+            return;
+        }
+
+        var opened = await _openRemoteFileAsync(stderrPath, ct);
+        SetStatus(
+            opened
+                ? string.Format(L("Monitor.HistoryOpenedPath"), stderrPath)
+                : string.Format(L("Monitor.HistoryOpenPathFailed"), stderrPath),
+            opened ? "SuccessTextStyle" : "WarningTextStyle",
+            localize: false);
+    }
+
+    private async Task OpenHistoryWorkDirAsync(JobRow? row, CancellationToken ct)
+    {
+        if (row is null) return;
+        if (_openInConsoleAsync == null)
+        {
+            SetStatus("Monitor.HistoryOpenUnavailable", "WarningTextStyle");
+            return;
+        }
+
+        if (!TryBuildHistoryDiagnosticPaths(row, out var workDir, out _, out _))
+        {
+            SetStatus("Monitor.HistoryNoTaskContext", "WarningTextStyle");
+            return;
+        }
+
+        var opened = await _openInConsoleAsync(workDir, ct);
+        SetStatus(
+            opened
+                ? string.Format(L("Monitor.HistoryOpenedPath"), workDir)
+                : string.Format(L("Monitor.HistoryOpenPathFailed"), workDir),
+            opened ? "SuccessTextStyle" : "WarningTextStyle",
+            localize: false);
+    }
+
+    private bool TryBuildHistoryDiagnosticPaths(JobRow? row, out string workDir, out string stdoutPath, out string stderrPath)
+    {
+        workDir = string.Empty;
+        stdoutPath = string.Empty;
+        stderrPath = string.Empty;
+        if (row is null || _resolveHistoryWorkDir == null)
+            return false;
+
+        var resolved = _resolveHistoryWorkDir(row)?.Trim();
+        if (string.IsNullOrWhiteSpace(resolved))
+            return false;
+
+        workDir = resolved.TrimEnd('/');
+        stdoutPath = $"{workDir}/logs/job.out";
+        stderrPath = $"{workDir}/logs/job.err";
+        return true;
     }
 
     private JobRow MapCurrentJob(SlurmJobStatus status)

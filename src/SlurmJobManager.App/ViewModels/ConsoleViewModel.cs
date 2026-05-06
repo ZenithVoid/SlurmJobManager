@@ -50,6 +50,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
             {
                 OnPropertyChanged(nameof(ConsoleHeaderStatusMessage));
                 OnPropertyChanged(nameof(ConsoleHeaderStatusStyleKey));
+                OnPropertyChanged(nameof(ConsoleStatusSummary));
             }
         }
     }
@@ -68,7 +69,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     public string ConsoleHeaderStatusMessage
         => IsConnected
             ? (IsBusy ? L("Console.HeaderBusy") : L("Console.HeaderReady"))
-            : L("Console.NotConnected");
+            : string.Empty;
     public string ConsoleHeaderStatusStyleKey
         => !IsConnected ? "WarningTextStyle" : IsBusy ? "BusyTextStyle" : "SuccessTextStyle";
 
@@ -169,10 +170,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     {
         if (_isDisposed) return false;
         if (!_ssh.IsConnected)
-        {
-            PublishSystemMessage(L("Console.ErrNotConnected"));
             return false;
-        }
 
         if (string.IsNullOrWhiteSpace(remoteDirectory))
         {
@@ -233,10 +231,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         if (_isDisposed) return false;
         if (_shellSession?.IsOpen == true) return true;
         if (!_ssh.IsConnected)
-        {
-            PublishSystemMessage(L("Console.ErrNotConnected"));
             return false;
-        }
 
         if (_isInitializingSession) return false;
         _isInitializingSession = true;

@@ -184,7 +184,7 @@
                     Style="{StaticResource SuccessButtonStyle}"
                     Padding="10,8" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
 
-             <TextBlock Text="{Binding LastJobIdText}"
+              <TextBlock Text="{Binding LastJobIdText}"
                         Style="{StaticResource SuccessTextStyle}"
                         FontSize="12" Margin="0,0,0,4" />
             <Border Style="{StaticResource StatusPanelStyle}">
@@ -192,6 +192,69 @@
                            Style="{Binding EffectiveStatusStyleKey, Converter={StaticResource StyleKeyToStyle}}" />
             </Border>
 
-         </StackPanel>
+            <Border Padding="8" Margin="0,8,0,0">
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource CardStyle}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasLastSubmitDiagnostics}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Task.DiagnosticsTitle}" Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock Text="{Binding LastSubmitStatusMessage}"
+                               Style="{Binding LastSubmitStatusStyleKey, Converter={StaticResource StyleKeyToStyle}}"
+                               TextWrapping="Wrap" Margin="0,0,0,4" />
+                    <TextBlock Text="{Binding LastSubmitStageLabel}" Style="{StaticResource MutedTextStyle}" Margin="0,0,0,4" />
+                    <TextBlock Text="{Binding LastSubmitNextSteps}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,6" />
+
+                    <TextBlock Text="{DynamicResource Task.DiagnosticsLabelSubmitScript}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="{Binding LastSubmitLocalScriptPath}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,2" />
+                    <TextBlock Text="{DynamicResource Task.DiagnosticsLabelSubmitLog}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="{Binding LastSubmitLocalSubmitLogPath}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,2" />
+                    <TextBlock Text="{DynamicResource Task.DiagnosticsLabelStdout}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="{Binding LastSubmitRemoteStdoutPathDisplay}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,2" />
+                    <TextBlock Text="{DynamicResource Task.DiagnosticsLabelStderr}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="{Binding LastSubmitRemoteStderrPathDisplay}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,2" />
+                    <TextBlock Text="{DynamicResource Task.DiagnosticsLabelWorkDir}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="{Binding LastSubmitRemoteWorkDirDisplay}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,6" />
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Content="{DynamicResource Task.DiagnosticsOpenSubmitScript}" Command="{Binding OpenLastSubmitScriptCommand}"
+                                Style="{StaticResource NeutralButtonStyle}" Margin="0,0,4,0" Padding="8,4" />
+                        <Button Grid.Column="1" Content="{DynamicResource Task.DiagnosticsOpenSubmitLog}" Command="{Binding OpenLastSubmitLogCommand}"
+                                Style="{StaticResource NeutralButtonStyle}" Padding="8,4" />
+                    </Grid>
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Content="{DynamicResource Task.DiagnosticsOpenStdout}" Command="{Binding OpenLastStdoutCommand}"
+                                Style="{StaticResource NeutralButtonStyle}" Margin="0,0,4,0" Padding="8,4" />
+                        <Button Grid.Column="1" Content="{DynamicResource Task.DiagnosticsOpenStderr}" Command="{Binding OpenLastStderrCommand}"
+                                Style="{StaticResource NeutralButtonStyle}" Padding="8,4" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Content="{DynamicResource Btn.OpenInTerminal}" Command="{Binding OpenLastSubmitWorkDirInConsoleCommand}"
+                                Style="{StaticResource NeutralButtonStyle}" Margin="0,0,4,0" Padding="8,4" />
+                        <Button Grid.Column="1" Content="{DynamicResource Task.DiagnosticsRefreshTaskFiles}" Command="{Binding RefreshLastSubmitWorkDirFilesCommand}"
+                                Style="{StaticResource AccentButtonStyle}" Padding="8,4" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+          </StackPanel>
     </ScrollViewer>
 </UserControl>

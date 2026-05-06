@@ -245,6 +245,24 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,6">
+                        <Button Content="{DynamicResource Monitor.ActionOpenStdout}"
+                                Command="{Binding OpenHistoryStdoutCommand}"
+                                CommandParameter="{Binding SelectedHistoryJob}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Margin="0,0,4,0"
+                                Padding="8,4" />
+                        <Button Content="{DynamicResource Monitor.ActionOpenStderr}"
+                                Command="{Binding OpenHistoryStderrCommand}"
+                                CommandParameter="{Binding SelectedHistoryJob}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Margin="0,0,4,0"
+                                Padding="8,4" />
+                        <Button Content="{DynamicResource Monitor.ActionOpenTaskDir}"
+                                Command="{Binding OpenHistoryWorkDirCommand}"
+                                CommandParameter="{Binding SelectedHistoryJob}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Margin="0,0,4,0"
+                                Padding="8,4" />
                         <Button Content="{DynamicResource Monitor.BtnRefreshHistory}"
                                 Command="{Binding RefreshHistoryJobsCommand}"
                                 Style="{StaticResource AccentButtonStyle}"

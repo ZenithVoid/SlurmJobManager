@@ -103,6 +103,9 @@
     <sys:String x:Key="Monitor.BtnRefreshHistory">Query History</sys:String>
     <sys:String x:Key="Monitor.ActionCancelJob">Cancel Job</sys:String>
     <sys:String x:Key="Monitor.ActionViewDetail">View Detail</sys:String>
+    <sys:String x:Key="Monitor.ActionOpenStdout">Open stdout</sys:String>
+    <sys:String x:Key="Monitor.ActionOpenStderr">Open stderr</sys:String>
+    <sys:String x:Key="Monitor.ActionOpenTaskDir">Open task dir</sys:String>
 
     <!-- ── Log viewer ───────────────────────────────────────────────────── -->
     <sys:String x:Key="Log.Title">Log Viewer</sys:String>
@@ -266,10 +269,56 @@
     <sys:String x:Key="Task.SubmitPreparing">Preparing submission…</sys:String>
     <sys:String x:Key="Task.SubmitSucceeded">Job submitted! Job ID = {0}</sys:String>
     <sys:String x:Key="Task.SubmitFailed">Submit failed: {0}</sys:String>
+    <sys:String x:Key="Task.SubmitFailedWithStage">Submit failed ({0}): {1}</sys:String>
     <sys:String x:Key="Task.SubmittingUnit">Submitting {0}…</sys:String>
     <sys:String x:Key="Task.RequireRootDirectory">Please configure task root directory first</sys:String>
     <sys:String x:Key="Task.RequireTaskId">Please enter TaskId first</sys:String>
     <sys:String x:Key="Task.RequireAppPath">Please select an application path first</sys:String>
+    <sys:String x:Key="Task.SubmitValidationNeedConnection">Submission requires an active SSH connection. Connect first.</sys:String>
+    <sys:String x:Key="Task.SubmitValidationNeedRemoteWorkDir">Submission requires a valid RemoteWorkDir.</sys:String>
+    <sys:String x:Key="Task.SubmitValidationNeedAppPath">Submission requires AppPath or at least one unit program path.</sys:String>
+    <sys:String x:Key="Task.SubmitValidationReady">Validation passed. You can submit now.</sys:String>
+    <sys:String x:Key="Task.SubmitStageReady">Ready</sys:String>
+    <sys:String x:Key="Task.SubmitStageLocalContext">Local context preparation</sys:String>
+    <sys:String x:Key="Task.SubmitStageRender">sbatch rendering/local script generation</sys:String>
+    <sys:String x:Key="Task.SubmitStageConnection">SSH/remote connection</sys:String>
+    <sys:String x:Key="Task.SubmitStageRemoteDir">Remote work directory preparation</sys:String>
+    <sys:String x:Key="Task.SubmitStageSbatchSubmit">sbatch submission command</sys:String>
+    <sys:String x:Key="Task.SubmitStageParameterPath">Remote parameter file path check</sys:String>
+    <sys:String x:Key="Task.SubmitStageUnknown">Unknown stage</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceReady">You can submit now. After submission, use the diagnostics section to inspect submit.log / job.out / job.err.</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceSuccess">Next: monitor state, open submit.log for submission details, and open stderr first when a run fails.</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceLocalContext">Check TaskId, RootDirectory, RemoteWorkDir, and AppPath. Save the task, then retry.</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceRender">Open the generated submit.sbatch and verify template placeholders and command content.</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceConnection">Reconnect SSH, verify host/user credentials, then retry submit.</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceRemoteDir">Check whether RemoteWorkDir exists and is writable, then refresh task files and retry.</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceSbatch">Open submit.log and stderr, then verify cluster-side sbatch constraints and script syntax.</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceParameterPath">Verify parameter files are saved under RemoteWorkDir/params and paths in the command are correct.</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceUnknown">Open submit.log/stderr and inspect terminal output in the same work directory for further clues.</sys:String>
+    <sys:String x:Key="Task.DiagnosticSubmitSuccess">Last submit succeeded. Job ID = {0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticsTitle">Run Diagnostics</sys:String>
+    <sys:String x:Key="Task.DiagnosticsLabelSubmitScript">Local submit script</sys:String>
+    <sys:String x:Key="Task.DiagnosticsLabelSubmitLog">Local submit log</sys:String>
+    <sys:String x:Key="Task.DiagnosticsLabelStdout">Remote stdout</sys:String>
+    <sys:String x:Key="Task.DiagnosticsLabelStderr">Remote stderr</sys:String>
+    <sys:String x:Key="Task.DiagnosticsLabelWorkDir">Remote work directory</sys:String>
+    <sys:String x:Key="Task.DiagnosticsOpenSubmitScript">Open submit.sbatch</sys:String>
+    <sys:String x:Key="Task.DiagnosticsOpenSubmitLog">Open submit.log</sys:String>
+    <sys:String x:Key="Task.DiagnosticsOpenStdout">Open stdout (job.out)</sys:String>
+    <sys:String x:Key="Task.DiagnosticsOpenStderr">Open stderr (job.err)</sys:String>
+    <sys:String x:Key="Task.DiagnosticsRefreshTaskFiles">Refresh task files</sys:String>
+    <sys:String x:Key="Task.DiagnosticScriptMissing">Submit script is not available yet: {0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticSubmitLogMissing">Submit log is not available yet: {0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticStdoutMissing">stdout file is not available yet: {0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticStderrMissing">stderr file is not available yet: {0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticWorkDirMissing">No diagnostic remote work directory is available yet.</sys:String>
+    <sys:String x:Key="Task.DiagnosticRemoteFileMissing">Remote file is not available yet: {0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticOpenedLocalFile">Opened local file: {0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticOpenLocalFileFailed">Failed to open local file: {0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticOpenRemoteFileFailed">Failed to open remote file: {0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticPathUnknown">unknown path</sys:String>
+    <sys:String x:Key="Task.RemoteWorkDirPrepareFailedNoDetail">Failed to prepare remote work directory.</sys:String>
+    <sys:String x:Key="Task.ParameterFileMissing">Parameter file does not exist on remote path: {0}</sys:String>
     <sys:String x:Key="Task.BlueprintSaveTitle">Save as Task Blueprint</sys:String>
     <sys:String x:Key="Task.BlueprintCreateTitle">Create from Task Blueprint</sys:String>
     <sys:String x:Key="Task.BlueprintName">Blueprint Name</sys:String>
@@ -411,6 +460,7 @@
     <sys:String x:Key="Console.CdNotDirectory">[cd] Target path is not a directory.</sys:String>
     <sys:String x:Key="Console.CdFailedNoDetail">[cd] Failed to change directory.</sys:String>
     <sys:String x:Key="Console.CdFailed">[cd] Failed to change directory: {0}</sys:String>
+    <sys:String x:Key="Console.TerminalDisconnectedPlaceholder">SSH is disconnected. Reconnect first to use the terminal.</sys:String>
 
     <!-- ── Crash dialog ─────────────────────────────────────────────────── -->
     <sys:String x:Key="Crash.Title">Fatal Application Error</sys:String>
@@ -457,6 +507,14 @@
     <sys:String x:Key="Monitor.HistoryDetailTitle">History Job Detail</sys:String>
     <sys:String x:Key="Monitor.DetailExitCode">Exit Code</sys:String>
     <sys:String x:Key="Monitor.DetailReason">Reason</sys:String>
+    <sys:String x:Key="Monitor.DetailTaskWorkDir">Task WorkDir</sys:String>
+    <sys:String x:Key="Monitor.DetailStdoutPath">stdout path</sys:String>
+    <sys:String x:Key="Monitor.DetailStderrPath">stderr path</sys:String>
+    <sys:String x:Key="Monitor.HistoryLogsHint">Log paths could not be resolved from current task context. Open the related task directory and inspect the logs/ folder.</sys:String>
+    <sys:String x:Key="Monitor.HistoryOpenUnavailable">History log quick-open is not configured yet.</sys:String>
+    <sys:String x:Key="Monitor.HistoryNoTaskContext">No matching task context found for this history entry. Open the related task directory logs manually.</sys:String>
+    <sys:String x:Key="Monitor.HistoryOpenedPath">Opened: {0}</sys:String>
+    <sys:String x:Key="Monitor.HistoryOpenPathFailed">Unable to open: {0}</sys:String>
     <sys:String x:Key="Monitor.PollingEvery">Polling every {0}s…</sys:String>
     <sys:String x:Key="Monitor.PollingStopped">Polling stopped.</sys:String>
     <sys:String x:Key="Monitor.PollingHalted">Polling stopped after {0} consecutive failures. Check connection and restart polling manually.</sys:String>

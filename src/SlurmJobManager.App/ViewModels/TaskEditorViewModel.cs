@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -54,6 +55,16 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private string _statusMessage = string.Empty;
     private string _statusStyleKey = "InfoTextStyle";
     private long? _lastJobId;
+    private string _lastSubmitStatusMessage = string.Empty;
+    private string _lastSubmitStatusStyleKey = "InfoTextStyle";
+    private string _lastSubmitStageLabel = string.Empty;
+    private string _lastSubmitNextSteps = string.Empty;
+    private string _lastSubmitUnitName = string.Empty;
+    private string _lastSubmitRemoteWorkDir = string.Empty;
+    private string _lastSubmitRemoteStdoutPath = string.Empty;
+    private string _lastSubmitRemoteStderrPath = string.Empty;
+    private string _lastSubmitLocalScriptPath = string.Empty;
+    private string _lastSubmitLocalSubmitLogPath = string.Empty;
     private TaskFileEntry? _selectedTaskFile;
     private string _currentTaskFilesPath = string.Empty;
 
@@ -199,6 +210,73 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     }
     public long? LastJobId          { get => _lastJobId;         set { SetField(ref _lastJobId, value); OnPropertyChanged(nameof(LastJobIdText)); } }
     public string LastJobIdText     => _lastJobId.HasValue ? string.Format(L("Task.LastJobId"), _lastJobId) : string.Empty;
+    public bool HasLastSubmitDiagnostics
+        => !string.IsNullOrWhiteSpace(_lastSubmitStatusMessage)
+           || !string.IsNullOrWhiteSpace(_lastSubmitLocalScriptPath)
+           || !string.IsNullOrWhiteSpace(_lastSubmitRemoteWorkDir);
+    public string LastSubmitStatusMessage
+    {
+        get => _lastSubmitStatusMessage;
+        private set => SetField(ref _lastSubmitStatusMessage, value);
+    }
+
+    public string LastSubmitStatusStyleKey
+    {
+        get => _lastSubmitStatusStyleKey;
+        private set => SetField(ref _lastSubmitStatusStyleKey, value);
+    }
+
+    public string LastSubmitStageLabel
+    {
+        get => _lastSubmitStageLabel;
+        private set => SetField(ref _lastSubmitStageLabel, value);
+    }
+
+    public string LastSubmitNextSteps
+    {
+        get => _lastSubmitNextSteps;
+        private set => SetField(ref _lastSubmitNextSteps, value);
+    }
+
+    public string LastSubmitUnitName
+    {
+        get => _lastSubmitUnitName;
+        private set => SetField(ref _lastSubmitUnitName, value);
+    }
+
+    public string LastSubmitRemoteWorkDir
+    {
+        get => _lastSubmitRemoteWorkDir;
+        private set => SetField(ref _lastSubmitRemoteWorkDir, value);
+    }
+
+    public string LastSubmitRemoteWorkDirDisplay => CollapseHomePath(_lastSubmitRemoteWorkDir);
+    public string LastSubmitRemoteStdoutPath
+    {
+        get => _lastSubmitRemoteStdoutPath;
+        private set => SetField(ref _lastSubmitRemoteStdoutPath, value);
+    }
+
+    public string LastSubmitRemoteStdoutPathDisplay => CollapseHomePath(_lastSubmitRemoteStdoutPath);
+    public string LastSubmitRemoteStderrPath
+    {
+        get => _lastSubmitRemoteStderrPath;
+        private set => SetField(ref _lastSubmitRemoteStderrPath, value);
+    }
+
+    public string LastSubmitRemoteStderrPathDisplay => CollapseHomePath(_lastSubmitRemoteStderrPath);
+    public string LastSubmitLocalScriptPath
+    {
+        get => _lastSubmitLocalScriptPath;
+        private set => SetField(ref _lastSubmitLocalScriptPath, value);
+    }
+
+    public string LastSubmitLocalSubmitLogPath
+    {
+        get => _lastSubmitLocalSubmitLogPath;
+        private set => SetField(ref _lastSubmitLocalSubmitLogPath, value);
+    }
+
     public string EffectiveStatusStyleKey => IsBusy ? "BusyTextStyle" : StatusStyleKey;
     public string EffectiveStatusMessage
     {
@@ -330,6 +408,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     public ICommand OpenTaskFileCommand               { get; }
     public ICommand GoUpTaskFilesPathCommand          { get; }
     public ICommand OpenInConsoleCommand              { get; }
+    public ICommand OpenLastSubmitScriptCommand       { get; }
+    public ICommand OpenLastSubmitLogCommand          { get; }
+    public ICommand OpenLastStdoutCommand             { get; }
+    public ICommand OpenLastStderrCommand             { get; }
+    public ICommand OpenLastSubmitWorkDirInConsoleCommand { get; }
+    public ICommand RefreshLastSubmitWorkDirFilesCommand { get; }
 
     /// <summary>Opens the Command Builder dialog for the active task unit.</summary>
     public ICommand OpenCommandBuilderCommand { get; }
@@ -367,6 +451,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         OpenTaskFileCommand              = new AsyncRelayCommand<TaskFileEntry>(OpenTaskFileAsync);
         GoUpTaskFilesPathCommand         = new AsyncRelayCommand(GoUpTaskFilesPathAsync,            () => _ssh.IsConnected && !IsBusy);
         OpenInConsoleCommand             = new AsyncRelayCommand(OpenInConsoleAsync,                 () => !IsBusy);
+        OpenLastSubmitScriptCommand      = new AsyncRelayCommand(OpenLastSubmitScriptAsync,          () => !IsBusy);
+        OpenLastSubmitLogCommand         = new AsyncRelayCommand(OpenLastSubmitLogAsync,             () => !IsBusy);
+        OpenLastStdoutCommand            = new AsyncRelayCommand(OpenLastStdoutAsync,                () => !IsBusy);
+        OpenLastStderrCommand            = new AsyncRelayCommand(OpenLastStderrAsync,                () => !IsBusy);
+        OpenLastSubmitWorkDirInConsoleCommand = new AsyncRelayCommand(OpenLastSubmitWorkDirInConsoleAsync, () => !IsBusy);
+        RefreshLastSubmitWorkDirFilesCommand = new AsyncRelayCommand(RefreshLastSubmitWorkDirFilesAsync, () => !IsBusy);
         OpenCommandBuilderCommand        = new AsyncRelayCommand(OpenCommandBuilderAsync,           () => !IsBusy);
         SaveAsBlueprintCommand           = new AsyncRelayCommand(SaveAsBlueprintAsync,              () => !IsBusy);
         CreateFromBlueprintCommand       = new AsyncRelayCommand(CreateFromBlueprintAsync,          () => !IsBusy);
@@ -1600,56 +1690,169 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         SetStatus("Task.SubmitPreparing", "InfoTextStyle");
         try
         {
+            PrepareLastSubmitPaths(_selectedTaskUnit);
             var jobId = await SubmitUnitAsync(_selectedTaskUnit, ct);
             LastJobId = jobId;
+            LastSubmitStatusStyleKey = "SuccessTextStyle";
+            LastSubmitStatusMessage = string.Format(L("Task.DiagnosticSubmitSuccess"), jobId);
+            LastSubmitStageLabel = L("Task.SubmitStageSbatchSubmit");
+            LastSubmitNextSteps = L("Task.SubmitAdviceSuccess");
             SetStatus(string.Format(L("Task.SubmitSucceeded"), jobId), "SuccessTextStyle", localize: false);
         }
-        catch (Exception ex) { SetStatus(string.Format(L("Task.SubmitFailed"), ex.Message), "ErrorTextStyle", localize: false); }
+        catch (SubmitStageException ex)
+        {
+            LastSubmitStatusStyleKey = "ErrorTextStyle";
+            LastSubmitStageLabel = StageToLabel(ex.Stage);
+            LastSubmitStatusMessage = string.Format(
+                L("Task.SubmitFailedWithStage"),
+                LastSubmitStageLabel,
+                ex.Message);
+            LastSubmitNextSteps = BuildSubmitNextSteps(ex.Stage);
+            SetStatus(LastSubmitStatusMessage, "ErrorTextStyle", localize: false);
+        }
+        catch (Exception ex)
+        {
+            LastSubmitStatusStyleKey = "ErrorTextStyle";
+            LastSubmitStageLabel = StageToLabel(SubmitFailureStage.Unknown);
+            LastSubmitStatusMessage = string.Format(
+                L("Task.SubmitFailedWithStage"),
+                LastSubmitStageLabel,
+                ex.Message);
+            LastSubmitNextSteps = BuildSubmitNextSteps(SubmitFailureStage.Unknown);
+            SetStatus(LastSubmitStatusMessage, "ErrorTextStyle", localize: false);
+        }
         finally { IsBusy = false; }
+
+        OnPropertyChanged(nameof(HasLastSubmitDiagnostics));
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private async Task<long> SubmitUnitAsync(TaskUnitViewModel unit, CancellationToken ct)
     {
         var workDir = ResolveWorkDirForSubmit(unit);
         if (string.IsNullOrWhiteSpace(workDir))
-            throw new InvalidOperationException(L("Task.InvalidRemoteWorkDir"));
+            throw new SubmitStageException(SubmitFailureStage.LocalContextMissing, L("Task.InvalidRemoteWorkDir"));
 
         var appPath = unit.Programs.FirstOrDefault()?.ProgramPath ?? AppPath;
+        if (string.IsNullOrWhiteSpace(appPath))
+            throw new SubmitStageException(SubmitFailureStage.LocalContextMissing, L("Task.RequireAppPath"));
+
+        if (!_ssh.IsConnected)
+            throw new SubmitStageException(SubmitFailureStage.SshConnectionFailed, L("Task.RequireConnection"));
 
         var paramFile = GetParameterFilePath(unit, workDir);
+        var normalizedWorkDir = NormalizeRemotePath(workDir);
+        var stdoutPath = $"{normalizedWorkDir.TrimEnd('/')}/logs/job.out";
+        var stderrPath = $"{normalizedWorkDir.TrimEnd('/')}/logs/job.err";
 
         var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["JOB_NAME"]    = !string.IsNullOrEmpty(unit.TaskName) ? unit.TaskName : TaskId,
-            ["WORK_DIR"]    = workDir,
+            ["WORK_DIR"]    = normalizedWorkDir,
             ["APP_PATH"]    = appPath,
             ["PARAM_FILE"]  = paramFile,
-            ["STDOUT_FILE"] = $"{workDir}/logs/job.out",
-            ["STDERR_FILE"] = $"{workDir}/logs/job.err",
+            ["STDOUT_FILE"] = stdoutPath,
+            ["STDERR_FILE"] = stderrPath,
         };
         foreach (var (k, v) in unit.ToModel().ExtraParameters)
             parameters[k] = v;
 
         var template  = !string.IsNullOrEmpty(unit.SbatchTemplate) ? unit.SbatchTemplate : SbatchTemplate;
-        var rendered  = new SbatchTemplateRenderer(template).Render(parameters);
+        string rendered;
+        try
+        {
+            rendered = new SbatchTemplateRenderer(template).Render(parameters);
+        }
+        catch (Exception ex)
+        {
+            throw new SubmitStageException(SubmitFailureStage.ScriptRenderFailed, ex.Message, ex);
+        }
 
         var localTaskDir = GetLocalTaskDir();
-        var scriptsDir   = Path.Combine(localTaskDir, unit.TaskName, "scripts");
-        Directory.CreateDirectory(scriptsDir);
-        Directory.CreateDirectory(Path.Combine(localTaskDir, unit.TaskName, "logs"));
+        var unitNameForPath = ResolveUnitNameForPath(unit);
+        var scriptsDir   = Path.Combine(localTaskDir, unitNameForPath, "scripts");
+        var localLogsDir = Path.Combine(localTaskDir, unitNameForPath, "logs");
+        try
+        {
+            Directory.CreateDirectory(scriptsDir);
+            Directory.CreateDirectory(localLogsDir);
+        }
+        catch (Exception ex)
+        {
+            throw new SubmitStageException(SubmitFailureStage.LocalContextMissing, ex.Message, ex);
+        }
 
         var localScript = Path.Combine(scriptsDir, "submit.sbatch");
-        await File.WriteAllTextAsync(localScript, rendered, ct);
+        try
+        {
+            await File.WriteAllTextAsync(localScript, rendered, ct);
+        }
+        catch (Exception ex)
+        {
+            throw new SubmitStageException(SubmitFailureStage.LocalContextMissing, ex.Message, ex);
+        }
 
         SetStatus(string.Format(L("Task.SubmittingUnit"), unit.TaskName), "InfoTextStyle", localize: false);
-        var jobId = await _slurm.SubmitSbatchAsync(localScript, workDir, ct);
+        try
+        {
+            var escapedWorkDir = EscapeShellArg(normalizedWorkDir);
+            var (_, dirErr, dirExit) = await _ssh.ExecuteAsync($"mkdir -p {escapedWorkDir}/logs", ct);
+            if (dirExit != 0)
+            {
+                var detail = string.IsNullOrWhiteSpace(dirErr) ? L("Task.RemoteWorkDirPrepareFailedNoDetail") : dirErr.Trim();
+                throw new SubmitStageException(SubmitFailureStage.RemoteWorkDirFailed, detail);
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new SubmitStageException(SubmitFailureStage.RemoteWorkDirFailed, ex.Message, ex);
+        }
+
+        if (!string.IsNullOrWhiteSpace(paramFile))
+        {
+            try
+            {
+                if (!await _ssh.RemoteFileExistsAsync(paramFile, ct))
+                    throw new SubmitStageException(SubmitFailureStage.ParameterPathFailed, string.Format(L("Task.ParameterFileMissing"), paramFile));
+            }
+            catch (Exception ex)
+            {
+                throw new SubmitStageException(SubmitFailureStage.ParameterPathFailed, ex.Message, ex);
+            }
+        }
+
+        long jobId;
+        try
+        {
+            jobId = await _slurm.SubmitSbatchAsync(localScript, normalizedWorkDir, ct);
+        }
+        catch (Exception ex) when (IsConnectionRelated(ex))
+        {
+            throw new SubmitStageException(SubmitFailureStage.SshConnectionFailed, ex.Message, ex);
+        }
+        catch (Exception ex)
+        {
+            throw new SubmitStageException(SubmitFailureStage.SbatchSubmitFailed, ex.Message, ex);
+        }
 
         unit.SlurmJobId = jobId;
 
+        var localSubmitLog = Path.Combine(localLogsDir, "submit.log");
         await File.WriteAllTextAsync(
-            Path.Combine(localTaskDir, unit.TaskName, "logs", "submit.log"),
+            localSubmitLog,
             $"Submitted at {DateTime.UtcNow:u}\nJob ID: {jobId}\n",
             ct);
+
+        LastSubmitUnitName = unit.TaskName;
+        LastSubmitRemoteWorkDir = normalizedWorkDir;
+        LastSubmitRemoteStdoutPath = stdoutPath;
+        LastSubmitRemoteStderrPath = stderrPath;
+        LastSubmitLocalScriptPath = localScript;
+        LastSubmitLocalSubmitLogPath = localSubmitLog;
+        OnPropertyChanged(nameof(HasLastSubmitDiagnostics));
+        OnPropertyChanged(nameof(LastSubmitRemoteWorkDirDisplay));
+        OnPropertyChanged(nameof(LastSubmitRemoteStdoutPathDisplay));
+        OnPropertyChanged(nameof(LastSubmitRemoteStderrPathDisplay));
 
         return jobId;
     }
@@ -1683,26 +1886,272 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private bool ValidateRootAndId()
     {
-        if (string.IsNullOrWhiteSpace(RootDirectory)) { SetStatus("Task.RequireRootDirectory", "WarningTextStyle"); return false; }
-        if (string.IsNullOrWhiteSpace(TaskId))         { SetStatus("Task.RequireTaskId", "WarningTextStyle");    return false; }
+        if (string.IsNullOrWhiteSpace(RootDirectory))
+        {
+            SetStatus("Task.RequireRootDirectory", "WarningTextStyle");
+            LastSubmitStatusStyleKey = "WarningTextStyle";
+            LastSubmitStatusMessage = L("Task.RequireRootDirectory");
+            LastSubmitStageLabel = StageToLabel(SubmitFailureStage.LocalContextMissing);
+            LastSubmitNextSteps = BuildSubmitNextSteps(SubmitFailureStage.LocalContextMissing);
+            OnPropertyChanged(nameof(HasLastSubmitDiagnostics));
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(TaskId))
+        {
+            SetStatus("Task.RequireTaskId", "WarningTextStyle");
+            LastSubmitStatusStyleKey = "WarningTextStyle";
+            LastSubmitStatusMessage = L("Task.RequireTaskId");
+            LastSubmitStageLabel = StageToLabel(SubmitFailureStage.LocalContextMissing);
+            LastSubmitNextSteps = BuildSubmitNextSteps(SubmitFailureStage.LocalContextMissing);
+            OnPropertyChanged(nameof(HasLastSubmitDiagnostics));
+            return false;
+        }
         return true;
     }
 
     private bool ValidateSubmitRequirements()
     {
+        if (!_ssh.IsConnected)
+        {
+            SetStatus("Task.SubmitValidationNeedConnection", "WarningTextStyle");
+            LastSubmitStatusStyleKey = "WarningTextStyle";
+            LastSubmitStatusMessage = L("Task.SubmitValidationNeedConnection");
+            LastSubmitStageLabel = StageToLabel(SubmitFailureStage.SshConnectionFailed);
+            LastSubmitNextSteps = BuildSubmitNextSteps(SubmitFailureStage.SshConnectionFailed);
+            OnPropertyChanged(nameof(HasLastSubmitDiagnostics));
+            return false;
+        }
         if (!ValidateRootAndId()) return false;
         var workDir = ResolveWorkDirForSubmit(_selectedTaskUnit);
         if (string.IsNullOrWhiteSpace(workDir))
         {
-            SetStatus("Task.InvalidRemoteWorkDir", "WarningTextStyle");
+            SetStatus("Task.SubmitValidationNeedRemoteWorkDir", "WarningTextStyle");
+            LastSubmitStatusStyleKey = "WarningTextStyle";
+            LastSubmitStatusMessage = L("Task.SubmitValidationNeedRemoteWorkDir");
+            LastSubmitStageLabel = StageToLabel(SubmitFailureStage.LocalContextMissing);
+            LastSubmitNextSteps = BuildSubmitNextSteps(SubmitFailureStage.LocalContextMissing);
+            OnPropertyChanged(nameof(HasLastSubmitDiagnostics));
             return false;
         }
 
         var hasApp = !string.IsNullOrWhiteSpace(AppPath)
             || (_selectedTaskUnit?.Programs.Any(p => !string.IsNullOrWhiteSpace(p.ProgramPath)) == true);
-        if (!hasApp) { SetStatus("Task.RequireAppPath", "WarningTextStyle"); return false; }
+        if (!hasApp)
+        {
+            SetStatus("Task.SubmitValidationNeedAppPath", "WarningTextStyle");
+            LastSubmitStatusStyleKey = "WarningTextStyle";
+            LastSubmitStatusMessage = L("Task.SubmitValidationNeedAppPath");
+            LastSubmitStageLabel = StageToLabel(SubmitFailureStage.LocalContextMissing);
+            LastSubmitNextSteps = BuildSubmitNextSteps(SubmitFailureStage.LocalContextMissing);
+            OnPropertyChanged(nameof(HasLastSubmitDiagnostics));
+            return false;
+        }
+
+        PrepareLastSubmitPaths(_selectedTaskUnit);
+        LastSubmitStatusStyleKey = "InfoTextStyle";
+        LastSubmitStatusMessage = L("Task.SubmitValidationReady");
+        LastSubmitStageLabel = L("Task.SubmitStageReady");
+        LastSubmitNextSteps = L("Task.SubmitAdviceReady");
+        OnPropertyChanged(nameof(HasLastSubmitDiagnostics));
         return true;
     }
+
+    private void PrepareLastSubmitPaths(TaskUnitViewModel? unit)
+    {
+        var unitName = ResolveUnitNameForPath(unit);
+        var localTaskDir = GetLocalTaskDir();
+        var normalizedWorkDir = NormalizeRemotePath(ResolveWorkDirForSubmit(unit));
+        LastSubmitUnitName = unit?.TaskName ?? string.Empty;
+        LastSubmitRemoteWorkDir = normalizedWorkDir;
+        LastSubmitRemoteStdoutPath = string.IsNullOrWhiteSpace(normalizedWorkDir) ? string.Empty : $"{normalizedWorkDir.TrimEnd('/')}/logs/job.out";
+        LastSubmitRemoteStderrPath = string.IsNullOrWhiteSpace(normalizedWorkDir) ? string.Empty : $"{normalizedWorkDir.TrimEnd('/')}/logs/job.err";
+        LastSubmitLocalScriptPath = Path.Combine(localTaskDir, unitName, "scripts", "submit.sbatch");
+        LastSubmitLocalSubmitLogPath = Path.Combine(localTaskDir, unitName, "logs", "submit.log");
+        OnPropertyChanged(nameof(LastSubmitRemoteWorkDirDisplay));
+        OnPropertyChanged(nameof(LastSubmitRemoteStdoutPathDisplay));
+        OnPropertyChanged(nameof(LastSubmitRemoteStderrPathDisplay));
+    }
+
+    private async Task OpenLastSubmitScriptAsync(CancellationToken ct)
+        => await OpenLocalDiagnosticFileAsync(LastSubmitLocalScriptPath, "Task.DiagnosticScriptMissing", ct);
+
+    private async Task OpenLastSubmitLogAsync(CancellationToken ct)
+        => await OpenLocalDiagnosticFileAsync(LastSubmitLocalSubmitLogPath, "Task.DiagnosticSubmitLogMissing", ct);
+
+    private async Task OpenLastStdoutAsync(CancellationToken ct)
+    {
+        await OpenRemoteDiagnosticFileAsync(LastSubmitRemoteStdoutPath, "Task.DiagnosticStdoutMissing", ct);
+    }
+
+    private async Task OpenLastStderrAsync(CancellationToken ct)
+    {
+        await OpenRemoteDiagnosticFileAsync(LastSubmitRemoteStderrPath, "Task.DiagnosticStderrMissing", ct);
+    }
+
+    private async Task OpenLastSubmitWorkDirInConsoleAsync(CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(LastSubmitRemoteWorkDir))
+        {
+            SetStatus("Task.DiagnosticWorkDirMissing", "WarningTextStyle");
+            return;
+        }
+
+        if (_openInConsoleAsync == null)
+        {
+            SetStatus("Task.OpenInTerminalUnavailable", "WarningTextStyle");
+            return;
+        }
+
+        var opened = await _openInConsoleAsync(LastSubmitRemoteWorkDir);
+        SetStatus(
+            opened
+                ? string.Format(L("Task.OpenInTerminalSuccess"), CollapseHomePath(LastSubmitRemoteWorkDir))
+                : string.Format(L("Task.OpenInTerminalFailed"), CollapseHomePath(LastSubmitRemoteWorkDir)),
+            opened ? "SuccessTextStyle" : "WarningTextStyle",
+            localize: false);
+    }
+
+    private async Task RefreshLastSubmitWorkDirFilesAsync(CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(LastSubmitRemoteWorkDir))
+        {
+            SetStatus("Task.DiagnosticWorkDirMissing", "WarningTextStyle");
+            return;
+        }
+
+        CurrentTaskFilesPath = LastSubmitRemoteWorkDir;
+        await RefreshTaskFilesAsync(ct);
+    }
+
+    public string GetCurrentRemoteWorkDirForDiagnostics()
+        => ResolveWorkDirForSubmit(_selectedTaskUnit);
+
+    public async Task<bool> OpenRemoteDiagnosticFileFromMonitorAsync(string remotePath, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(remotePath))
+            return false;
+
+        return await OpenRemoteDiagnosticFileAsync(remotePath, "Task.DiagnosticRemoteFileMissing", ct);
+    }
+
+    public async Task<bool> OpenDirectoryInConsoleFromMonitorAsync(string remotePath, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(remotePath) || _openInConsoleAsync == null)
+            return false;
+
+        var opened = await _openInConsoleAsync(remotePath);
+        if (!opened)
+            SetStatus(string.Format(L("Task.OpenInTerminalFailed"), CollapseHomePath(remotePath)), "WarningTextStyle", localize: false);
+        return opened;
+    }
+
+    private async Task OpenLocalDiagnosticFileAsync(string path, string missingResourceKey, CancellationToken ct)
+    {
+        await Task.Yield();
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            SetStatus(string.Format(L(missingResourceKey), L("Task.DiagnosticPathUnknown")), "WarningTextStyle", localize: false);
+            return;
+        }
+
+        if (!File.Exists(path))
+        {
+            SetStatus(string.Format(L(missingResourceKey), path), "WarningTextStyle", localize: false);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true,
+            });
+            SetStatus(string.Format(L("Task.DiagnosticOpenedLocalFile"), path), "SuccessTextStyle", localize: false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.DiagnosticOpenLocalFileFailed"), ex.Message), "ErrorTextStyle", localize: false);
+        }
+    }
+
+    private async Task<bool> OpenRemoteDiagnosticFileAsync(string remotePath, string missingResourceKey, CancellationToken ct)
+    {
+        if (!_ssh.IsConnected)
+        {
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(remotePath))
+        {
+            SetStatus(string.Format(L(missingResourceKey), L("Task.DiagnosticPathUnknown")), "WarningTextStyle", localize: false);
+            return false;
+        }
+
+        try
+        {
+            if (!await _ssh.RemoteFileExistsAsync(remotePath, ct))
+            {
+                SetStatus(string.Format(L(missingResourceKey), CollapseHomePath(remotePath)), "WarningTextStyle", localize: false);
+                return false;
+            }
+
+            var vm = new RemoteFileEditorViewModel(_ssh, remotePath, _homeDirectory);
+            var win = new RemoteFileEditorView { DataContext = vm };
+            if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
+            await vm.LoadAsync(ct);
+            if (vm.IsBinaryFile)
+            {
+                StatusMessage = vm.StatusMessage;
+                StatusStyleKey = vm.StatusStyleKey;
+                return false;
+            }
+
+            win.ShowDialog();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.DiagnosticOpenRemoteFileFailed"), ex.Message), "ErrorTextStyle", localize: false);
+            return false;
+        }
+    }
+
+    private static string ResolveUnitNameForPath(TaskUnitViewModel? unit)
+    {
+        var name = unit?.TaskName?.Trim();
+        return string.IsNullOrWhiteSpace(name) ? "default" : name;
+    }
+
+    private static bool IsConnectionRelated(Exception ex)
+        => ex is TimeoutException
+           || ex is OperationCanceledException
+           || ex is System.Net.Sockets.SocketException
+           || ex is Renci.SshNet.Common.SshAuthenticationException;
+
+    private string StageToLabel(SubmitFailureStage stage) => stage switch
+    {
+        SubmitFailureStage.LocalContextMissing => L("Task.SubmitStageLocalContext"),
+        SubmitFailureStage.ScriptRenderFailed => L("Task.SubmitStageRender"),
+        SubmitFailureStage.SshConnectionFailed => L("Task.SubmitStageConnection"),
+        SubmitFailureStage.RemoteWorkDirFailed => L("Task.SubmitStageRemoteDir"),
+        SubmitFailureStage.SbatchSubmitFailed => L("Task.SubmitStageSbatchSubmit"),
+        SubmitFailureStage.ParameterPathFailed => L("Task.SubmitStageParameterPath"),
+        _ => L("Task.SubmitStageUnknown"),
+    };
+
+    private string BuildSubmitNextSteps(SubmitFailureStage stage) => stage switch
+    {
+        SubmitFailureStage.LocalContextMissing => L("Task.SubmitAdviceLocalContext"),
+        SubmitFailureStage.ScriptRenderFailed => L("Task.SubmitAdviceRender"),
+        SubmitFailureStage.SshConnectionFailed => L("Task.SubmitAdviceConnection"),
+        SubmitFailureStage.RemoteWorkDirFailed => L("Task.SubmitAdviceRemoteDir"),
+        SubmitFailureStage.SbatchSubmitFailed => L("Task.SubmitAdviceSbatch"),
+        SubmitFailureStage.ParameterPathFailed => L("Task.SubmitAdviceParameterPath"),
+        _ => L("Task.SubmitAdviceUnknown"),
+    };
 
     private static string ResolveParameterPath(string? rawPath, string workDir)
     {
@@ -1722,6 +2171,28 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         if (!string.IsNullOrWhiteSpace(unit.RemoteWorkDirectory))
             return unit.RemoteWorkDirectory.Trim();
         return string.Empty;
+    }
+
+    private enum SubmitFailureStage
+    {
+        LocalContextMissing,
+        ScriptRenderFailed,
+        SshConnectionFailed,
+        RemoteWorkDirFailed,
+        SbatchSubmitFailed,
+        ParameterPathFailed,
+        Unknown,
+    }
+
+    private sealed class SubmitStageException : Exception
+    {
+        public SubmitStageException(SubmitFailureStage stage, string message, Exception? inner = null)
+            : base(message, inner)
+        {
+            Stage = stage;
+        }
+
+        public SubmitFailureStage Stage { get; }
     }
 
     private string ResolveWorkDirWithFallback(TaskUnitViewModel? unit, string fallback)
@@ -1784,6 +2255,9 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(RemoteWorkDirDisplay));
         OnPropertyChanged(nameof(CurrentTaskFilesPathDisplay));
         OnPropertyChanged(nameof(TaskFilesRootPathDisplay));
+        OnPropertyChanged(nameof(LastSubmitRemoteWorkDirDisplay));
+        OnPropertyChanged(nameof(LastSubmitRemoteStdoutPathDisplay));
+        OnPropertyChanged(nameof(LastSubmitRemoteStderrPathDisplay));
     }
 
     private void SetStatus(string messageOrKey, string styleKey, bool localize = true)
@@ -1798,6 +2272,9 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(TaskIdDirectoryStatus));
         OnPropertyChanged(nameof(TaskContextSummary));
         OnPropertyChanged(nameof(EffectiveStatusMessage));
+        OnPropertyChanged(nameof(LastSubmitRemoteWorkDirDisplay));
+        OnPropertyChanged(nameof(LastSubmitRemoteStdoutPathDisplay));
+        OnPropertyChanged(nameof(LastSubmitRemoteStderrPathDisplay));
     }
 
     private TaskRecord BuildTaskRecord() => new()
