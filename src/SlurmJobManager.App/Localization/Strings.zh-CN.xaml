@@ -103,6 +103,9 @@
     <sys:String x:Key="Monitor.BtnRefreshHistory">查询历史</sys:String>
     <sys:String x:Key="Monitor.ActionCancelJob">取消任务</sys:String>
     <sys:String x:Key="Monitor.ActionViewDetail">查看详情</sys:String>
+    <sys:String x:Key="Monitor.ActionOpenStdout">打开 stdout</sys:String>
+    <sys:String x:Key="Monitor.ActionOpenStderr">打开 stderr</sys:String>
+    <sys:String x:Key="Monitor.ActionOpenTaskDir">打开任务目录</sys:String>
 
     <!-- ── 日志视图 ─────────────────────────────────────────────────────── -->
     <sys:String x:Key="Log.Title">日志查看器</sys:String>
@@ -266,10 +269,56 @@
     <sys:String x:Key="Task.SubmitPreparing">准备提交…</sys:String>
     <sys:String x:Key="Task.SubmitSucceeded">作业已提交！Job ID = {0}</sys:String>
     <sys:String x:Key="Task.SubmitFailed">提交失败：{0}</sys:String>
+    <sys:String x:Key="Task.SubmitFailedWithStage">提交失败（{0}）：{1}</sys:String>
     <sys:String x:Key="Task.SubmittingUnit">提交 {0}…</sys:String>
     <sys:String x:Key="Task.RequireRootDirectory">请先配置任务根目录</sys:String>
     <sys:String x:Key="Task.RequireTaskId">请先填写 TaskId</sys:String>
     <sys:String x:Key="Task.RequireAppPath">请先选择应用程序路径</sys:String>
+    <sys:String x:Key="Task.SubmitValidationNeedConnection">提交前需要已建立 SSH 连接，请先连接。</sys:String>
+    <sys:String x:Key="Task.SubmitValidationNeedRemoteWorkDir">提交前需要有效的 RemoteWorkDir。</sys:String>
+    <sys:String x:Key="Task.SubmitValidationNeedAppPath">提交前需要 AppPath 或任务单元中的程序路径。</sys:String>
+    <sys:String x:Key="Task.SubmitValidationReady">提交前校验通过，可以继续提交。</sys:String>
+    <sys:String x:Key="Task.SubmitStageReady">就绪</sys:String>
+    <sys:String x:Key="Task.SubmitStageLocalContext">本地任务上下文准备</sys:String>
+    <sys:String x:Key="Task.SubmitStageRender">sbatch 模板渲染/本地脚本生成</sys:String>
+    <sys:String x:Key="Task.SubmitStageConnection">SSH/远程连接</sys:String>
+    <sys:String x:Key="Task.SubmitStageRemoteDir">远程工作目录准备</sys:String>
+    <sys:String x:Key="Task.SubmitStageSbatchSubmit">sbatch 提交命令执行</sys:String>
+    <sys:String x:Key="Task.SubmitStageParameterPath">远程参数文件路径检查</sys:String>
+    <sys:String x:Key="Task.SubmitStageUnknown">未知阶段</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceReady">可直接提交。提交后可在“运行诊断”区域快速查看 submit.log / job.out / job.err。</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceSuccess">下一步建议：先查看提交日志，再看监控状态；运行失败时优先打开 stderr。</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceLocalContext">请检查 TaskId、RootDirectory、RemoteWorkDir 和 AppPath，保存任务后重试。</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceRender">请打开生成的 submit.sbatch，检查模板占位符和命令内容是否正确。</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceConnection">请重新建立 SSH 连接并确认主机/账号信息后重试提交。</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceRemoteDir">请确认 RemoteWorkDir 存在且可写，刷新目录后再提交。</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceSbatch">请查看 submit.log 和 stderr，并检查集群侧 sbatch 约束与脚本语法。</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceParameterPath">请确认参数文件已保存到 RemoteWorkDir/params，并核对命令中的参数文件路径。</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceUnknown">请打开 submit.log/stderr，并在终端中进入当前目录继续排查。</sys:String>
+    <sys:String x:Key="Task.DiagnosticSubmitSuccess">最近一次提交成功。Job ID = {0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticsTitle">运行诊断</sys:String>
+    <sys:String x:Key="Task.DiagnosticsLabelSubmitScript">本地提交脚本</sys:String>
+    <sys:String x:Key="Task.DiagnosticsLabelSubmitLog">本地提交日志</sys:String>
+    <sys:String x:Key="Task.DiagnosticsLabelStdout">远程 stdout</sys:String>
+    <sys:String x:Key="Task.DiagnosticsLabelStderr">远程 stderr</sys:String>
+    <sys:String x:Key="Task.DiagnosticsLabelWorkDir">远程工作目录</sys:String>
+    <sys:String x:Key="Task.DiagnosticsOpenSubmitScript">打开 submit.sbatch</sys:String>
+    <sys:String x:Key="Task.DiagnosticsOpenSubmitLog">打开 submit.log</sys:String>
+    <sys:String x:Key="Task.DiagnosticsOpenStdout">打开 stdout (job.out)</sys:String>
+    <sys:String x:Key="Task.DiagnosticsOpenStderr">打开 stderr (job.err)</sys:String>
+    <sys:String x:Key="Task.DiagnosticsRefreshTaskFiles">刷新任务目录文件</sys:String>
+    <sys:String x:Key="Task.DiagnosticScriptMissing">submit 脚本尚未生成：{0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticSubmitLogMissing">submit 日志尚未生成：{0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticStdoutMissing">stdout 文件尚未生成：{0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticStderrMissing">stderr 文件尚未生成：{0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticWorkDirMissing">当前尚无可用的诊断工作目录。</sys:String>
+    <sys:String x:Key="Task.DiagnosticRemoteFileMissing">远程文件尚不存在：{0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticOpenedLocalFile">已打开本地文件：{0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticOpenLocalFileFailed">打开本地文件失败：{0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticOpenRemoteFileFailed">打开远程文件失败：{0}</sys:String>
+    <sys:String x:Key="Task.DiagnosticPathUnknown">未知路径</sys:String>
+    <sys:String x:Key="Task.RemoteWorkDirPrepareFailedNoDetail">远程工作目录准备失败。</sys:String>
+    <sys:String x:Key="Task.ParameterFileMissing">远程参数文件不存在：{0}</sys:String>
     <sys:String x:Key="Task.BlueprintSaveTitle">保存为任务蓝图</sys:String>
     <sys:String x:Key="Task.BlueprintCreateTitle">从任务蓝图创建</sys:String>
     <sys:String x:Key="Task.BlueprintName">蓝图名称</sys:String>
@@ -411,6 +460,7 @@
     <sys:String x:Key="Console.CdNotDirectory">[cd] 目标路径不是目录。</sys:String>
     <sys:String x:Key="Console.CdFailedNoDetail">[cd] 切换目录失败。</sys:String>
     <sys:String x:Key="Console.CdFailed">[cd] 切换目录失败：{0}</sys:String>
+    <sys:String x:Key="Console.TerminalDisconnectedPlaceholder">SSH 未连接。请先建立连接后再使用终端。</sys:String>
 
     <!-- ── 崩溃对话框 ────────────────────────────────────────────────────── -->
     <sys:String x:Key="Crash.Title">程序发生严重错误</sys:String>
@@ -457,6 +507,14 @@
     <sys:String x:Key="Monitor.HistoryDetailTitle">历史任务详情</sys:String>
     <sys:String x:Key="Monitor.DetailExitCode">退出码</sys:String>
     <sys:String x:Key="Monitor.DetailReason">原因</sys:String>
+    <sys:String x:Key="Monitor.DetailTaskWorkDir">任务工作目录</sys:String>
+    <sys:String x:Key="Monitor.DetailStdoutPath">stdout 路径</sys:String>
+    <sys:String x:Key="Monitor.DetailStderrPath">stderr 路径</sys:String>
+    <sys:String x:Key="Monitor.HistoryLogsHint">当前无法从任务上下文推导日志路径。请到对应任务目录的 logs/ 下查看。</sys:String>
+    <sys:String x:Key="Monitor.HistoryOpenUnavailable">历史日志快捷打开入口尚未就绪。</sys:String>
+    <sys:String x:Key="Monitor.HistoryNoTaskContext">未找到该历史任务可关联的当前任务上下文，请手动打开任务目录 logs 排查。</sys:String>
+    <sys:String x:Key="Monitor.HistoryOpenedPath">已打开：{0}</sys:String>
+    <sys:String x:Key="Monitor.HistoryOpenPathFailed">无法打开：{0}</sys:String>
     <sys:String x:Key="Monitor.PollingEvery">轮询间隔 {0}s…</sys:String>
     <sys:String x:Key="Monitor.PollingStopped">已停止轮询。</sys:String>
     <sys:String x:Key="Monitor.PollingHalted">连续失败 {0} 次后已停止轮询。请检查连接后手动重启。</sys:String>

@@ -12,6 +12,7 @@
     Background="{DynamicResource BgBaseBrush}">
 
     <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
         <conv:StyleKeyToStyleConverter x:Key="StyleKeyToStyle" />
     </UserControl.Resources>
@@ -29,7 +30,7 @@
             </StackPanel>
         </Border>
 
-        <Border DockPanel.Dock="Top" Style="{StaticResource StatusPanelStyle}">
+        <Border DockPanel.Dock="Top" Style="{StaticResource StatusPanelStyle}" Visibility="{Binding IsConnected, Converter={StaticResource BoolToVis}}">
             <TextBlock
                 Text="{Binding ConsoleHeaderStatusMessage}"
                 Style="{Binding ConsoleHeaderStatusStyleKey, Converter={StaticResource StyleKeyToStyle}}" />
@@ -45,7 +46,7 @@
                 Style="{StaticResource WarningTextStyle}" />
         </Border>
 
-        <Grid DockPanel.Dock="Bottom" Margin="0,8,0,0">
+        <Grid DockPanel.Dock="Bottom" Margin="0,8,0,0" IsEnabled="{Binding IsConnected}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -113,10 +114,21 @@
             BorderThickness="1"
             CornerRadius="6"
             Padding="2">
-            <controls:TerminalSurfaceControl
-                x:Name="TerminalSurface"
-                InputGenerated="TerminalSurface_InputGenerated"
-                TerminalResized="TerminalSurface_TerminalResized" />
+            <Grid>
+                <controls:TerminalSurfaceControl
+                    x:Name="TerminalSurface"
+                    InputGenerated="TerminalSurface_InputGenerated"
+                    TerminalResized="TerminalSurface_TerminalResized" />
+                <Border Background="#66000000"
+                        Visibility="{Binding IsConnected, Converter={StaticResource InvBoolToVis}}">
+                    <TextBlock Text="{DynamicResource Console.TerminalDisconnectedPlaceholder}"
+                               Style="{StaticResource MutedTextStyle}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap"
+                               Margin="20" />
+                </Border>
+            </Grid>
         </Border>
     </DockPanel>
 </UserControl>
