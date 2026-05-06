@@ -1779,7 +1779,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         }
         catch (Exception ex)
         {
-            throw new SubmitStageException(SubmitFailureStage.ScriptRenderFailed, ex.Message, ex);
+            throw new SubmitStageException(SubmitFailureStage.LocalContextMissing, ex.Message, ex);
         }
 
         var localScript = Path.Combine(scriptsDir, "submit.sbatch");
@@ -1789,7 +1789,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         }
         catch (Exception ex)
         {
-            throw new SubmitStageException(SubmitFailureStage.ScriptRenderFailed, ex.Message, ex);
+            throw new SubmitStageException(SubmitFailureStage.LocalContextMissing, ex.Message, ex);
         }
 
         SetStatus(string.Format(L("Task.SubmittingUnit"), unit.TaskName), "InfoTextStyle", localize: false);
@@ -1803,7 +1803,6 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 throw new SubmitStageException(SubmitFailureStage.RemoteWorkDirFailed, detail);
             }
         }
-        catch (SubmitStageException) { throw; }
         catch (Exception ex)
         {
             throw new SubmitStageException(SubmitFailureStage.RemoteWorkDirFailed, ex.Message, ex);
@@ -1816,7 +1815,6 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 if (!await _ssh.RemoteFileExistsAsync(paramFile, ct))
                     throw new SubmitStageException(SubmitFailureStage.ParameterPathFailed, string.Format(L("Task.ParameterFileMissing"), paramFile));
             }
-            catch (SubmitStageException) { throw; }
             catch (Exception ex)
             {
                 throw new SubmitStageException(SubmitFailureStage.ParameterPathFailed, ex.Message, ex);
@@ -1983,12 +1981,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private async Task OpenLastStdoutAsync(CancellationToken ct)
     {
-        _ = await OpenRemoteDiagnosticFileAsync(LastSubmitRemoteStdoutPath, "Task.DiagnosticStdoutMissing", ct);
+        await OpenRemoteDiagnosticFileAsync(LastSubmitRemoteStdoutPath, "Task.DiagnosticStdoutMissing", ct);
     }
 
     private async Task OpenLastStderrAsync(CancellationToken ct)
     {
-        _ = await OpenRemoteDiagnosticFileAsync(LastSubmitRemoteStderrPath, "Task.DiagnosticStderrMissing", ct);
+        await OpenRemoteDiagnosticFileAsync(LastSubmitRemoteStderrPath, "Task.DiagnosticStderrMissing", ct);
     }
 
     private async Task OpenLastSubmitWorkDirInConsoleAsync(CancellationToken ct)

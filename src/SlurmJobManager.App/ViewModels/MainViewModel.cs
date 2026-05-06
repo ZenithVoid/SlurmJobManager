@@ -158,7 +158,9 @@ public sealed class MainViewModel : ViewModelBase
         Settings  = new SettingsViewModel(this, prefs);
         TaskEditor.SetOpenInConsoleHandler(OpenConsoleAtDirectoryAsync);
         Monitor.SetDiagnosticNavigationHandlers(
-            _ => TaskEditor.GetCurrentRemoteWorkDirForDiagnostics(),
+            row => row != null && TaskEditor.LastJobId.HasValue && TaskEditor.LastJobId.Value == row.JobId
+                ? TaskEditor.GetCurrentRemoteWorkDirForDiagnostics()
+                : string.Empty,
             TaskEditor.OpenRemoteDiagnosticFileFromMonitorAsync,
             TaskEditor.OpenDirectoryInConsoleFromMonitorAsync);
         StatusMessage = Application.Current?.TryFindResource("Status.Ready") as string ?? "Status.Ready";
