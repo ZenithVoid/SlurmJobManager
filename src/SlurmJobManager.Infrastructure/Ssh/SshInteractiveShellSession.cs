@@ -64,9 +64,14 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
 
         try
         {
-            var completed = await Task.WhenAny(_readerTask, Task.Delay(ReaderShutdownTimeout));
+            using var timeoutCts = new CancellationTokenSource(ReaderShutdownTimeout);
+            var timeoutTask = Task.Delay(Timeout.InfiniteTimeSpan, timeoutCts.Token);
+            var completed = await Task.WhenAny(_readerTask, timeoutTask);
             if (completed == _readerTask)
+            {
+                timeoutCts.Cancel();
                 await _readerTask;
+            }
         }
         catch (OperationCanceledException) { /* normal */ }
         catch { /* best effort */ }

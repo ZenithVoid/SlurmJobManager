@@ -433,9 +433,14 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
             session.OutputReceived -= OnShellOutputReceived;
             session.Closed -= OnShellClosed;
             var closeTask = session.CloseAsync();
-            var completed = await Task.WhenAny(closeTask, Task.Delay(TimeSpan.FromSeconds(2)));
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var timeoutTask = Task.Delay(Timeout.InfiniteTimeSpan, timeoutCts.Token);
+            var completed = await Task.WhenAny(closeTask, timeoutTask);
             if (completed == closeTask)
+            {
+                timeoutCts.Cancel();
                 await closeTask;
+            }
             session.Dispose();
         }
         catch (Exception ex)

@@ -199,7 +199,7 @@ public partial class App : Application
                         if (dispatcher.CheckAccess())
                             Current?.Shutdown(1);
                         else
-                            dispatcher.BeginInvoke(() => Current?.Shutdown(1));
+                            _ = dispatcher.BeginInvoke(() => Current?.Shutdown(1));
                     }
                 }
                 catch
@@ -276,13 +276,24 @@ public partial class App : Application
         try
         {
             var task = action();
-            var completed = await Task.WhenAny(task, Task.Delay(timeout));
+            using var timeoutCts = new CancellationTokenSource(timeout);
+            var timeoutTask = Task.Delay(Timeout.InfiniteTimeSpan, timeoutCts.Token);
+            var completed = await Task.WhenAny(task, timeoutTask);
             if (completed == task)
+            {
+                timeoutCts.Cancel();
                 await task;
+            }
         }
         catch
         {
             // best effort
         }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _shutdownGate.Dispose();
+        base.OnExit(e);
     }
 }
