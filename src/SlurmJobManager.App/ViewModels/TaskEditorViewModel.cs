@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -1254,9 +1255,11 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             if (parts.Length < 3)
                 throw new InvalidOperationException(L("Task.FileTimeReadInvalidResult"));
 
-            _ = long.TryParse(parts[0], out var modifiedTimeUnix);
-            _ = long.TryParse(parts[1], out var creationTimeUnix);
-            _ = long.TryParse(parts[2], out var sizeBytes);
+            var parseModified = long.TryParse(parts[0], out var modifiedTimeUnix);
+            var parseCreation = long.TryParse(parts[1], out var creationTimeUnix);
+            var parseSize = long.TryParse(parts[2], out var sizeBytes);
+            if (!parseModified || !parseSize)
+                throw new InvalidOperationException(L("Task.FileTimeReadInvalidResult"));
 
             var modifiedTimeText = FormatUnixTimeOrUnavailable(modifiedTimeUnix);
             var creationTimeText = creationTimeUnix > 0
@@ -2542,13 +2545,13 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 L("Task.FileDeleteIrreversibleHint"));
         }
 
-        const int previewCount = 8;
+        const int deletePreviewCount = 8;
         var preview = entries
-            .Take(previewCount)
+            .Take(deletePreviewCount)
             .Select(static e => $"• {e.DisplayName}")
             .ToList();
-        if (entries.Count > previewCount)
-            preview.Add(string.Format(L("Task.FileDeleteConfirmMoreItems"), entries.Count - previewCount));
+        if (entries.Count > deletePreviewCount)
+            preview.Add(string.Format(L("Task.FileDeleteConfirmMoreItems"), entries.Count - deletePreviewCount));
 
         return string.Format(
             L("Task.FileDeleteConfirmBatch"),
@@ -2564,7 +2567,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         return DateTimeOffset.FromUnixTimeSeconds(unixTime)
             .ToLocalTime()
-            .ToString("yyyy-MM-dd HH:mm:ss");
+            .ToString(CultureInfo.CurrentCulture);
     }
 
     public void Dispose()

@@ -350,7 +350,7 @@
                                                ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                         <ListBox.ContextMenu>
-                                            <ContextMenu Opening="TaskFileContextMenu_Opening">
+                                            <ContextMenu Opened="TaskFileContextMenu_Opened">
                                                 <MenuItem x:Name="TaskFileContextOpenMenuItem"
                                                           Header="{DynamicResource Task.FileMenuOpen}"
                                                           Click="TaskFileContextOpen_Click" />

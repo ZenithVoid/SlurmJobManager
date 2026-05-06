@@ -95,13 +95,16 @@ public partial class MainWindow : Window
         if (ItemsControl.ItemsControlFromItemContainer(item) is not ListBox listBox)
             return;
 
+        var hasSelectionModifier = (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None;
         if (!item.IsSelected)
         {
-            listBox.SelectedItems.Clear();
+            if (!hasSelectionModifier)
+                listBox.SelectedItems.Clear();
             item.IsSelected = true;
         }
 
-        listBox.SelectedItem = item.DataContext;
+        if (listBox.SelectedItems.Count == 1)
+            listBox.SelectedItem = item.DataContext;
     }
 
     private void TaskFileListBox_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
@@ -117,18 +120,19 @@ public partial class MainWindow : Window
         listBox.SelectedItem = null;
     }
 
-    private void TaskFileContextMenu_Opening(object sender, ContextMenuEventArgs e)
+    private void TaskFileContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         if (sender is not ContextMenu menu || menu.PlacementTarget is not ListBox listBox)
         {
-            e.Handled = true;
+            if (sender is ContextMenu unexpectedMenu)
+                unexpectedMenu.IsOpen = false;
             return;
         }
 
         var selectedCount = listBox.SelectedItems.Count;
         if (selectedCount <= 0)
         {
-            e.Handled = true;
+            menu.IsOpen = false;
             return;
         }
 
