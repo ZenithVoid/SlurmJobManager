@@ -109,6 +109,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 CommandManager.InvalidateRequerySuggested();
                 TryAutoFillRemoteWorkDir();
                 ScheduleTaskIdDirectoryCheck();
+                OnPropertyChanged(nameof(TaskContextTaskIdDisplay));
                 OnPropertyChanged(nameof(TaskContextSummary));
             }
         }
@@ -144,6 +145,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             {
                 OnPropertyChanged(nameof(RemoteWorkDirDisplay));
                 OnPropertyChanged(nameof(TaskFilesRootPathDisplay));
+                OnPropertyChanged(nameof(TaskContextWorkDirDisplay));
                 OnPropertyChanged(nameof(TaskContextSummary));
                 if (!_isAutoUpdatingRemoteWorkDir)
                 {
@@ -305,6 +307,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             if (SetField(ref _currentTaskFilesPath, expanded))
             {
                 OnPropertyChanged(nameof(CurrentTaskFilesPathDisplay));
+                OnPropertyChanged(nameof(TaskContextFilePathDisplay));
                 OnPropertyChanged(nameof(TaskContextSummary));
             }
         }
@@ -329,15 +332,15 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     }
 
     public string TaskFilesRootPathDisplay => CollapseHomePath(RemoteWorkDir);
+    public string TaskContextTaskIdDisplay => GetTaskContextDisplayValue(TaskId);
+    public string TaskContextWorkDirDisplay => GetTaskContextDisplayValue(RemoteWorkDirDisplay);
+    public string TaskContextFilePathDisplay => GetTaskContextDisplayValue(CurrentTaskFilesPathDisplay);
     public string TaskContextSummary
     {
         get
         {
-            var taskId = string.IsNullOrWhiteSpace(TaskId) ? "-" : TaskId.Trim();
-            var workDir = string.IsNullOrWhiteSpace(RemoteWorkDirDisplay) ? "-" : RemoteWorkDirDisplay;
-            var filePath = string.IsNullOrWhiteSpace(CurrentTaskFilesPathDisplay) ? "-" : CurrentTaskFilesPathDisplay;
             var status = IsBusy ? L("Status.Loading") : L("Status.Ready");
-            return string.Format(L("Task.ContextSummary"), taskId, workDir, filePath, status);
+            return string.Format(L("Task.ContextSummary"), TaskContextTaskIdDisplay, TaskContextWorkDirDisplay, TaskContextFilePathDisplay, status);
         }
     }
 
@@ -2241,6 +2244,11 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private static string L(string key)
         => Application.Current?.TryFindResource(key) as string ?? key;
 
+    private static string GetTaskContextDisplayValue(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? L("Task.ContextValueEmpty")
+            : value.Trim();
+
     private async Task EnsureHomeDirectoryLoadedAsync(CancellationToken ct)
     {
         if (!_ssh.IsConnected || !string.IsNullOrWhiteSpace(_homeDirectory))
@@ -2288,6 +2296,9 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(RemoteWorkDirDisplay));
         OnPropertyChanged(nameof(CurrentTaskFilesPathDisplay));
         OnPropertyChanged(nameof(TaskFilesRootPathDisplay));
+        OnPropertyChanged(nameof(TaskContextWorkDirDisplay));
+        OnPropertyChanged(nameof(TaskContextFilePathDisplay));
+        OnPropertyChanged(nameof(TaskContextSummary));
         OnPropertyChanged(nameof(LastSubmitRemoteWorkDirDisplay));
         OnPropertyChanged(nameof(LastSubmitRemoteStdoutPathDisplay));
         OnPropertyChanged(nameof(LastSubmitRemoteStderrPathDisplay));
@@ -2303,6 +2314,9 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     {
         OnPropertyChanged(nameof(LastJobIdText));
         OnPropertyChanged(nameof(TaskIdDirectoryStatus));
+        OnPropertyChanged(nameof(TaskContextTaskIdDisplay));
+        OnPropertyChanged(nameof(TaskContextWorkDirDisplay));
+        OnPropertyChanged(nameof(TaskContextFilePathDisplay));
         OnPropertyChanged(nameof(TaskContextSummary));
         OnPropertyChanged(nameof(EffectiveStatusMessage));
         OnPropertyChanged(nameof(LastSubmitRemoteWorkDirDisplay));

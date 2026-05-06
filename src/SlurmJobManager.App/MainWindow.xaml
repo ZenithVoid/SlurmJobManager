@@ -205,10 +205,75 @@
                             BorderThickness="0,0,0,0">
                         <DockPanel Margin="12">
                             <Border DockPanel.Dock="Top" Style="{StaticResource PageHeaderCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="{DynamicResource Task.SideTitle}" Style="{StaticResource SectionHeaderStyle}" />
-                                    <TextBlock Text="{Binding TaskEditor.TaskContextSummary}" Style="{StaticResource PageContextSummaryStyle}" />
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{DynamicResource Task.SideTitle}" Style="{StaticResource SectionHeaderStyle}" Margin="0" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1"
+                                            Content="ⓘ"
+                                            Style="{StaticResource GhostButtonStyle}"
+                                            Width="24"
+                                            Height="24"
+                                            Padding="0"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            Margin="8,0,0,0"
+                                            VerticalAlignment="Center"
+                                            ToolTip="{DynamicResource Task.ContextInfoButtonHint}">
+                                        <Button.ToolTip>
+                                            <ToolTip MaxWidth="520" Placement="Bottom">
+                                                <StackPanel>
+                                                    <TextBlock Text="{DynamicResource Task.ContextInfoTitle}"
+                                                               Style="{StaticResource SectionHeaderStyle}" />
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="12" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+
+                                                        <TextBlock Grid.Row="0" Grid.Column="0"
+                                                                   Text="{DynamicResource Task.ContextInfoTaskIdLabel}"
+                                                                   Style="{StaticResource MutedTextStyle}" />
+                                                        <TextBlock Grid.Row="0" Grid.Column="2"
+                                                                   Text="{Binding TaskEditor.TaskContextTaskIdDisplay}"
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                   TextWrapping="Wrap" />
+
+                                                        <TextBlock Grid.Row="1" Grid.Column="0"
+                                                                   Text="{DynamicResource Task.ContextInfoWorkDirLabel}"
+                                                                   Style="{StaticResource MutedTextStyle}"
+                                                                   Margin="0,6,0,0" />
+                                                        <TextBlock Grid.Row="1" Grid.Column="2"
+                                                                   Text="{Binding TaskEditor.TaskContextWorkDirDisplay}"
+                                                                   ToolTip="{Binding TaskEditor.RemoteWorkDir}"
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,6,0,0" />
+
+                                                        <TextBlock Grid.Row="2" Grid.Column="0"
+                                                                   Text="{DynamicResource Task.ContextInfoFilePathLabel}"
+                                                                   Style="{StaticResource MutedTextStyle}"
+                                                                   Margin="0,6,0,0" />
+                                                        <TextBlock Grid.Row="2" Grid.Column="2"
+                                                                   Text="{Binding TaskEditor.TaskContextFilePathDisplay}"
+                                                                   ToolTip="{Binding TaskEditor.CurrentTaskFilesPath}"
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,6,0,0" />
+                                                    </Grid>
+                                                </StackPanel>
+                                            </ToolTip>
+                                        </Button.ToolTip>
+                                    </Button>
+                                </Grid>
                             </Border>
 
                             <TextBlock DockPanel.Dock="Top"
@@ -271,16 +336,15 @@
                                         Visibility="{Binding TaskEditor.TaskFiles.Count,
                                                              Converter={StaticResource ZeroCountToVis}}" />
                                     <ListBox x:Name="TaskFileListBox"
-                                             ItemsSource="{Binding TaskEditor.TaskFiles}"
-                                             SelectedItem="{Binding TaskEditor.SelectedTaskFile}"
-                                             Background="{DynamicResource BgCrustBrush}"
-                                             Foreground="{DynamicResource TextPrimaryBrush}"
-                                             BorderBrush="{DynamicResource BorderBrush}"
-                                             BorderThickness="1"
-                                             FontFamily="Consolas" FontSize="12"
-                                             ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                             MouseDoubleClick="TaskFileListBox_MouseDoubleClick">
+                                              ItemsSource="{Binding TaskEditor.TaskFiles}"
+                                              SelectedItem="{Binding TaskEditor.SelectedTaskFile}"
+                                              Background="{DynamicResource BgCrustBrush}"
+                                              Foreground="{DynamicResource TextPrimaryBrush}"
+                                              BorderBrush="{DynamicResource BorderBrush}"
+                                              BorderThickness="1"
+                                              FontFamily="Consolas" FontSize="12"
+                                              ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                         <ListBox.Style>
                                             <Style TargetType="ListBox">
                                                 <Setter Property="Visibility" Value="Visible" />
@@ -291,6 +355,19 @@
                                                 </Style.Triggers>
                                             </Style>
                                         </ListBox.Style>
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="InputBindings">
+                                                    <Setter.Value>
+                                                        <InputBindingCollection>
+                                                            <MouseBinding MouseAction="LeftDoubleClick"
+                                                                          Command="{Binding DataContext.TaskEditor.OpenTaskFileCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                                          CommandParameter="{Binding}" />
+                                                        </InputBindingCollection>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" ToolTip="{Binding RemotePath}">

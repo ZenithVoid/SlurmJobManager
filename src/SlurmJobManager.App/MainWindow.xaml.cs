@@ -1,5 +1,4 @@
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -66,26 +65,6 @@ public partial class MainWindow : Window
         page.BeginAnimation(OpacityProperty, fadeIn);
         scale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleX);
         scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY);
-    }
-
-    // ── B5: Task file list double-click handler ───────────────────────────
-
-    private void TaskFileListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is not ListBox lb || DataContext is not MainViewModel vm)
-            return;
-
-        var source = e.OriginalSource as DependencyObject;
-        while (source != null && source is not ListBoxItem)
-            source = VisualTreeHelper.GetParent(source);
-        if (source is not ListBoxItem item || item.DataContext is not TaskFileEntry fileEntry)
-            return;
-
-        if (vm.TaskEditor.OpenTaskFileCommand.CanExecute(fileEntry))
-        {
-            lb.SelectedItem = fileEntry;
-            vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
-        }
     }
 
     private void ApplyTabFocus(string tabId)
