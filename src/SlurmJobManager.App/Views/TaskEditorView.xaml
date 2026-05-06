@@ -19,6 +19,12 @@
                   b:SmoothScrollBehavior.ScrollAmount="60"
                   b:MouseWheelRoutingBehavior.IsEnabled="True">
         <StackPanel Margin="12">
+            <Border Style="{StaticResource PageHeaderCardStyle}">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Task.Title}" Style="{StaticResource PageTitleStyle}" />
+                    <TextBlock Text="{Binding TaskContextSummary}" Style="{StaticResource PageContextSummaryStyle}" />
+                </StackPanel>
+            </Border>
 
             <!-- Task Setup -->
             <TextBlock Text="{DynamicResource Task.Setup}"
@@ -132,14 +138,15 @@
                          </ItemsControl.Style>
                          <ItemsControl.ItemTemplate>
                              <DataTemplate DataType="{x:Type vm:CommandEntryViewModel}">
-                                 <TextBlock Text="{Binding CommandLine}"
-                                           FontFamily="Consolas" FontSize="11"
-                                           Foreground="{DynamicResource AccentYellowBrush}"
-                                           TextTrimming="CharacterEllipsis"
-                                           Margin="0,1" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                  <TextBlock Text="{Binding CommandLine}"
+                                            FontFamily="Consolas" FontSize="11"
+                                            Foreground="{DynamicResource AccentYellowBrush}"
+                                            TextTrimming="CharacterEllipsis"
+                                            ToolTip="{Binding CommandLine}"
+                                            Margin="0,1" />
+                             </DataTemplate>
+                         </ItemsControl.ItemTemplate>
+                     </ItemsControl>
                  </DockPanel>
              </Border>
 
@@ -178,11 +185,13 @@
                     Padding="10,8" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
 
              <TextBlock Text="{Binding LastJobIdText}"
-                       Style="{StaticResource SuccessTextStyle}"
-                       FontSize="12" Margin="0,0,0,4" />
-            <TextBlock Text="{Binding StatusMessage}"
-                       Style="{Binding StatusStyleKey, Converter={StaticResource StyleKeyToStyle}}" />
+                        Style="{StaticResource SuccessTextStyle}"
+                        FontSize="12" Margin="0,0,0,4" />
+            <Border Style="{StaticResource StatusPanelStyle}">
+                <TextBlock Text="{Binding EffectiveStatusMessage}"
+                           Style="{Binding EffectiveStatusStyleKey, Converter={StaticResource StyleKeyToStyle}}" />
+            </Border>
 
-        </StackPanel>
+         </StackPanel>
     </ScrollViewer>
 </UserControl>

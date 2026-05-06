@@ -13,30 +13,36 @@
 
     <UserControl.Resources>
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
+        <conv:StyleKeyToStyleConverter x:Key="StyleKeyToStyle" />
     </UserControl.Resources>
 
     <DockPanel Margin="8">
-        <TextBlock
-            DockPanel.Dock="Top"
-            Text="{DynamicResource Console.Title}"
-            Style="{StaticResource PageTitleStyle}" />
-        <TextBlock
-            DockPanel.Dock="Top"
-            Text="{Binding ConsoleStatusSummary}"
-            Style="{StaticResource MutedTextStyle}"
-            Margin="0,2,0,6" />
+        <Border DockPanel.Dock="Top" Style="{StaticResource PageHeaderCardStyle}">
+            <StackPanel>
+                <TextBlock
+                    Text="{DynamicResource Console.Title}"
+                    Style="{StaticResource PageTitleStyle}" />
+                <TextBlock
+                    Text="{Binding ConsoleStatusSummary}"
+                    ToolTip="{Binding CurrentWorkingDirectoryAbsolute}"
+                    Style="{StaticResource PageContextSummaryStyle}" />
+            </StackPanel>
+        </Border>
+
+        <Border DockPanel.Dock="Top" Style="{StaticResource StatusPanelStyle}">
+            <TextBlock
+                Text="{Binding ConsoleHeaderStatusMessage}"
+                Style="{Binding ConsoleHeaderStatusStyleKey, Converter={StaticResource StyleKeyToStyle}}" />
+        </Border>
 
         <Border
             DockPanel.Dock="Top"
-            Background="{DynamicResource BgPanelBrush}"
-            BorderBrush="{DynamicResource AccentYellowBrush}"
-            BorderThickness="0,0,0,1"
-            Padding="10,6"
+            Margin="0,8,0,0"
+            Style="{StaticResource StatusPanelStyle}"
             Visibility="{Binding IsConnected, Converter={StaticResource InvBoolToVis}}">
             <TextBlock
                 Text="{DynamicResource Console.NotConnected}"
-                Foreground="{DynamicResource AccentYellowBrush}"
-                FontSize="12" />
+                Style="{StaticResource WarningTextStyle}" />
         </Border>
 
         <Grid DockPanel.Dock="Bottom" Margin="0,8,0,0">
@@ -68,7 +74,7 @@
                 Grid.Column="2"
                 Content="{DynamicResource Btn.Run}"
                 Command="{Binding ExecuteCommand}"
-                Style="{StaticResource SuccessButtonStyle}"
+                Style="{StaticResource AccentButtonStyle}"
                 Margin="4,0,0,0"
                 Padding="10,4" />
             <Button

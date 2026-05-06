@@ -17,9 +17,16 @@
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
         <conv:InverseBoolConverter x:Key="InvBool" />
         <conv:StyleKeyToStyleConverter x:Key="StyleKeyToStyle" />
+        <conv:ZeroCountToVisibilityConverter x:Key="ZeroCountToVis" />
     </UserControl.Resources>
 
     <DockPanel Margin="12">
+        <Border DockPanel.Dock="Top" Style="{StaticResource PageHeaderCardStyle}">
+            <StackPanel>
+                <TextBlock Text="{DynamicResource Monitor.Title}" Style="{StaticResource PageTitleStyle}" />
+                <TextBlock Text="{Binding MonitorContextSummary}" Style="{StaticResource PageContextSummaryStyle}" />
+            </StackPanel>
+        </Border>
 
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
             <TextBlock Text="{DynamicResource Monitor.WatchUser}" Style="{StaticResource FieldLabelStyle}" />
@@ -44,14 +51,14 @@
                 <Button Grid.Column="2"
                         Content="{DynamicResource Btn.StartPoll}"
                         Command="{Binding StartPollingCommand}"
-                        Style="{StaticResource SuccessButtonStyle}"
+                        Style="{StaticResource NeutralButtonStyle}"
                         Margin="4,0,0,0"
                         Padding="8,4" />
 
                 <Button Grid.Column="3"
                         Content="{DynamicResource Btn.StopPoll}"
                         Command="{Binding StopPollingCommand}"
-                        Style="{StaticResource DangerButtonStyle}"
+                        Style="{StaticResource NeutralButtonStyle}"
                         Margin="4,0,0,0"
                         Padding="8,4" />
             </Grid>
@@ -71,10 +78,10 @@
             </StackPanel>
         </StackPanel>
 
-        <TextBlock DockPanel.Dock="Bottom"
-                   Text="{Binding StatusMessage}"
-                   Style="{Binding StatusStyleKey, Converter={StaticResource StyleKeyToStyle}}"
-                   Margin="0,8,0,0" />
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource StatusPanelStyle}">
+            <TextBlock Text="{Binding EffectiveStatusMessage}"
+                       Style="{Binding EffectiveStatusStyleKey, Converter={StaticResource StyleKeyToStyle}}" />
+        </Border>
 
         <shared:EmptyStateView
             DockPanel.Dock="Top"
@@ -129,13 +136,30 @@
                                   CanContentScroll="False"
                                   b:SmoothScrollBehavior.IsEnabled="True"
                                   b:SmoothScrollBehavior.ScrollAmount="60">
-                        <DataGrid ItemsSource="{Binding CurrentJobs}"
-                                  SelectedItem="{Binding SelectedCurrentJob}"
-                                  AutoGenerateColumns="False"
-                                  IsReadOnly="True"
-                                  RowHeight="38"
-                                  ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <Grid>
+                            <shared:EmptyStateView
+                                Icon="📭"
+                                EmptyTitle="{DynamicResource Monitor.CurrentEmptyTitle}"
+                                EmptyHint="{DynamicResource Monitor.CurrentEmptyHint}"
+                                Margin="0,18,0,0"
+                                Visibility="{Binding CurrentJobs.Count, Converter={StaticResource ZeroCountToVis}}" />
+                            <DataGrid ItemsSource="{Binding CurrentJobs}"
+                                      SelectedItem="{Binding SelectedCurrentJob}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      RowHeight="38"
+                                      ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <DataGrid.Style>
+                                <Style TargetType="DataGrid">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentJobs.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.Style>
                             <DataGrid.RowStyle>
                                 <Style TargetType="DataGridRow">
                                     <Setter Property="Foreground"
@@ -172,7 +196,14 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTextColumn Header="{DynamicResource Monitor.ColState}" Binding="{Binding State}" Width="110" />
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColState}" Width="110">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding State}"
+                                                       ToolTip="{Binding Reason}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColPartition}" Binding="{Binding Partition}" Width="110" />
 
                                 <DataGridTemplateColumn Header="{DynamicResource Monitor.ColNodes}" Width="1.5*">
@@ -200,7 +231,8 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                             </DataGrid.Columns>
-                        </DataGrid>
+                            </DataGrid>
+                        </Grid>
                     </ScrollViewer>
                 </Grid>
             </TabItem>
@@ -225,13 +257,30 @@
                                   CanContentScroll="False"
                                   b:SmoothScrollBehavior.IsEnabled="True"
                                   b:SmoothScrollBehavior.ScrollAmount="60">
-                        <DataGrid ItemsSource="{Binding HistoryJobs}"
-                                  SelectedItem="{Binding SelectedHistoryJob}"
-                                  AutoGenerateColumns="False"
-                                  IsReadOnly="True"
-                                  RowHeight="38"
-                                  ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <Grid>
+                            <shared:EmptyStateView
+                                Icon="🗂"
+                                EmptyTitle="{DynamicResource Monitor.HistoryEmptyTitle}"
+                                EmptyHint="{DynamicResource Monitor.HistoryEmptyHint}"
+                                Margin="0,18,0,0"
+                                Visibility="{Binding HistoryJobs.Count, Converter={StaticResource ZeroCountToVis}}" />
+                            <DataGrid ItemsSource="{Binding HistoryJobs}"
+                                      SelectedItem="{Binding SelectedHistoryJob}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      RowHeight="38"
+                                      ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <DataGrid.Style>
+                                <Style TargetType="DataGrid">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HistoryJobs.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.Style>
                             <DataGrid.RowStyle>
                                 <Style TargetType="DataGridRow">
                                     <Setter Property="Foreground"
@@ -252,7 +301,14 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTextColumn Header="{DynamicResource Monitor.ColState}" Binding="{Binding State}" Width="130" />
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColState}" Width="130">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding State}"
+                                                       ToolTip="{Binding Reason}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColStartTime}" Binding="{Binding StartTimeDisplay}" Width="170" />
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColEndTime}" Binding="{Binding EndTimeDisplay}" Width="170" />
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColRunTime}" Binding="{Binding RunTimeDisplay}" Width="110" />
@@ -270,16 +326,17 @@
                                 <DataGridTemplateColumn Header="{DynamicResource Monitor.ColAction}" Width="120">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Button Content="{DynamicResource Monitor.ActionViewDetail}"
-                                                    Padding="8,2"
-                                                    Style="{StaticResource AccentButtonStyle}"
-                                                    Command="{Binding DataContext.ViewHistoryDetailCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                    CommandParameter="{Binding}" />
+                                             <Button Content="{DynamicResource Monitor.ActionViewDetail}"
+                                                     Padding="8,2"
+                                                     Style="{StaticResource NeutralButtonStyle}"
+                                                     Command="{Binding DataContext.ViewHistoryDetailCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                     CommandParameter="{Binding}" />
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                             </DataGrid.Columns>
-                        </DataGrid>
+                            </DataGrid>
+                        </Grid>
                     </ScrollViewer>
                 </Grid>
             </TabItem>

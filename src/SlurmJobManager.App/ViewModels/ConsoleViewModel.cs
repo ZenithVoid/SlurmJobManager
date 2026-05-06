@@ -41,15 +41,36 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
     public string CommandInput { get => _commandInput; set => SetField(ref _commandInput, value); }
     public bool IsBusy { get => _isBusy; private set => SetField(ref _isBusy, value); }
-    public bool IsConnected { get => _isConnected; private set => SetField(ref _isConnected, value); }
+    public bool IsConnected
+    {
+        get => _isConnected;
+        private set
+        {
+            if (SetField(ref _isConnected, value))
+            {
+                OnPropertyChanged(nameof(ConsoleHeaderStatusMessage));
+                OnPropertyChanged(nameof(ConsoleHeaderStatusStyleKey));
+            }
+        }
+    }
 
     public string CurrentWorkingDirectoryDisplay => GetDisplayWorkingDirectory();
+    public string CurrentWorkingDirectoryAbsolute
+        => string.IsNullOrWhiteSpace(_currentWorkingDirectory)
+            ? (string.IsNullOrWhiteSpace(_homeDirectory) ? "~" : _homeDirectory)
+            : _currentWorkingDirectory;
     public string PromptText => $"{GetPromptUser()}@{GetPromptHost()}:{CurrentWorkingDirectoryDisplay}$ ";
     public string ConsoleStatusSummary => string.Format(
         L("Console.StatusSummary"),
         IsConnected ? L("Console.StatusConnected") : L("Console.StatusDisconnected"),
         CurrentWorkingDirectoryDisplay,
         IsBusy ? L("Console.StatusBusy") : L("Console.StatusIdle"));
+    public string ConsoleHeaderStatusMessage
+        => IsConnected
+            ? (IsBusy ? L("Console.HeaderBusy") : L("Console.HeaderReady"))
+            : L("Console.NotConnected");
+    public string ConsoleHeaderStatusStyleKey
+        => !IsConnected ? "WarningTextStyle" : IsBusy ? "BusyTextStyle" : "SuccessTextStyle";
 
     public List<string> CommandHistory { get; } = new();
 
@@ -473,12 +494,16 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
             {
                 IsBusy = value;
                 OnPropertyChanged(nameof(ConsoleStatusSummary));
+                OnPropertyChanged(nameof(ConsoleHeaderStatusMessage));
+                OnPropertyChanged(nameof(ConsoleHeaderStatusStyleKey));
             });
         }
         else
         {
             IsBusy = value;
             OnPropertyChanged(nameof(ConsoleStatusSummary));
+            OnPropertyChanged(nameof(ConsoleHeaderStatusMessage));
+            OnPropertyChanged(nameof(ConsoleHeaderStatusStyleKey));
         }
     }
 
@@ -495,6 +520,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     {
         OnPropertyChanged(nameof(PromptText));
         OnPropertyChanged(nameof(CurrentWorkingDirectoryDisplay));
+        OnPropertyChanged(nameof(CurrentWorkingDirectoryAbsolute));
         OnPropertyChanged(nameof(ConsoleStatusSummary));
     }
 
