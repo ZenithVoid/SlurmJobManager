@@ -210,6 +210,12 @@
                         ToolTip="{DynamicResource Task.Refresh}"
                         Padding="8,4" />
             </Grid>
+            <Button Content="{DynamicResource Btn.OpenInTerminal}"
+                    Command="{Binding OpenInConsoleCommand}"
+                    Style="{StaticResource AccentButtonStyle}"
+                    ToolTip="{DynamicResource Task.OpenInTerminalHint}"
+                    Padding="8,4"
+                    Margin="0,0,0,6" />
 
             <Border BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1"

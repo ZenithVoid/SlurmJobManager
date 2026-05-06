@@ -153,7 +153,14 @@ public sealed class MainViewModel : ViewModelBase
 
         Dashboard = new DashboardViewModel(connection, monitor, tab => ActiveTab = tab);
         Settings  = new SettingsViewModel(this, prefs);
+        TaskEditor.SetOpenInConsoleHandler(OpenConsoleAtDirectoryAsync);
         StatusMessage = Application.Current?.TryFindResource("Status.Ready") as string ?? "Status.Ready";
+    }
+
+    public async Task<bool> OpenConsoleAtDirectoryAsync(string remoteDirectory)
+    {
+        ActiveTab = "Console";
+        return await Console.OpenAtDirectoryAsync(remoteDirectory);
     }
 
     private static void ApplyTheme(bool dark)

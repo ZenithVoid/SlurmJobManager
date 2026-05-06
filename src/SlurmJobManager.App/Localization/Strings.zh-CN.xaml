@@ -58,6 +58,7 @@
     <sys:String x:Key="Btn.StopCmd">⏹ 停止</sys:String>
     <sys:String x:Key="Btn.Copy">复制</sys:String>
     <sys:String x:Key="Btn.Clear">清除</sys:String>
+    <sys:String x:Key="Btn.OpenInTerminal">在终端中打开</sys:String>
 
     <!-- ── 状态文本 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Status.Ready">就绪</sys:String>
@@ -184,6 +185,7 @@
     <sys:String x:Key="Task.TaskFilesHint">请先建立连接并设置任务目录，然后点击 ⟳ 刷新。</sys:String>
     <sys:String x:Key="Task.CurrentPath">当前路径</sys:String>
     <sys:String x:Key="Task.PathUp">返回上一级目录</sys:String>
+    <sys:String x:Key="Task.OpenInTerminalHint">切换到终端页并打开当前任务目录。</sys:String>
     <sys:String x:Key="Task.OverwriteTitle">覆盖确认</sys:String>
     <sys:String x:Key="Task.OverwritePrompt">远程文件 {0} 已存在，是否覆盖？</sys:String>
     <sys:String x:Key="Task.SaveCancelled">保存已取消。</sys:String>
@@ -242,6 +244,10 @@
     <sys:String x:Key="Task.DirLoadedCount">已加载 {0} 个条目。</sys:String>
     <sys:String x:Key="Task.RefreshFilesFailed">刷新文件列表失败：{0}</sys:String>
     <sys:String x:Key="Task.GoUpPathEmpty">当前路径为空，无法返回上级。</sys:String>
+    <sys:String x:Key="Task.OpenInTerminalMissingDir">没有可用于终端打开的任务目录。</sys:String>
+    <sys:String x:Key="Task.OpenInTerminalUnavailable">终端导航尚未就绪，请稍后重试。</sys:String>
+    <sys:String x:Key="Task.OpenInTerminalSuccess">已在终端中打开目录：{0}。</sys:String>
+    <sys:String x:Key="Task.OpenInTerminalFailed">无法在终端中打开目录：{0}，请检查目录访问权限。</sys:String>
     <sys:String x:Key="Task.BinaryFileBlocked">文件 {0} 可能是二进制文件，已阻止打开。</sys:String>
     <sys:String x:Key="Task.Saving">保存任务…</sys:String>
     <sys:String x:Key="Task.SavedPath">任务已保存：{0}</sys:String>
@@ -382,9 +388,20 @@
     <sys:String x:Key="Console.NotConnected">⚠ 当前可浏览此页面，但执行命令需先建立 SSH 连接。</sys:String>
     <sys:String x:Key="Console.ErrInvalidCommand">[error] 命令包含非法字符，已拒绝执行。</sys:String>
     <sys:String x:Key="Console.ErrNotConnected">未建立 SSH 连接，请先在连接页面建立连接。</sys:String>
+    <sys:String x:Key="Console.ErrNoTargetDirectory">未提供可用于终端跳转的目标目录。</sys:String>
     <sys:String x:Key="Console.Timeout">[timeout] 命令超时（{0:0}s）已取消。</sys:String>
     <sys:String x:Key="Console.Cancelling">[cancelling…]</sys:String>
     <sys:String x:Key="Console.JumpToBottom">跳到底部</sys:String>
+    <sys:String x:Key="Console.StatusSummary">状态：{0}   当前目录：{1}   会话：{2}</sys:String>
+    <sys:String x:Key="Console.StatusConnected">已连接</sys:String>
+    <sys:String x:Key="Console.StatusDisconnected">未连接</sys:String>
+    <sys:String x:Key="Console.StatusBusy">执行中</sys:String>
+    <sys:String x:Key="Console.StatusIdle">空闲</sys:String>
+    <sys:String x:Key="Console.CdPathMissing">[cd] 目录不存在。</sys:String>
+    <sys:String x:Key="Console.CdPermissionDenied">[cd] 没有目标目录的访问权限。</sys:String>
+    <sys:String x:Key="Console.CdNotDirectory">[cd] 目标路径不是目录。</sys:String>
+    <sys:String x:Key="Console.CdFailedNoDetail">[cd] 切换目录失败。</sys:String>
+    <sys:String x:Key="Console.CdFailed">[cd] 切换目录失败：{0}</sys:String>
 
     <!-- ── 崩溃对话框 ────────────────────────────────────────────────────── -->
     <sys:String x:Key="Crash.Title">程序发生严重错误</sys:String>
