@@ -1,7 +1,9 @@
 using System.Text;
 using System.Reflection;
 using System.Diagnostics;
+using System.IO;
 using Renci.SshNet;
+using Renci.SshNet.Common;
 using SlurmJobManager.Core.Interfaces;
 
 namespace SlurmJobManager.Infrastructure.Ssh;
@@ -10,6 +12,7 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
 {
     // Reflection-based PTY resize is currently validated with SSH.NET 2024.2.0.
     private static readonly TimeSpan ReaderShutdownTimeout = TimeSpan.FromSeconds(2);
+    private const int ReadPollTimeoutMs = 200;
     private readonly ShellStream _shellStream;
     private readonly CancellationTokenSource _readerCts = new();
     private readonly SemaphoreSlim _writeGate = new(1, 1);
@@ -24,6 +27,7 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
     public SshInteractiveShellSession(ShellStream shellStream)
     {
         _shellStream = shellStream ?? throw new ArgumentNullException(nameof(shellStream));
+        try { _shellStream.ReadTimeout = ReadPollTimeoutMs; } catch { /* best effort */ }
         _readerTask = Task.Run(() => ReaderLoopAsync(_readerCts.Token));
     }
 
@@ -152,6 +156,14 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
             {
                 break;
             }
+            catch (SshOperationTimeoutException)
+            {
+                continue;
+            }
+            catch (IOException ex) when (IsReadTimeout(ex))
+            {
+                continue;
+            }
             catch
             {
                 break;
@@ -165,4 +177,9 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
     {
         try { CloseAsync().GetAwaiter().GetResult(); } catch { /* best effort */ }
     }
+
+    private static bool IsReadTimeout(IOException ex)
+        => ex.InnerException is TimeoutException
+           || ex.Message.Contains("timed out", StringComparison.OrdinalIgnoreCase)
+           || ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase);
 }

@@ -57,7 +57,11 @@ public partial class ConsoleView : UserControl
         if (Dispatcher.CheckAccess())
             TerminalSurface.Write(text);
         else
-            _ = Dispatcher.BeginInvoke(() => TerminalSurface.Write(text));
+            Dispatcher.BeginInvoke(() =>
+            {
+                try { TerminalSurface.Write(text); }
+                catch { /* best effort */ }
+            });
     }
 
     private void OnFocusRequested(object? sender, EventArgs e)
@@ -65,7 +69,11 @@ public partial class ConsoleView : UserControl
         if (Dispatcher.CheckAccess())
             FocusTerminal();
         else
-            _ = Dispatcher.BeginInvoke(FocusTerminal);
+            Dispatcher.BeginInvoke(() =>
+            {
+                try { FocusTerminal(); }
+                catch { /* best effort */ }
+            });
     }
 
     private void OnClearRequested(object? sender, EventArgs e)
@@ -73,7 +81,11 @@ public partial class ConsoleView : UserControl
         if (Dispatcher.CheckAccess())
             TerminalSurface.Clear();
         else
-            _ = Dispatcher.BeginInvoke(TerminalSurface.Clear);
+            Dispatcher.BeginInvoke(() =>
+            {
+                try { TerminalSurface.Clear(); }
+                catch { /* best effort */ }
+            });
     }
 
     private void FocusTerminal()

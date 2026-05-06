@@ -343,7 +343,11 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
             return;
 
         _renderQueued = true;
-        _ = Dispatcher.BeginInvoke(InvalidateVisual, DispatcherPriority.Render);
+        Dispatcher.BeginInvoke(() =>
+        {
+            try { InvalidateVisual(); }
+            catch { _renderQueued = false; }
+        }, DispatcherPriority.Render);
     }
 
     public void Dispose()
