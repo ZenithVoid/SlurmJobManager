@@ -421,12 +421,16 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         {
             _ = dispatcher.InvokeAsync(() =>
             {
+                if (string.Equals(_currentWorkingDirectory, cwd, StringComparison.Ordinal))
+                    return;
                 _currentWorkingDirectory = cwd;
                 NotifyPromptContextChanged();
             });
         }
         else
         {
+            if (string.Equals(_currentWorkingDirectory, cwd, StringComparison.Ordinal))
+                return;
             _currentWorkingDirectory = cwd;
             NotifyPromptContextChanged();
         }
@@ -482,11 +486,16 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
     private void SetBusy(bool value)
     {
+        if (_isBusy == value)
+            return;
+
         var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher != null && !dispatcher.CheckAccess())
         {
             _ = dispatcher.InvokeAsync(() =>
             {
+                if (_isBusy == value)
+                    return;
                 IsBusy = value;
                 OnPropertyChanged(nameof(ConsoleStatusSummary));
                 OnPropertyChanged(nameof(ConsoleHeaderStatusMessage));

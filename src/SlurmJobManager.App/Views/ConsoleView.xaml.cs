@@ -9,6 +9,9 @@ namespace SlurmJobManager.App.Views;
 public partial class ConsoleView : UserControl
 {
     private ConsoleViewModel? _subscribedVm;
+    private readonly object _outputSync = new();
+    private readonly System.Text.StringBuilder _outputBuffer = new();
+    private bool _outputFlushQueued;
 
     public ConsoleView()
     {
@@ -54,14 +57,17 @@ public partial class ConsoleView : UserControl
 
     private void OnTerminalOutputReceived(object? sender, string text)
     {
-        if (Dispatcher.CheckAccess())
-            TerminalSurface.Write(text);
-        else
-            Dispatcher.BeginInvoke(() =>
-            {
-                try { TerminalSurface.Write(text); }
-                catch { /* best effort */ }
-            });
+        if (string.IsNullOrEmpty(text)) return;
+
+        lock (_outputSync)
+        {
+            _outputBuffer.Append(text);
+            if (_outputFlushQueued)
+                return;
+            _outputFlushQueued = true;
+        }
+
+        _ = Dispatcher.InvokeAsync(FlushBufferedOutput, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     private void OnFocusRequested(object? sender, EventArgs e)
@@ -96,10 +102,10 @@ public partial class ConsoleView : UserControl
 
     public void RequestTerminalFocus() => FocusTerminal();
 
-    private async void TerminalSurface_InputGenerated(object sender, string input)
+    private void TerminalSurface_InputGenerated(object sender, string input)
     {
         if (DataContext is not ConsoleViewModel vm) return;
-        await vm.ForwardTerminalInputAsync(input);
+        _ = ForwardTerminalInputSafelyAsync(vm, input);
     }
 
     private async void TerminalSurface_TerminalResized(object sender, TerminalResizedEventArgs e)
@@ -132,6 +138,35 @@ public partial class ConsoleView : UserControl
                 vm.HistoryDownCommand.Execute(null);
                 e.Handled = true;
                 break;
+        }
+    }
+
+    private void FlushBufferedOutput()
+    {
+        string payload;
+        lock (_outputSync)
+        {
+            payload = _outputBuffer.ToString();
+            _outputBuffer.Clear();
+            _outputFlushQueued = false;
+        }
+
+        if (payload.Length == 0)
+            return;
+
+        try { TerminalSurface.Write(payload); }
+        catch { /* best effort */ }
+    }
+
+    private static async Task ForwardTerminalInputSafelyAsync(ConsoleViewModel vm, string input)
+    {
+        try
+        {
+            await vm.ForwardTerminalInputAsync(input);
+        }
+        catch
+        {
+            // best effort: keep terminal input path resilient without surfacing UI exceptions
         }
     }
 }

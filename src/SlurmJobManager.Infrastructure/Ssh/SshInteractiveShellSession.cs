@@ -1,6 +1,7 @@
 using System.Text;
 using System.Reflection;
 using System.Diagnostics;
+using System.Threading.Channels;
 using Renci.SshNet;
 using Renci.SshNet.Common;
 using SlurmJobManager.Core.Interfaces;
@@ -11,11 +12,12 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
 {
     // Reflection-based PTY resize is currently validated with SSH.NET 2024.2.0.
     private static readonly TimeSpan ReaderShutdownTimeout = TimeSpan.FromSeconds(2);
-    private const int ReadPollTimeoutMs = 200;
+    private const int ReadPollTimeoutMs = 50;
     private readonly ShellStream _shellStream;
     private readonly CancellationTokenSource _readerCts = new();
-    private readonly SemaphoreSlim _writeGate = new(1, 1);
+    private readonly Channel<string> _writeQueue;
     private readonly Task _readerTask;
+    private readonly Task _writerTask;
     private int _closed;
 
     public event EventHandler<string>? OutputReceived;
@@ -26,8 +28,15 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
     public SshInteractiveShellSession(ShellStream shellStream)
     {
         _shellStream = shellStream ?? throw new ArgumentNullException(nameof(shellStream));
+        _writeQueue = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
+        {
+            SingleReader = true,
+            SingleWriter = false,
+            AllowSynchronousContinuations = false
+        });
         try { _shellStream.ReadTimeout = ReadPollTimeoutMs; } catch { /* best effort */ }
         _readerTask = Task.Run(() => ReaderLoop(_readerCts.Token));
+        _writerTask = Task.Run(() => WriterLoop(_readerCts.Token));
     }
 
     public async Task WriteAsync(string data, CancellationToken ct = default)
@@ -35,17 +44,13 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         if (!IsOpen) throw new InvalidOperationException("Interactive shell session is closed.");
         if (string.IsNullOrEmpty(data)) return;
 
-        await _writeGate.WaitAsync(ct);
-        try
+        while (await _writeQueue.Writer.WaitToWriteAsync(ct))
         {
-            ct.ThrowIfCancellationRequested();
-            _shellStream.Write(data);
-            _shellStream.Flush();
+            if (_writeQueue.Writer.TryWrite(data))
+                return;
         }
-        finally
-        {
-            _writeGate.Release();
-        }
+
+        throw new InvalidOperationException("Interactive shell session is closed.");
     }
 
     public Task ResizeAsync(int cols, int rows, CancellationToken ct = default)
@@ -108,6 +113,7 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         if (Interlocked.Exchange(ref _closed, 1) != 0) return;
 
         _readerCts.Cancel();
+        _writeQueue.Writer.TryComplete();
 
         try { _shellStream.Dispose(); } catch { /* best effort */ }
 
@@ -125,7 +131,20 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         catch (OperationCanceledException) { /* normal */ }
         catch { /* best effort */ }
 
-        try { _writeGate.Dispose(); } catch { /* best effort */ }
+        try
+        {
+            using var timeoutCts = new CancellationTokenSource(ReaderShutdownTimeout);
+            var timeoutTask = Task.Delay(Timeout.InfiniteTimeSpan, timeoutCts.Token);
+            var completed = await Task.WhenAny(_writerTask, timeoutTask);
+            if (completed == _writerTask)
+            {
+                timeoutCts.Cancel();
+                await _writerTask;
+            }
+        }
+        catch (OperationCanceledException) { /* normal */ }
+        catch { /* best effort */ }
+
         try { _readerCts.Dispose(); } catch { /* best effort */ }
         Closed?.Invoke(this, EventArgs.Empty);
     }
@@ -166,6 +185,54 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         }
 
         return Task.CompletedTask;
+    }
+
+    private async Task WriterLoop(CancellationToken ct)
+    {
+        var reader = _writeQueue.Reader;
+        while (!ct.IsCancellationRequested)
+        {
+            string? chunk;
+            try
+            {
+                if (!await reader.WaitToReadAsync(ct))
+                    break;
+                if (!reader.TryRead(out chunk))
+                    continue;
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+
+            try
+            {
+                if (string.IsNullOrEmpty(chunk))
+                    continue;
+                _shellStream.Write(chunk);
+
+                while (reader.TryRead(out var bufferedChunk))
+                {
+                    if (string.IsNullOrEmpty(bufferedChunk))
+                        continue;
+                    _shellStream.Write(bufferedChunk);
+                }
+
+                _shellStream.Flush();
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (ObjectDisposedException)
+            {
+                break;
+            }
+            catch
+            {
+                break;
+            }
+        }
     }
 
     public void Dispose()
