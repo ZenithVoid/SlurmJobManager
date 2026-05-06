@@ -67,7 +67,12 @@
     <sys:String x:Key="Status.Ready">Ready</sys:String>
     <sys:String x:Key="Status.Connected">Connected</sys:String>
     <sys:String x:Key="Status.Disconnected">Disconnected</sys:String>
+    <sys:String x:Key="Status.Idle">Idle</sys:String>
     <sys:String x:Key="Status.Connecting">Connecting…</sys:String>
+    <sys:String x:Key="Status.Testing">Testing…</sys:String>
+    <sys:String x:Key="Status.TestSuccess">Test succeeded</sys:String>
+    <sys:String x:Key="Status.TestFailed">Test failed</sys:String>
+    <sys:String x:Key="Status.ConnectionFailed">Connection failed</sys:String>
     <sys:String x:Key="Status.Loading">⏳ Loading…</sys:String>
     <sys:String x:Key="Status.Error">Error</sys:String>
     <sys:String x:Key="Units.SecondShort">s</sys:String>
@@ -158,16 +163,32 @@
     <sys:String x:Key="Conn.StatusReconnecting">Reconnecting…</sys:String>
     <sys:String x:Key="Conn.ConnectedTo">Connected to {0}:{1}</sys:String>
     <sys:String x:Key="Conn.Testing">Testing…</sys:String>
-    <sys:String x:Key="Conn.TestSuccess">Test successful and connected.</sys:String>
+    <sys:String x:Key="Conn.TestSuccess">Connection test successful.</sys:String>
     <sys:String x:Key="Conn.TestUnexpectedResponse">Test failed: unexpected response (exit {0}).</sys:String>
+    <sys:String x:Key="Conn.ServerFingerprint">Server fingerprint: {0}</sys:String>
+    <sys:String x:Key="Conn.RecentConnections">Recent connections</sys:String>
+    <sys:String x:Key="Conn.NoRecentConnections">No recent connections yet.</sys:String>
+    <sys:String x:Key="Conn.UseRecent">Use</sys:String>
+    <sys:String x:Key="Conn.DeleteRecent">Delete</sys:String>
+    <sys:String x:Key="Conn.RecentApplied">Filled from recent connection: {0}@{1}:{2}</sys:String>
+    <sys:String x:Key="Conn.RecentDeleted">Removed recent connection: {0}@{1}:{2}</sys:String>
+    <sys:String x:Key="Conn.LoadRecentFailed">Failed to load recent connections: {0}</sys:String>
+    <sys:String x:Key="Conn.RecentDeleteTitle">Delete recent connection</sys:String>
+    <sys:String x:Key="Conn.RecentDeleteConfirm">Delete this recent entry: {0}@{1}:{2}?</sys:String>
     <sys:String x:Key="Conn.ProfileSaved">Profile saved (credentials encrypted).</sys:String>
     <sys:String x:Key="Conn.SaveProfileFailed">Save profile failed: {0}</sys:String>
     <sys:String x:Key="Conn.NoSavedProfile">No saved profile found.</sys:String>
     <sys:String x:Key="Conn.LoadProfileFailed">Load profile failed: {0}</sys:String>
     <sys:String x:Key="Conn.ErrAuth">Authentication failed — check username/password or key. ({0})</sys:String>
+    <sys:String x:Key="Conn.ErrUserPassword">Username or password authentication failed. Check account/password and retry. Raw error: {0}</sys:String>
+    <sys:String x:Key="Conn.ErrKeyAuth">Private key authentication failed. Check key path, permissions, and passphrase. Raw error: {0}</sys:String>
     <sys:String x:Key="Conn.ErrNetwork">Network unreachable — check host/port and firewall. ({0})</sys:String>
-    <sys:String x:Key="Conn.ErrTimeout">Connection timed out — server may be slow or unreachable.</sys:String>
+    <sys:String x:Key="Conn.ErrHostUnreachable">Host is unreachable or cannot be resolved. Check host/IP and network route. Raw error: {0}</sys:String>
+    <sys:String x:Key="Conn.ErrPortRefused">Connection refused on target port. Check SSH port and server listener. Raw error: {0}</sys:String>
+    <sys:String x:Key="Conn.ErrTimeout">Connection timed out. Check network latency, firewall, and SSH service health. Raw error: {0}</sys:String>
+    <sys:String x:Key="Conn.ErrHostKey">Host key/fingerprint validation issue. Verify trusted server fingerprint before retrying. Raw error: {0}</sys:String>
     <sys:String x:Key="Conn.ErrGeneric">Error: {0}</sys:String>
+    <sys:String x:Key="Conn.ErrUnknown">Unexpected connection error. Raw error: {0}</sys:String>
 
     <!-- ── Task editor ──────────────────────────────────────────────────── -->
     <sys:String x:Key="Task.Setup">Task Setup</sys:String>

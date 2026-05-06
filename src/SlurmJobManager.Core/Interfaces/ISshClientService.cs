@@ -8,8 +8,14 @@ public interface ISshClientService : IDisposable
     /// <summary>Opens the SSH connection using the supplied profile.</summary>
     Task ConnectAsync(ConnectionProfile profile, CancellationToken ct = default);
 
+    /// <summary>Tests SSH connectivity/authentication without altering current primary connection state.</summary>
+    Task TestConnectionAsync(ConnectionProfile profile, CancellationToken ct = default);
+
     /// <summary>Returns true when the underlying connection is open.</summary>
     bool IsConnected { get; }
+
+    /// <summary>The last observed server fingerprint in hex form (if available).</summary>
+    string? LastServerFingerprint { get; }
 
     /// <summary>Executes a remote command and returns (stdout, stderr, exitCode).</summary>
     Task<(string StdOut, string StdErr, int ExitCode)> ExecuteAsync(string command, CancellationToken ct = default);

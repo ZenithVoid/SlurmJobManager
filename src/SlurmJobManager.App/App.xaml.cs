@@ -57,9 +57,10 @@ public partial class App : Application
             var protector = new DpapiCredentialProtector();
             profileStore  = new ConnectionProfileStore(protector, _logger);
         }
+        IRecentConnectionService recentConnectionService = new RecentConnectionService(_logger);
 
         // ViewModels
-        var connectionVm = new ConnectionViewModel(ssh, profileStore);
+        var connectionVm = new ConnectionViewModel(ssh, profileStore, recentConnectionService);
         var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints);
         var monitorVm    = new MonitorViewModel(slurm, settings, _logger, connectionVm);
         var logViewerVm  = new LogViewerViewModel(logChunk, _logger);

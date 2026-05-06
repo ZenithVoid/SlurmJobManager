@@ -34,4 +34,9 @@ public static class LocalDataPaths
     /// Connection profile file path: &lt;AppBaseDirectory&gt;/Data/profile.json
     /// </summary>
     public static string ProfileFilePath => Path.Combine(DataDirectory, "profile.json");
+
+    /// <summary>
+    /// Recent SSH connections file path: &lt;AppBaseDirectory&gt;/Data/recent-connections.json
+    /// </summary>
+    public static string RecentConnectionsFilePath => Path.Combine(DataDirectory, "recent-connections.json");
 }

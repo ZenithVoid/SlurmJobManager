@@ -1,5 +1,6 @@
 using System.Text;
 using Renci.SshNet;
+using Renci.SshNet.Common;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
 
@@ -16,10 +17,12 @@ public sealed class SshClientService : ISshClientService
     private readonly List<IInteractiveShellSession> _interactiveSessions = new();
     private readonly object _sessionLock = new();
     private readonly object _clientLock = new();
+    private readonly object _fingerprintLock = new();
 
     private SshClient? _sshClient;
     private SftpClient? _sftpClient;
     private bool _disposed;
+    private string? _lastServerFingerprint;
 
     public SshClientService(AppSettings? settings = null)
     {
@@ -46,6 +49,15 @@ public sealed class SshClientService : ISshClientService
         }
     }
 
+    public string? LastServerFingerprint
+    {
+        get
+        {
+            lock (_fingerprintLock)
+                return _lastServerFingerprint;
+        }
+    }
+
     public Task ConnectAsync(ConnectionProfile profile, CancellationToken ct = default)
     {
         ThrowIfDisposed();
@@ -53,13 +65,10 @@ public sealed class SshClientService : ISshClientService
 
         ct.ThrowIfCancellationRequested();
 
-        AuthenticationMethod auth = BuildAuthMethod(profile);
-        var connInfo = new ConnectionInfo(profile.Host, profile.Port, profile.Username, auth)
-        {
-            Timeout = _settings.ConnectionTimeout,
-        };
+        var connInfo = BuildConnectionInfo(profile);
 
         var sshClient = new SshClient(connInfo);
+        AttachFingerprintCapture(sshClient);
         var sftpClient = new SftpClient(connInfo);
         lock (_clientLock)
         {
@@ -74,6 +83,21 @@ public sealed class SshClientService : ISshClientService
             _sshClient!.Connect();
             ct.ThrowIfCancellationRequested();
             _sftpClient!.Connect();
+        }, ct);
+    }
+
+    public Task TestConnectionAsync(ConnectionProfile profile, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        ct.ThrowIfCancellationRequested();
+
+        return Task.Run(() =>
+        {
+            var connInfo = BuildConnectionInfo(profile);
+            using var testClient = new SshClient(connInfo);
+            AttachFingerprintCapture(testClient);
+            testClient.Connect();
+            testClient.Disconnect();
         }, ct);
     }
 
@@ -325,6 +349,29 @@ public sealed class SshClientService : ISshClientService
         }
 
         return new PasswordAuthenticationMethod(profile.Username, profile.Password ?? string.Empty);
+    }
+
+    private ConnectionInfo BuildConnectionInfo(ConnectionProfile profile)
+    {
+        AuthenticationMethod auth = BuildAuthMethod(profile);
+        var connInfo = new ConnectionInfo(profile.Host, profile.Port, profile.Username, auth)
+        {
+            Timeout = _settings.ConnectionTimeout,
+        };
+        return connInfo;
+    }
+
+    private void AttachFingerprintCapture(SshClient client)
+    {
+        client.HostKeyReceived += (_, e) =>
+        {
+            var fingerprint = e.FingerPrint is { Length: > 0 }
+                ? string.Join(":", e.FingerPrint.Select(b => b.ToString("X2")))
+                : string.Empty;
+            if (string.IsNullOrWhiteSpace(fingerprint)) return;
+            lock (_fingerprintLock)
+                _lastServerFingerprint = fingerprint;
+        };
     }
 
     /// <summary>Single-quotes a path for use in a POSIX shell command.</summary>

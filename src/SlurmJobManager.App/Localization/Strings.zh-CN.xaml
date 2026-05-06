@@ -67,7 +67,12 @@
     <sys:String x:Key="Status.Ready">就绪</sys:String>
     <sys:String x:Key="Status.Connected">已连接</sys:String>
     <sys:String x:Key="Status.Disconnected">未连接</sys:String>
+    <sys:String x:Key="Status.Idle">空闲</sys:String>
     <sys:String x:Key="Status.Connecting">连接中…</sys:String>
+    <sys:String x:Key="Status.Testing">测试中…</sys:String>
+    <sys:String x:Key="Status.TestSuccess">测试成功</sys:String>
+    <sys:String x:Key="Status.TestFailed">测试失败</sys:String>
+    <sys:String x:Key="Status.ConnectionFailed">连接失败</sys:String>
     <sys:String x:Key="Status.Loading">⏳ 加载中…</sys:String>
     <sys:String x:Key="Status.Error">错误</sys:String>
     <sys:String x:Key="Units.SecondShort">秒</sys:String>
@@ -158,16 +163,32 @@
     <sys:String x:Key="Conn.StatusReconnecting">重连中…</sys:String>
     <sys:String x:Key="Conn.ConnectedTo">已连接到 {0}:{1}</sys:String>
     <sys:String x:Key="Conn.Testing">测试中…</sys:String>
-    <sys:String x:Key="Conn.TestSuccess">测试成功并已连接。</sys:String>
+    <sys:String x:Key="Conn.TestSuccess">连接测试成功。</sys:String>
     <sys:String x:Key="Conn.TestUnexpectedResponse">测试失败：响应异常（退出码 {0}）。</sys:String>
+    <sys:String x:Key="Conn.ServerFingerprint">服务器指纹：{0}</sys:String>
+    <sys:String x:Key="Conn.RecentConnections">最近连接</sys:String>
+    <sys:String x:Key="Conn.NoRecentConnections">暂无最近连接记录。</sys:String>
+    <sys:String x:Key="Conn.UseRecent">填充</sys:String>
+    <sys:String x:Key="Conn.DeleteRecent">删除</sys:String>
+    <sys:String x:Key="Conn.RecentApplied">已从最近连接填充：{0}@{1}:{2}</sys:String>
+    <sys:String x:Key="Conn.RecentDeleted">已删除最近连接：{0}@{1}:{2}</sys:String>
+    <sys:String x:Key="Conn.LoadRecentFailed">加载最近连接失败：{0}</sys:String>
+    <sys:String x:Key="Conn.RecentDeleteTitle">删除最近连接</sys:String>
+    <sys:String x:Key="Conn.RecentDeleteConfirm">确认删除该最近连接：{0}@{1}:{2}？</sys:String>
     <sys:String x:Key="Conn.ProfileSaved">配置已保存（凭据已加密）。</sys:String>
     <sys:String x:Key="Conn.SaveProfileFailed">保存配置失败：{0}</sys:String>
     <sys:String x:Key="Conn.NoSavedProfile">未找到已保存配置。</sys:String>
     <sys:String x:Key="Conn.LoadProfileFailed">加载配置失败：{0}</sys:String>
     <sys:String x:Key="Conn.ErrAuth">认证失败，请检查用户名/密码或密钥。（{0}）</sys:String>
+    <sys:String x:Key="Conn.ErrUserPassword">用户名或密码认证失败。请检查账号密码后重试。原始错误：{0}</sys:String>
+    <sys:String x:Key="Conn.ErrKeyAuth">私钥认证失败。请检查密钥路径、权限和口令。原始错误：{0}</sys:String>
     <sys:String x:Key="Conn.ErrNetwork">网络不可达，请检查主机/端口与防火墙。（{0}）</sys:String>
-    <sys:String x:Key="Conn.ErrTimeout">连接超时，服务器可能响应缓慢或不可达。</sys:String>
+    <sys:String x:Key="Conn.ErrHostUnreachable">主机不可达或无法解析。请检查主机/IP 与网络路由。原始错误：{0}</sys:String>
+    <sys:String x:Key="Conn.ErrPortRefused">目标端口连接被拒绝。请检查 SSH 端口和服务监听。原始错误：{0}</sys:String>
+    <sys:String x:Key="Conn.ErrTimeout">连接超时。请检查网络延迟、防火墙和 SSH 服务状态。原始错误：{0}</sys:String>
+    <sys:String x:Key="Conn.ErrHostKey">主机密钥/指纹校验异常。请先核对可信指纹后重试。原始错误：{0}</sys:String>
     <sys:String x:Key="Conn.ErrGeneric">错误：{0}</sys:String>
+    <sys:String x:Key="Conn.ErrUnknown">连接出现未知异常。原始错误：{0}</sys:String>
 
     <!-- ── 任务编辑器 ────────────────────────────────────────────────────── -->
     <sys:String x:Key="Task.Setup">任务配置</sys:String>
