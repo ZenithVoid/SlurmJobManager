@@ -94,6 +94,13 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
         var modifiers = ConvertModifiers(Keyboard.Modifiers);
 
+        if (TryMapCtrlChord(e.Key, Keyboard.Modifiers, out var ctrlData))
+        {
+            EmitInput(ctrlData);
+            e.Handled = true;
+            return;
+        }
+
         if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control &&
             e.Key == System.Windows.Input.Key.C)
         {
@@ -314,6 +321,38 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     {
         if (!string.IsNullOrEmpty(data))
             InputGenerated?.Invoke(this, data);
+    }
+
+    private static bool TryMapCtrlChord(System.Windows.Input.Key key, ModifierKeys modifiers, out string? data)
+    {
+        data = null;
+        if ((modifiers & ModifierKeys.Control) != ModifierKeys.Control)
+            return false;
+        if ((modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+            return false;
+        if ((modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+            return false;
+
+        if (key is >= System.Windows.Input.Key.A and <= System.Windows.Input.Key.Z)
+        {
+            var letterIndex = key - System.Windows.Input.Key.A + 1;
+            data = new string((char)letterIndex, 1);
+            return true;
+        }
+
+        if (key == System.Windows.Input.Key.D2 || key == System.Windows.Input.Key.Space)
+        {
+            data = "\u0000"; // Ctrl+2 / Ctrl+Space
+            return true;
+        }
+
+        if (key == System.Windows.Input.Key.Oem4) { data = "\u001B"; return true; } // Ctrl+[
+        if (key == System.Windows.Input.Key.Oem5) { data = "\u001C"; return true; } // Ctrl+\
+        if (key == System.Windows.Input.Key.Oem6) { data = "\u001D"; return true; } // Ctrl+]
+        if (key == System.Windows.Input.Key.D6) { data = "\u001E"; return true; }   // Ctrl+^
+        if (key == System.Windows.Input.Key.OemMinus) { data = "\u001F"; return true; } // Ctrl+_
+
+        return false;
     }
 
     public void Dispose()

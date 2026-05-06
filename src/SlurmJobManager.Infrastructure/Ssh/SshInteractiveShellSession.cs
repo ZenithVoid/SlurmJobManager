@@ -1,4 +1,5 @@
 using System.Text;
+using System.Reflection;
 using Renci.SshNet;
 using SlurmJobManager.Core.Interfaces;
 
@@ -47,11 +48,33 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
 
     public Task ResizeAsync(int cols, int rows, CancellationToken ct = default)
     {
-        _ = cols;
-        _ = rows;
-        _ = ct;
-        // SSH.NET ShellStream does not expose a public runtime resize API.
-        return Task.CompletedTask;
+        if (!IsOpen) return Task.CompletedTask;
+
+        cols = Math.Max(2, cols);
+        rows = Math.Max(2, rows);
+        return Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                var channelField = _shellStream.GetType().GetField("_channel", BindingFlags.Instance | BindingFlags.NonPublic);
+                var channel = channelField?.GetValue(_shellStream);
+                if (channel == null) return;
+
+                var method = channel.GetType().GetMethod(
+                    "SendWindowChangeRequest",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                    binder: null,
+                    types: new[] { typeof(uint), typeof(uint), typeof(uint), typeof(uint) },
+                    modifiers: null);
+
+                _ = method?.Invoke(channel, new object[] { (uint)cols, (uint)rows, 0u, 0u });
+            }
+            catch
+            {
+                // Best effort only. Keep the shell session alive even when resize is unsupported.
+            }
+        }, ct);
     }
 
     public async Task CloseAsync()
