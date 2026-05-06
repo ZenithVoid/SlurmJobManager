@@ -252,6 +252,7 @@
                                                         <TextBlock Text="{Binding TaskEditor.RemoteWorkDir}"
                                                                    Style="{StaticResource MutedTextStyle}"
                                                                    TextWrapping="Wrap"
+                                                                   AutomationProperties.Name="{Binding TaskEditor.RemoteWorkDir, StringFormat=完整工作目录路径：{0}}"
                                                                    Margin="0,1,0,0" />
 
                                                         <TextBlock Text="{DynamicResource Task.ContextInfoFilePathLabel}"
@@ -264,6 +265,7 @@
                                                         <TextBlock Text="{Binding TaskEditor.CurrentTaskFilesPath}"
                                                                    Style="{StaticResource MutedTextStyle}"
                                                                    TextWrapping="Wrap"
+                                                                   AutomationProperties.Name="{Binding TaskEditor.CurrentTaskFilesPath, StringFormat=完整当前文件路径：{0}}"
                                                                    Margin="0,1,0,0" />
                                                     </StackPanel>
                                                 </StackPanel>
