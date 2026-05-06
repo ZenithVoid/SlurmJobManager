@@ -33,6 +33,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
     private int _terminalCols = 120;
     private int _terminalRows = 36;
     private bool _isInitializingSession;
+    private bool _isDisposed;
 
     public event EventHandler<string>? TerminalOutputReceived;
     public event EventHandler? FocusRequested;
@@ -87,6 +88,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
     public async Task EnsureInteractiveShellReadyAsync(CancellationToken ct = default)
     {
+        if (_isDisposed) return;
         await EnsureShellSessionAsync(ct);
         FocusRequested?.Invoke(this, EventArgs.Empty);
     }
@@ -144,6 +146,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
     public async Task<bool> OpenAtDirectoryAsync(string remoteDirectory, CancellationToken ct = default)
     {
+        if (_isDisposed) return false;
         if (!_ssh.IsConnected)
         {
             PublishSystemMessage(L("Console.ErrNotConnected"));
@@ -163,6 +166,31 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         if (string.IsNullOrWhiteSpace(target))
             return false;
 
+        var escapedTarget = EscapeShellArg(target);
+        var (kindStdOut, kindStdErr, kindExitCode) = await _ssh.ExecuteAsync(
+            $"if [ -d {escapedTarget} ]; then echo DIR; " +
+            $"elif [ -f {escapedTarget} ]; then echo FILE; else echo MISSING; fi",
+            ct);
+        var targetKind = kindStdOut.Trim();
+        if (kindExitCode != 0)
+        {
+            var detail = kindStdErr.Trim();
+            PublishSystemMessage(string.IsNullOrWhiteSpace(detail)
+                ? L("Console.CdFailedNoDetail")
+                : string.Format(L("Console.CdFailed"), detail));
+            return false;
+        }
+        if (targetKind == "MISSING")
+        {
+            PublishSystemMessage(L("Console.CdPathMissing"));
+            return false;
+        }
+        if (targetKind == "FILE")
+        {
+            PublishSystemMessage(L("Console.CdNotDirectory"));
+            return false;
+        }
+
         if (IsBusy)
         {
             var askText = string.Format(L("Console.BusySwitchDirectoryPrompt"), CollapseHomePath(target));
@@ -176,13 +204,14 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         }
 
         SetBusy(true);
-        await SendRawInputAsync($"cd -- {EscapeShellArg(target)}\n", ct);
+        await SendRawInputAsync($"cd -- {escapedTarget}\n", ct);
         FocusRequested?.Invoke(this, EventArgs.Empty);
         return true;
     }
 
     private async Task<bool> EnsureShellSessionAsync(CancellationToken ct)
     {
+        if (_isDisposed) return false;
         if (_shellSession?.IsOpen == true) return true;
         if (!_ssh.IsConnected)
         {
@@ -233,6 +262,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
     private async Task SendRawInputAsync(string data, CancellationToken ct)
     {
+        if (_isDisposed) return;
         var session = _shellSession;
         if (session?.IsOpen != true) return;
 
@@ -402,7 +432,10 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         {
             session.OutputReceived -= OnShellOutputReceived;
             session.Closed -= OnShellClosed;
-            await session.CloseAsync();
+            var closeTask = session.CloseAsync();
+            var completed = await Task.WhenAny(closeTask, Task.Delay(TimeSpan.FromSeconds(2)));
+            if (completed == closeTask)
+                await closeTask;
             session.Dispose();
         }
         catch (Exception ex)
@@ -491,6 +524,7 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        _isDisposed = true;
         if (_connection != null)
             _connection.PropertyChanged -= OnConnectionPropertyChanged;
         try { CloseShellSessionAsync().GetAwaiter().GetResult(); } catch { /* best effort */ }

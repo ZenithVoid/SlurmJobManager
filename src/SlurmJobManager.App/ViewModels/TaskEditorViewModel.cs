@@ -19,7 +19,7 @@ namespace SlurmJobManager.App.ViewModels;
 /// Supports the multi-task-unit workspace model (tasks.manifest.json) while
 /// remaining backward-compatible with single-task task.json layouts.
 /// </summary>
-public sealed class TaskEditorViewModel : ViewModelBase
+public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 {
     private readonly ISshClientService _ssh;
     private readonly ISlurmService _slurm;
@@ -1760,6 +1760,13 @@ public sealed class TaskEditorViewModel : ViewModelBase
 
     private static string EscapeShellArg(string arg)
         => "'" + arg.Replace("'", "'\\''") + "'";
+
+    public void Dispose()
+    {
+        _taskIdValidationCts?.Cancel();
+        _taskIdValidationCts?.Dispose();
+        _taskIdValidationCts = null;
+    }
 
     // ── Default sbatch template ──────────────────────────────────────────────
 

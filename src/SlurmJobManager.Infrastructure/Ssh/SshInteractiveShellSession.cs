@@ -6,6 +6,7 @@ namespace SlurmJobManager.Infrastructure.Ssh;
 
 internal sealed class SshInteractiveShellSession : IInteractiveShellSession
 {
+    private static readonly TimeSpan ReaderShutdownTimeout = TimeSpan.FromSeconds(2);
     private readonly ShellStream _shellStream;
     private readonly CancellationTokenSource _readerCts = new();
     private readonly SemaphoreSlim _writeGate = new(1, 1);
@@ -58,10 +59,18 @@ internal sealed class SshInteractiveShellSession : IInteractiveShellSession
         if (Interlocked.Exchange(ref _closed, 1) != 0) return;
 
         _readerCts.Cancel();
-        try { await _readerTask; } catch (OperationCanceledException) { /* normal */ }
-        catch { /* best effort */ }
 
         try { _shellStream.Dispose(); } catch { /* best effort */ }
+
+        try
+        {
+            var completed = await Task.WhenAny(_readerTask, Task.Delay(ReaderShutdownTimeout));
+            if (completed == _readerTask)
+                await _readerTask;
+        }
+        catch (OperationCanceledException) { /* normal */ }
+        catch { /* best effort */ }
+
         try { _writeGate.Dispose(); } catch { /* best effort */ }
         try { _readerCts.Dispose(); } catch { /* best effort */ }
         Closed?.Invoke(this, EventArgs.Empty);
