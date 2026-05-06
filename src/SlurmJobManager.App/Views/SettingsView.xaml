@@ -133,7 +133,7 @@
                         <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
                                    TextWrapping="Wrap">
                             <Run Text="{DynamicResource Settings.CurrentLanguage}" />
-                            <Run Text="{Binding CurrentLocaleDisplayName}" />
+                            <Run Text="{Binding CurrentLocaleDisplayName, Mode=OneWay}" />
                         </TextBlock>
                     </Border>
                     <TextBlock Text="{DynamicResource Settings.LanguageEffect}"
