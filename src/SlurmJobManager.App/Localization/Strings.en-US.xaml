@@ -509,6 +509,8 @@
     <sys:String x:Key="CmdBuilder.CommandPreview">Command Preview</sys:String>
     <sys:String x:Key="CmdBuilder.FilterHint">Type to filter list</sys:String>
     <sys:String x:Key="CmdBuilder.ProgramPathHint">Type manually or double-click from the left panel</sys:String>
+    <sys:String x:Key="CmdBuilder.BrowseProgramPath">Browse remote executable/file</sys:String>
+    <sys:String x:Key="CmdBuilder.BrowseParamFile">Browse remote parameter file</sys:String>
     <sys:String x:Key="CmdBuilder.DoubleClickHint">Double-click to open and edit a remote parameter file</sys:String>
     <sys:String x:Key="CmdBuilder.AddParam">+ Add to command</sys:String>
     <sys:String x:Key="CmdBuilder.RemoveParam">- Remove</sys:String>
@@ -534,7 +536,7 @@
     <sys:String x:Key="CmdBuilder.SbatchHint">This script will be used on submission. Click Regenerate to refresh it from the current command list.</sys:String>
     <sys:String x:Key="CmdBuilder.RegenSbatch">⟳ Regenerate</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchEmptyError">sbatch script cannot be empty. Please fill it before Save &amp; Apply.</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchMissingShebangError">sbatch script must include a shebang (e.g. #!/bin/bash) or an explicit TODO hint before Save &amp; Apply.</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchMissingShebangError">sbatch script must include a shebang (e.g. #!/bin/bash) before Save &amp; Apply.</sys:String>
 
     <!-- ── Remote directory picker ──────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.TitleWindow">Select Remote Directory</sys:String>
@@ -548,6 +550,10 @@
     <sys:String x:Key="RemotePicker.GoUpDisabledTip">Already at root; cannot go up further</sys:String>
     <sys:String x:Key="RemotePicker.StatusLoading">Loading…</sys:String>
     <sys:String x:Key="RemotePicker.StatusLoadFailed">Unable to load directory: {0}</sys:String>
+    <sys:String x:Key="RemoteFilePicker.TitleWindow">Select Remote File</sys:String>
+    <sys:String x:Key="RemoteFilePicker.Title">Remote File Picker</sys:String>
+    <sys:String x:Key="RemoteFilePicker.Hint">Double-click a directory to enter it, or select a file then click [Select File]</sys:String>
+    <sys:String x:Key="RemoteFilePicker.SelectFile">Select File</sys:String>
 
     <!-- ── Remote file editor ───────────────────────────────────────────── -->
     <sys:String x:Key="RemoteEditor.Title">Edit File:</sys:String>

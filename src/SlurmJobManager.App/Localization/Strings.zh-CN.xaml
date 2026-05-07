@@ -509,6 +509,8 @@
     <sys:String x:Key="CmdBuilder.CommandPreview">命令行预览</sys:String>
     <sys:String x:Key="CmdBuilder.FilterHint">输入关键词过滤列表</sys:String>
     <sys:String x:Key="CmdBuilder.ProgramPathHint">可手动输入或从左侧列表双击选择</sys:String>
+    <sys:String x:Key="CmdBuilder.BrowseProgramPath">浏览远程可执行文件/程序文件</sys:String>
+    <sys:String x:Key="CmdBuilder.BrowseParamFile">浏览远程参数文件</sys:String>
     <sys:String x:Key="CmdBuilder.DoubleClickHint">双击可打开并编辑远程参数文件</sys:String>
     <sys:String x:Key="CmdBuilder.AddParam">+ 添加到命令</sys:String>
     <sys:String x:Key="CmdBuilder.RemoveParam">- 移除</sys:String>
@@ -534,7 +536,7 @@
     <sys:String x:Key="CmdBuilder.SbatchHint">此脚本将在提交时使用。点击"重新生成"可用当前命令列表刷新内容。</sys:String>
     <sys:String x:Key="CmdBuilder.RegenSbatch">⟳ 重新生成</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchEmptyError">sbatch 脚本内容不能为空，请先填写脚本后再保存应用。</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchMissingShebangError">sbatch 脚本缺少 shebang（例如 #!/bin/bash）或明确 TODO 提示，请先修正后再保存应用。</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchMissingShebangError">sbatch 脚本缺少 shebang（例如 #!/bin/bash），请先修正后再保存应用。</sys:String>
 
     <!-- ── 远程目录选择器 ─────────────────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.TitleWindow">选择远程目录</sys:String>
@@ -548,6 +550,10 @@
     <sys:String x:Key="RemotePicker.GoUpDisabledTip">当前已到根目录，无法继续上移</sys:String>
     <sys:String x:Key="RemotePicker.StatusLoading">加载中…</sys:String>
     <sys:String x:Key="RemotePicker.StatusLoadFailed">无法加载目录：{0}</sys:String>
+    <sys:String x:Key="RemoteFilePicker.TitleWindow">选择远程文件</sys:String>
+    <sys:String x:Key="RemoteFilePicker.Title">远程文件选择器</sys:String>
+    <sys:String x:Key="RemoteFilePicker.Hint">双击目录可进入，或选中文件后点击 [选择文件]</sys:String>
+    <sys:String x:Key="RemoteFilePicker.SelectFile">选择文件</sys:String>
 
     <!-- ── 远程文件编辑器 ─────────────────────────────────────────────────── -->
     <sys:String x:Key="RemoteEditor.Title">编辑文件：</sys:String>

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
+using SlurmJobManager.App.ViewModels;
 using SlurmJobManager.App.Views;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
@@ -35,6 +36,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private bool    _isBusy;
     private CommandEntryViewModel? _selectedCommand;
     private string  _selectedAvailableParamFile = string.Empty;
+    private string _homeDirectory = string.Empty;
 
     // ── Result ─────────────────────────────────────────────────────────────
     public bool Confirmed { get; private set; }
@@ -129,6 +131,8 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     public ICommand RemoveExtraArgCommand   { get; }
     public ICommand DetectMpiCommand        { get; }
     public ICommand TestCommandCommand      { get; }
+    public ICommand BrowseProgramPathCommand { get; }
+    public ICommand BrowseParamFileCommand   { get; }
     public ICommand SaveAndApplyCommand     { get; }
     public ICommand CancelCommand           { get; }
 
@@ -181,6 +185,8 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         RemoveExtraArgCommand  = new RelayCommand<ExtraArgViewModel>(RemoveExtraArg);
         DetectMpiCommand       = new AsyncRelayCommand(DetectMpiAsync, () => CanRunSshCommand() && !string.IsNullOrWhiteSpace(_selectedCommand?.ProgramPath));
         TestCommandCommand     = new AsyncRelayCommand(TestCommandAsync, () => CanRunSshCommand() && !string.IsNullOrWhiteSpace(_selectedCommand?.ProgramPath));
+        BrowseProgramPathCommand = new AsyncRelayCommand(BrowseProgramPathAsync, () => CanRunSshCommand() && _selectedCommand != null);
+        BrowseParamFileCommand   = new AsyncRelayCommand(BrowseParamFileAsync, () => CanRunSshCommand() && _selectedCommand != null);
         SaveAndApplyCommand    = new RelayCommand(SaveAndApply);
         CancelCommand          = new RelayCommand(() => { /* handled in code-behind */ });
     }
@@ -515,6 +521,67 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         finally { IsBusy = false; }
     }
 
+    private async Task BrowseProgramPathAsync(CancellationToken ct)
+    {
+        if (_selectedCommand == null) return;
+        var selectedFile = await BrowseRemoteFileAsync(ct);
+        if (string.IsNullOrWhiteSpace(selectedFile)) return;
+        _selectedCommand.ProgramPath = selectedFile;
+    }
+
+    private async Task BrowseParamFileAsync(CancellationToken ct)
+    {
+        if (_selectedCommand == null) return;
+        var selectedFile = await BrowseRemoteFileAsync(ct);
+        if (string.IsNullOrWhiteSpace(selectedFile)) return;
+
+        if (!_selectedCommand.ParameterFiles.Contains(selectedFile))
+            _selectedCommand.ParameterFiles.Add(selectedFile);
+
+        SelectedAvailableParamFile = selectedFile;
+        _selectedCommand.RebuildCommandLine();
+    }
+
+    private async Task<string?> BrowseRemoteFileAsync(CancellationToken ct)
+    {
+        if (!IsSshConnectedSafe())
+        {
+            StatusMessage = L("Task.RequireConnectionForBrowse", "请先建立 SSH 连接后再浏览远程目录。");
+            return null;
+        }
+
+        var homeDir = await ResolveHomeDirectoryAsync(ct);
+        var vm = new RemoteFilePickerViewModel(_ssh, homeDir);
+        var win = new RemoteFilePickerView { DataContext = vm };
+        if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
+
+        await vm.LoadInitialAsync(ct);
+        return win.ShowDialog() == true ? vm.ResultPath : null;
+    }
+
+    private async Task<string> ResolveHomeDirectoryAsync(CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(_homeDirectory))
+            return _homeDirectory;
+
+        try
+        {
+            var home = await _ssh.GetHomeDirectoryAsync(ct);
+            if (!string.IsNullOrWhiteSpace(home))
+            {
+                _homeDirectory = home.TrimEnd('/');
+                return _homeDirectory;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CommandBuilderViewModel.ResolveHomeDirectoryAsync] {ex.Message}");
+        }
+
+        _homeDirectory = "~";
+        return _homeDirectory;
+    }
+
     // ── Save & Apply ───────────────────────────────────────────────────────
 
     private void SaveAndApply()
@@ -557,7 +624,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("#!/bin/bash -l");
         sb.AppendLine($"#SBATCH --job-name={jobName}");
-        sb.AppendLine("# TODO: set --partition=<your_partition>");
+        sb.AppendLine("#SBATCH --partition=");
         sb.AppendLine("#SBATCH --nodes=1");
         sb.AppendLine("#SBATCH --ntasks=1");
         sb.AppendLine("#SBATCH --cpus-per-task=1");
@@ -589,7 +656,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         return
             "#!/bin/bash -l\n" +
             $"#SBATCH --job-name={jobName}\n" +
-            "# TODO: set --partition=<your_partition>\n" +
+            "#SBATCH --partition=\n" +
             "#SBATCH --nodes=1\n" +
             "#SBATCH --ntasks=1\n" +
             "#SBATCH --cpus-per-task=1\n" +
@@ -639,10 +706,9 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             .Split('\n')
             .FirstOrDefault(line => !string.IsNullOrWhiteSpace(line));
         var hasShebang = firstNonEmptyLine != null && firstNonEmptyLine.StartsWith("#!", StringComparison.Ordinal);
-        var hasPartitionTodo = normalized.Contains("# TODO: set --partition=", StringComparison.OrdinalIgnoreCase);
-        if (!hasShebang && !hasPartitionTodo)
+        if (!hasShebang)
         {
-            StatusMessage = L("CmdBuilder.SbatchMissingShebangError", "sbatch 脚本缺少 shebang（例如 #!/bin/bash）或明确 TODO 提示，请先修正后再保存应用。");
+            StatusMessage = L("CmdBuilder.SbatchMissingShebangError", "sbatch 脚本缺少 shebang（例如 #!/bin/bash），请先修正后再保存应用。");
             return false;
         }
 
