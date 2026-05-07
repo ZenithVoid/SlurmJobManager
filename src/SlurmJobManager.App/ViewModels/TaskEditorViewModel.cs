@@ -912,6 +912,13 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        var normalizedTaskId = NormalizeTaskIdForRestore(TaskId);
+        if (!string.Equals(normalizedTaskId, TaskId.Trim(), StringComparison.Ordinal))
+        {
+            SetStatus("Task.TaskIdInvalidForDirectoryCreate", "WarningTextStyle");
+            return;
+        }
+
         if (_taskIdDirectoryExists == true)
         {
             SetStatus("Task.TaskIdDirExists", "InfoTextStyle");
@@ -931,7 +938,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             var (_, stderr, exitCode) = await _ssh.ExecuteAsync($"mkdir -p {EscapeShellArg(targetPath)}", ct);
             if (exitCode != 0)
             {
-                var detail = string.IsNullOrWhiteSpace(stderr) ? L("Task.DirReadFailedNoDetail") : stderr.Trim();
+                var detail = string.IsNullOrWhiteSpace(stderr) ? L("Task.TaskIdDirCreateFailedNoDetail") : stderr.Trim();
                 SetStatus(string.Format(L("Task.TaskIdDirCreateFailed"), detail), "ErrorTextStyle", localize: false);
                 return;
             }
