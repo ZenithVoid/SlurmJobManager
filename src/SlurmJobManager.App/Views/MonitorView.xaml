@@ -188,14 +188,17 @@
                                 Padding="10,4" />
                     </Grid>
 
-                    <ScrollViewer Grid.Row="1"
+                    <ScrollViewer x:Name="CurrentJobsScrollHost"
+                                  Grid.Row="1"
                                   Background="{DynamicResource BgSurface0Brush}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Auto"
                                   CanContentScroll="False"
                                   b:SmoothScrollBehavior.IsEnabled="True"
                                   b:SmoothScrollBehavior.ScrollAmount="60">
-                        <Grid Background="{DynamicResource BgSurface0Brush}">
+                        <Grid Background="{DynamicResource BgSurface0Brush}"
+                              MinWidth="1090"
+                              Width="{Binding ElementName=CurrentJobsScrollHost, Path=ViewportWidth}">
                             <shared:EmptyStateView
                                 Icon="📭"
                                 EmptyTitle="{DynamicResource Monitor.CurrentEmptyTitle}"
@@ -309,14 +312,17 @@
                                 Padding="10,4" />
                     </StackPanel>
 
-                    <ScrollViewer Grid.Row="1"
+                    <ScrollViewer x:Name="HistoryJobsScrollHost"
+                                  Grid.Row="1"
                                   Background="{DynamicResource BgSurface0Brush}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Auto"
                                   CanContentScroll="False"
                                   b:SmoothScrollBehavior.IsEnabled="True"
                                   b:SmoothScrollBehavior.ScrollAmount="60">
-                        <Grid Background="{DynamicResource BgSurface0Brush}">
+                        <Grid Background="{DynamicResource BgSurface0Brush}"
+                              MinWidth="980"
+                              Width="{Binding ElementName=HistoryJobsScrollHost, Path=ViewportWidth}">
                             <shared:EmptyStateView
                                 Icon="🗂"
                                 EmptyTitle="{DynamicResource Monitor.HistoryEmptyTitle}"

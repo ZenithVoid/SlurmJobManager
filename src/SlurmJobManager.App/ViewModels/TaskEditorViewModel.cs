@@ -74,6 +74,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private string _lastSubmitLocalSubmitLogPath = string.Empty;
     private TaskFileEntry? _selectedTaskFile;
     private string _currentTaskFilesPath = string.Empty;
+    private TaskFileSortMode _taskFileSortMode = TaskFileSortMode.Name;
+    private bool _taskFileSortDescending;
 
     // ── TaskId directory validation ──────────────────────────────────────────
     private bool? _taskIdDirectoryExists;
@@ -364,6 +366,47 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         set => SetField(ref _selectedTaskFile, value);
     }
 
+    public string TaskFileSortModeKey
+    {
+        get => _taskFileSortMode == TaskFileSortMode.ModifiedTime
+            ? nameof(TaskFileSortMode.ModifiedTime)
+            : nameof(TaskFileSortMode.Name);
+        set
+        {
+            if (!Enum.TryParse<TaskFileSortMode>(value, ignoreCase: true, out var mode) || mode == _taskFileSortMode)
+                return;
+
+            var previousMode = _taskFileSortMode;
+            _taskFileSortMode = mode;
+            OnPropertyChanged(nameof(TaskFileSortModeKey));
+
+            if (mode == TaskFileSortMode.ModifiedTime
+                && previousMode != TaskFileSortMode.ModifiedTime
+                && !_taskFileSortDescending)
+            {
+                TaskFileSortDescending = true;
+                return;
+            }
+
+            ApplyTaskFileSortInPlace();
+        }
+    }
+
+    public bool TaskFileSortDescending
+    {
+        get => _taskFileSortDescending;
+        set
+        {
+            if (!SetField(ref _taskFileSortDescending, value))
+                return;
+
+            OnPropertyChanged(nameof(TaskFileSortDirectionGlyph));
+            ApplyTaskFileSortInPlace();
+        }
+    }
+
+    public string TaskFileSortDirectionGlyph => TaskFileSortDescending ? "↓" : "↑";
+
     // ── Task-unit management ─────────────────────────────────────────────────
 
     /// <summary>
@@ -434,6 +477,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     public ICommand UploadTaskFileCommand             { get; }
     public ICommand GoUpTaskFilesPathCommand          { get; }
     public ICommand OpenInConsoleCommand              { get; }
+    public ICommand ToggleTaskFileSortDirectionCommand { get; }
     public ICommand OpenLastSubmitScriptCommand       { get; }
     public ICommand OpenLastSubmitLogCommand          { get; }
     public ICommand OpenLastStdoutCommand             { get; }
@@ -486,6 +530,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         UploadTaskFileCommand            = new AsyncRelayCommand(UploadTaskFileAsync, CanRunSshCommand);
         GoUpTaskFilesPathCommand         = new AsyncRelayCommand(GoUpTaskFilesPathAsync,            CanRunSshCommand);
         OpenInConsoleCommand             = new AsyncRelayCommand(OpenInConsoleAsync,                 () => !IsBusy);
+        ToggleTaskFileSortDirectionCommand = new RelayCommand(() => TaskFileSortDescending = !TaskFileSortDescending, () => !IsBusy);
         OpenLastSubmitScriptCommand      = new AsyncRelayCommand(OpenLastSubmitScriptAsync,          () => !IsBusy);
         OpenLastSubmitLogCommand         = new AsyncRelayCommand(OpenLastSubmitLogAsync,             () => !IsBusy);
         OpenLastStdoutCommand            = new AsyncRelayCommand(OpenLastStdoutAsync,                () => !IsBusy);
@@ -1330,7 +1375,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             }
 
             var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(
-                $"ls -1Ap {escapedPath}", ct);
+                $"find {escapedPath} -mindepth 1 -maxdepth 1 -printf '%f\t%y\t%T@\\n'", ct);
 
             TaskFiles.Clear();
             CurrentTaskFilesPath = targetPath;
@@ -1346,18 +1391,31 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
             var entries = stdout.Split('\n',
                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var loadedEntries = new List<TaskFileEntry>(entries.Length);
             foreach (var entry in entries)
             {
-                var isDirectory = entry.EndsWith("/", StringComparison.Ordinal);
-                var name = isDirectory ? entry[..^1] : entry;
+                var parts = entry.Split('\t');
+                if (parts.Length < 2)
+                    continue;
+
+                var name = parts[0];
                 if (name == "." || name == "..") continue;
+                var isDirectory = string.Equals(parts[1], "d", StringComparison.Ordinal);
                 var remotePath = BuildRemotePath(targetPath, name);
-                TaskFiles.Add(new TaskFileEntry(
+                var modifiedUnixTime = 0d;
+                if (parts.Length >= 3)
+                    _ = double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out modifiedUnixTime);
+
+                loadedEntries.Add(new TaskFileEntry(
                     name,
                     isDirectory,
                     remotePath,
-                    CollapseHomePath(remotePath)));
+                    CollapseHomePath(remotePath),
+                    modifiedUnixTime));
             }
+
+            foreach (var fileEntry in BuildSortedTaskFileEntries(loadedEntries))
+                TaskFiles.Add(fileEntry);
 
             SetStatus(TaskFiles.Count == 0
                 ? L("Task.DirEmpty")
@@ -3051,6 +3109,30 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private static string EscapeShellArg(string arg)
         => "'" + arg.Replace("'", "'\\''") + "'";
 
+    private void ApplyTaskFileSortInPlace()
+    {
+        if (TaskFiles.Count <= 1)
+            return;
+
+        var sortedEntries = BuildSortedTaskFileEntries(TaskFiles).ToList();
+        TaskFiles.Clear();
+        foreach (var entry in sortedEntries)
+            TaskFiles.Add(entry);
+    }
+
+    private IEnumerable<TaskFileEntry> BuildSortedTaskFileEntries(IEnumerable<TaskFileEntry> entries)
+        => _taskFileSortMode switch
+        {
+            TaskFileSortMode.ModifiedTime => _taskFileSortDescending
+                ? entries.OrderByDescending(static e => e.ModifiedUnixTime)
+                    .ThenBy(static e => e.Name, StringComparer.OrdinalIgnoreCase)
+                : entries.OrderBy(static e => e.ModifiedUnixTime)
+                    .ThenBy(static e => e.Name, StringComparer.OrdinalIgnoreCase),
+            _ => _taskFileSortDescending
+                ? entries.OrderByDescending(static e => e.Name, StringComparer.OrdinalIgnoreCase)
+                : entries.OrderBy(static e => e.Name, StringComparer.OrdinalIgnoreCase),
+        };
+
     private static string? ValidateTaskFileEntryName(string? inputName)
     {
         var name = inputName?.Trim() ?? string.Empty;
@@ -3273,17 +3355,25 @@ public sealed class ParameterEntry : ViewModelBase
 
 public sealed class TaskFileEntry
 {
-    public TaskFileEntry(string name, bool isDirectory, string remotePath, string? displayRemotePath = null)
+    public TaskFileEntry(string name, bool isDirectory, string remotePath, string? displayRemotePath = null, double modifiedUnixTime = 0)
     {
         Name = name;
         IsDirectory = isDirectory;
         RemotePath = remotePath;
         DisplayRemotePath = string.IsNullOrWhiteSpace(displayRemotePath) ? remotePath : displayRemotePath;
+        ModifiedUnixTime = modifiedUnixTime;
     }
 
     public string Name { get; }
     public bool IsDirectory { get; }
     public string RemotePath { get; }
     public string DisplayRemotePath { get; }
+    public double ModifiedUnixTime { get; }
     public string DisplayName => IsDirectory ? $"{Name}/" : Name;
+}
+
+public enum TaskFileSortMode
+{
+    Name,
+    ModifiedTime,
 }

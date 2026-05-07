@@ -98,13 +98,13 @@
                                FontSize="11"
                                TextWrapping="Wrap" />
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center">
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="{DynamicResource BgSurface1Brush}"
                             BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1"
                             CornerRadius="4"
                             Padding="8,3"
-                            Margin="0,0,0,4"
+                            Margin="0,0,6,0"
                             ToolTip="{DynamicResource RemoteEditor.EncodingTip}">
                         <TextBlock Text="{Binding EncodingName}"
                                    FontFamily="Consolas"
