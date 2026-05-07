@@ -68,6 +68,14 @@
             <Setter Property="TextWrapping" Value="NoWrap" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
+
+        <Style x:Key="MonitorGridCellStyle" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="MonitorCompactTextColumnStyle" TargetType="TextBlock" BasedOn="{StaticResource TrimmedJobCellTextStyle}">
+            <Setter Property="TextAlignment" Value="Center" />
+        </Style>
     </UserControl.Resources>
 
     <DockPanel Margin="12">
@@ -198,13 +206,14 @@
                                       SelectedItem="{Binding SelectedCurrentJob}"
                                       Style="{StaticResource CurrentJobsGridStyle}"
                                       RowStyle="{StaticResource CurrentJobsRowStyle}"
+                                      CellStyle="{StaticResource MonitorGridCellStyle}"
                                       AutoGenerateColumns="False"
                                       IsReadOnly="True"
                                       RowHeight="38"
                                       ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="90" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="90" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />
 
                                 <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="2*" MinWidth="230">
                                     <DataGridTemplateColumn.CellTemplate>
@@ -245,14 +254,16 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTextColumn Header="{DynamicResource Monitor.ColRunTime}" Binding="{Binding RunTimeDisplay}" Width="90" />
-                                <DataGridTextColumn Header="{DynamicResource Monitor.ColStartTime}" Binding="{Binding StartTimeDisplay}" Width="170" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColRunTime}" Binding="{Binding RunTimeDisplay}" Width="90" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColStartTime}" Binding="{Binding StartTimeDisplay}" Width="170" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />
 
                                 <DataGridTemplateColumn Header="{DynamicResource Monitor.ColAction}" Width="102">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Button Content="{DynamicResource Monitor.ActionCancelJob}"
                                                     Padding="8,2"
+                                                    VerticalAlignment="Center"
+                                                    HorizontalAlignment="Center"
                                                     Style="{StaticResource DangerButtonStyle}"
                                                     Command="{Binding DataContext.CancelCurrentJobCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                     CommandParameter="{Binding}" />
@@ -316,20 +327,21 @@
                                       SelectedItem="{Binding SelectedHistoryJob}"
                                       Style="{StaticResource HistoryJobsGridStyle}"
                                       RowStyle="{StaticResource HistoryJobsRowStyle}"
+                                      CellStyle="{StaticResource MonitorGridCellStyle}"
                                       AutoGenerateColumns="False"
                                       IsReadOnly="True"
                                       RowHeight="38"
                                       ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="90" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="90" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />
 
                                 <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="2*">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding JobName}"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       ToolTip="{Binding JobName}" />
+                                                        Style="{StaticResource TrimmedJobCellTextStyle}"
+                                                        ToolTip="{Binding JobName}" />
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -338,20 +350,21 @@
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding State}"
-                                                       ToolTip="{Binding Reason}" />
+                                                        Style="{StaticResource TrimmedJobCellTextStyle}"
+                                                        ToolTip="{Binding Reason}" />
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="{DynamicResource Monitor.ColStartTime}" Binding="{Binding StartTimeDisplay}" Width="170" />
-                                <DataGridTextColumn Header="{DynamicResource Monitor.ColEndTime}" Binding="{Binding EndTimeDisplay}" Width="170" />
-                                <DataGridTextColumn Header="{DynamicResource Monitor.ColRunTime}" Binding="{Binding RunTimeDisplay}" Width="110" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColStartTime}" Binding="{Binding StartTimeDisplay}" Width="170" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColEndTime}" Binding="{Binding EndTimeDisplay}" Width="170" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColRunTime}" Binding="{Binding RunTimeDisplay}" Width="110" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />
 
                                 <DataGridTemplateColumn Header="{DynamicResource Monitor.ColNodes}" Width="1.5*">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding NodeList}"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       ToolTip="{Binding NodeList}" />
+                                                        Style="{StaticResource TrimmedJobCellTextStyle}"
+                                                        ToolTip="{Binding NodeList}" />
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -359,11 +372,13 @@
                                 <DataGridTemplateColumn Header="{DynamicResource Monitor.ColAction}" Width="120">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                             <Button Content="{DynamicResource Monitor.ActionViewDetail}"
-                                                     Padding="8,2"
-                                                     Style="{StaticResource NeutralButtonStyle}"
-                                                     Command="{Binding DataContext.ViewHistoryDetailCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                     CommandParameter="{Binding}" />
+                                              <Button Content="{DynamicResource Monitor.ActionViewDetail}"
+                                                      Padding="8,2"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Center"
+                                                      Style="{StaticResource NeutralButtonStyle}"
+                                                      Command="{Binding DataContext.ViewHistoryDetailCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                      CommandParameter="{Binding}" />
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
