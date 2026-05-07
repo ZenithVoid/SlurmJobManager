@@ -103,6 +103,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(RootDirectoryDisplay));
                 CommandManager.InvalidateRequerySuggested();
                 TryAutoFillRemoteWorkDir();
+                ScheduleTaskIdDirectoryCheck();
                 TryScheduleLastTaskContextSave();
             }
         }
@@ -411,7 +412,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     // ── Commands ─────────────────────────────────────────────────────────────
 
     public ICommand BrowseRootDirectoryCommand        { get; }
-    public ICommand NewTaskIdCommand                  { get; }
+    public ICommand CreateTaskIdDirectoryCommand      { get; }
     public ICommand SaveTaskCommand                   { get; }
     public ICommand LoadTaskCommand                   { get; }
     public ICommand SaveParamFileCommand              { get; }
@@ -463,7 +464,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         _openInConsoleAsync = openInConsoleAsync;
 
         BrowseRootDirectoryCommand       = new AsyncRelayCommand(BrowseRootDirectoryAsync, CanBrowseRootDirectory);
-        NewTaskIdCommand                 = new RelayCommand(GenerateNewTaskId, () => _taskIdDirectoryExists != true);
+        CreateTaskIdDirectoryCommand     = new AsyncRelayCommand(CreateCurrentTaskIdDirectoryAsync, CanCreateTaskIdDirectory);
         SaveTaskCommand                  = new AsyncRelayCommand(SaveTaskAsync,     () => !IsBusy);
         LoadTaskCommand                  = new AsyncRelayCommand(LoadTaskAsync,     () => !IsBusy);
         SaveParamFileCommand             = new AsyncRelayCommand(SaveParamFileAsync, () => !IsBusy);
@@ -881,11 +882,82 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         return NormalizeRemotePath($"{RootDirectory.TrimEnd('/')}/{TaskId}");
     }
 
-    private void GenerateNewTaskId()
+    private bool CanCreateTaskIdDirectory()
+        => !IsDisposed
+           && !IsBusy
+           && IsSshConnectedSafe()
+           && !string.IsNullOrWhiteSpace(RootDirectory)
+           && !string.IsNullOrWhiteSpace(TaskId)
+           && _taskIdDirectoryExists == false;
+
+    private async Task CreateCurrentTaskIdDirectoryAsync(CancellationToken ct)
     {
-        TaskId        = $"task_{DateTime.Now:yyyyMMdd_HHmmss}";
-        RemoteWorkDir = string.Empty;
-        TryAutoFillRemoteWorkDir();
+        await EnsureHomeDirectoryLoadedAsync(ct);
+
+        if (!IsSshConnectedSafe())
+        {
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(RootDirectory))
+        {
+            SetStatus("Task.RequireRootDirectory", "WarningTextStyle");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(TaskId))
+        {
+            SetStatus("Task.RequireTaskId", "WarningTextStyle");
+            return;
+        }
+
+        var normalizedTaskId = NormalizeTaskIdForRestore(TaskId);
+        if (!string.Equals(normalizedTaskId, TaskId.Trim(), StringComparison.Ordinal))
+        {
+            SetStatus("Task.TaskIdInvalidForDirectoryCreate", "WarningTextStyle");
+            return;
+        }
+
+        if (_taskIdDirectoryExists == true)
+        {
+            SetStatus("Task.TaskIdDirExists", "InfoTextStyle");
+            return;
+        }
+
+        var targetPath = NormalizeRemotePath($"{RootDirectory.TrimEnd('/')}/{TaskId.Trim()}");
+        if (string.IsNullOrWhiteSpace(targetPath))
+        {
+            SetStatus("Task.RequireTaskPath", "WarningTextStyle");
+            return;
+        }
+
+        IsBusy = true;
+        var refreshTaskIdDirectoryState = false;
+        try
+        {
+            var (_, stderr, exitCode) = await _ssh.ExecuteAsync($"mkdir -p {EscapeShellArg(targetPath)}", ct);
+            if (exitCode != 0)
+            {
+                var detail = string.IsNullOrWhiteSpace(stderr) ? L("Task.TaskIdDirCreateFailedNoDetail") : stderr.Trim();
+                SetStatus(string.Format(L("Task.TaskIdDirCreateFailed"), detail), "ErrorTextStyle", localize: false);
+                return;
+            }
+
+            refreshTaskIdDirectoryState = true;
+            await RefreshTaskIdDirectoryStateAsync(ct);
+            SetStatus(string.Format(L("Task.TaskIdDirCreateSucceeded"), CollapseHomePath(targetPath)), "SuccessTextStyle", localize: false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.TaskIdDirCreateFailed"), ex.Message), "ErrorTextStyle", localize: false);
+        }
+        finally
+        {
+            IsBusy = false;
+            if (refreshTaskIdDirectoryState)
+                CommandManager.InvalidateRequerySuggested();
+        }
     }
 
     // ── TaskId directory existence validation ────────────────────────────────
@@ -951,6 +1023,41 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 });
             }
         }, cts.Token);
+    }
+
+    private async Task RefreshTaskIdDirectoryStateAsync(CancellationToken ct)
+    {
+        if (IsDisposed)
+            return;
+
+        if (!IsSshConnectedSafe()
+            || string.IsNullOrWhiteSpace(RootDirectory)
+            || string.IsNullOrWhiteSpace(TaskId))
+        {
+            _taskIdDirectoryExists = null;
+            TaskIdDirectoryStatus = string.Empty;
+            CommandManager.InvalidateRequerySuggested();
+            return;
+        }
+
+        var path = NormalizeRemotePath($"{RootDirectory.TrimEnd('/')}/{TaskId.Trim()}");
+        try
+        {
+            var exists = await _ssh.RemoteDirectoryExistsAsync(path, ct);
+            _taskIdDirectoryExists = exists;
+            TaskIdDirectoryStatus = exists ? L("Task.TaskIdDirExists") : L("Task.TaskIdDirNotExists");
+            CommandManager.InvalidateRequerySuggested();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            _taskIdDirectoryExists = null;
+            TaskIdDirectoryStatus = L("Task.TaskIdDirCheckFailed");
+            System.Diagnostics.Debug.WriteLine($"[TaskIdValidation.Refresh] {ex.Message}");
+            CommandManager.InvalidateRequerySuggested();
+        }
     }
 
     // ── App candidates + pinning ─────────────────────────────────────────────

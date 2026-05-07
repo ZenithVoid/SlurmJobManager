@@ -357,6 +357,10 @@
     <sys:String x:Key="Task.TaskIdDirExists">⚠ 目录已存在</sys:String>
     <sys:String x:Key="Task.TaskIdDirNotExists">✓ 目录不存在，可新建</sys:String>
     <sys:String x:Key="Task.TaskIdDirCheckFailed">目录校验失败，请检查连接状态。</sys:String>
+    <sys:String x:Key="Task.TaskIdDirCreateSucceeded">已创建任务目录：{0}</sys:String>
+    <sys:String x:Key="Task.TaskIdDirCreateFailedNoDetail">无法创建任务目录，请检查权限。</sys:String>
+    <sys:String x:Key="Task.TaskIdDirCreateFailed">创建任务目录失败：{0}</sys:String>
+    <sys:String x:Key="Task.TaskIdInvalidForDirectoryCreate">TaskId 包含非法字符或路径分隔符。</sys:String>
     <sys:String x:Key="Task.LoadNotFound">未找到任务数据（task.json / tasks.manifest.json）。</sys:String>
     <sys:String x:Key="Task.InvalidRemoteWorkDir">请先设置有效的远程工作目录后再提交。</sys:String>
     <sys:String x:Key="Task.LastJobId">最近作业 ID：{0}</sys:String>
