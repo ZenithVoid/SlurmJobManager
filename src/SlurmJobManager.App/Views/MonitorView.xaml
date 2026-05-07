@@ -73,9 +73,7 @@
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
 
-        <Style x:Key="MonitorTextColumnStyle" TargetType="TextBlock" BasedOn="{StaticResource TrimmedJobCellTextStyle}" />
-
-        <Style x:Key="MonitorCompactTextColumnStyle" TargetType="TextBlock" BasedOn="{StaticResource MonitorTextColumnStyle}">
+        <Style x:Key="MonitorCompactTextColumnStyle" TargetType="TextBlock" BasedOn="{StaticResource TrimmedJobCellTextStyle}">
             <Setter Property="TextAlignment" Value="Center" />
         </Style>
     </UserControl.Resources>
