@@ -615,7 +615,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
         var jobName = string.IsNullOrEmpty(_taskId)
             ? progName
-            : (string.IsNullOrEmpty(progName) ? _taskId : $"{_taskId}{progName}");
+            : (string.IsNullOrEmpty(progName) ? _taskId : $"{_taskId}_{progName}");
 
         var workDir = string.IsNullOrEmpty(_remoteWorkDir) ? "/tmp/job" : _remoteWorkDir;
         var stdout  = $"{workDir}/logs/job.out";

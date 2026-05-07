@@ -44,7 +44,14 @@ public sealed class RemoteFilePickerViewModel : ViewModelBase
     public string StatusMessage { get => _statusMessage; private set => SetField(ref _statusMessage, value); }
     public string StatusStyleKey { get => _statusStyleKey; private set => SetField(ref _statusStyleKey, value); }
 
-    public bool CanGoUp => CurrentPath != HomeDirectory && CurrentPath.StartsWith(HomeDirectory, StringComparison.Ordinal);
+    public bool CanGoUp
+    {
+        get
+        {
+            var parent = GetParent(CurrentPath);
+            return !string.IsNullOrWhiteSpace(parent) && IsWithinHomeScope(parent);
+        }
+    }
     public bool CanSelectFile => SelectedEntry is { IsDirectory: false };
 
     public string? ResultPath { get; private set; }
@@ -80,7 +87,7 @@ public sealed class RemoteFilePickerViewModel : ViewModelBase
     private async Task GoUpAsync(CancellationToken ct)
     {
         var parent = GetParent(CurrentPath);
-        if (!string.IsNullOrWhiteSpace(parent) && parent.StartsWith(HomeDirectory, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(parent) && IsWithinHomeScope(parent))
             await LoadEntriesAsync(parent, ct);
     }
 
@@ -132,7 +139,16 @@ public sealed class RemoteFilePickerViewModel : ViewModelBase
     {
         var trimmed = path.TrimEnd('/');
         var idx = trimmed.LastIndexOf('/');
-        return idx > 0 ? trimmed[..idx] : null;
+        if (idx > 0) return trimmed[..idx];
+        if (idx == 0) return "/";
+        return null;
+    }
+
+    private bool IsWithinHomeScope(string path)
+    {
+        if (HomeDirectory == "~")
+            return true;
+        return path.StartsWith(HomeDirectory, StringComparison.Ordinal);
     }
 
     private static string L(string key)
