@@ -1375,7 +1375,15 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             }
 
             var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(
-                $"find {escapedPath} -mindepth 1 -maxdepth 1 -printf '%f\t%y\t%T@\\n'", ct);
+                $"cd {escapedPath} && " +
+                "for entry in .* *; do " +
+                "if [ \"$entry\" = \".\" ] || [ \"$entry\" = \"..\" ] || [ ! -e \"$entry\" ]; then continue; fi; " +
+                "if [ -d \"$entry\" ]; then kind=d; else kind=f; fi; " +
+                "if stat -c '%Y' \"$entry\" >/dev/null 2>&1; then mtime=$(stat -c '%Y' \"$entry\"); " +
+                "elif stat -f '%m' \"$entry\" >/dev/null 2>&1; then mtime=$(stat -f '%m' \"$entry\"); " +
+                "else mtime=; fi; " +
+                "printf '%s\t%s\t%s\\n' \"$entry\" \"$kind\" \"$mtime\"; " +
+                "done", ct);
 
             TaskFiles.Clear();
             CurrentTaskFilesPath = targetPath;
@@ -1402,16 +1410,19 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 if (name == "." || name == "..") continue;
                 var isDirectory = string.Equals(parts[1], "d", StringComparison.Ordinal);
                 var remotePath = BuildRemotePath(targetPath, name);
-                var modifiedUnixTime = 0d;
+                long? modifiedUnixTimeValue = null;
                 if (parts.Length >= 3)
-                    _ = double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out modifiedUnixTime);
+                {
+                    if (long.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedUnixTime))
+                        modifiedUnixTimeValue = parsedUnixTime;
+                }
 
                 loadedEntries.Add(new TaskFileEntry(
                     name,
                     isDirectory,
                     remotePath,
                     CollapseHomePath(remotePath),
-                    modifiedUnixTime));
+                    modifiedUnixTimeValue));
             }
 
             foreach (var fileEntry in BuildSortedTaskFileEntries(loadedEntries))
@@ -3124,9 +3135,11 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         => _taskFileSortMode switch
         {
             TaskFileSortMode.ModifiedTime => _taskFileSortDescending
-                ? entries.OrderByDescending(static e => e.ModifiedUnixTime)
+                ? entries.OrderBy(static e => e.ModifiedUnixTime.HasValue ? 0 : 1)
+                    .ThenByDescending(static e => e.ModifiedUnixTime ?? long.MinValue)
                     .ThenBy(static e => e.Name, StringComparer.OrdinalIgnoreCase)
-                : entries.OrderBy(static e => e.ModifiedUnixTime)
+                : entries.OrderBy(static e => e.ModifiedUnixTime.HasValue ? 0 : 1)
+                    .ThenBy(static e => e.ModifiedUnixTime ?? long.MaxValue)
                     .ThenBy(static e => e.Name, StringComparer.OrdinalIgnoreCase),
             _ => _taskFileSortDescending
                 ? entries.OrderByDescending(static e => e.Name, StringComparer.OrdinalIgnoreCase)
@@ -3355,7 +3368,7 @@ public sealed class ParameterEntry : ViewModelBase
 
 public sealed class TaskFileEntry
 {
-    public TaskFileEntry(string name, bool isDirectory, string remotePath, string? displayRemotePath = null, double modifiedUnixTime = 0)
+    public TaskFileEntry(string name, bool isDirectory, string remotePath, string? displayRemotePath = null, long? modifiedUnixTime = null)
     {
         Name = name;
         IsDirectory = isDirectory;
@@ -3368,7 +3381,7 @@ public sealed class TaskFileEntry
     public bool IsDirectory { get; }
     public string RemotePath { get; }
     public string DisplayRemotePath { get; }
-    public double ModifiedUnixTime { get; }
+    public long? ModifiedUnixTime { get; }
     public string DisplayName => IsDirectory ? $"{Name}/" : Name;
 }
 
