@@ -259,6 +259,10 @@
     <sys:String x:Key="Task.FileMenuUpload">Upload file</sys:String>
     <sys:String x:Key="Task.FileMenuDelete">Delete</sys:String>
     <sys:String x:Key="Task.FileMenuViewTimeInfo">View time info</sys:String>
+    <sys:String x:Key="Task.FileSortLabel">Sort</sys:String>
+    <sys:String x:Key="Task.FileSortByName">Name</sys:String>
+    <sys:String x:Key="Task.FileSortByModified">Modified time</sys:String>
+    <sys:String x:Key="Task.FileSortToggleDirection">Toggle sort direction</sys:String>
     <sys:String x:Key="Task.FileCreateTitle">Create file</sys:String>
     <sys:String x:Key="Task.FileCreatePrompt">Enter a new file name for the current remote directory:</sys:String>
     <sys:String x:Key="Task.FileCreateConfirm">Create</sys:String>

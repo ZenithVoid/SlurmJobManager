@@ -335,6 +335,35 @@
                                         Style="{StaticResource NeutralButtonStyle}"
                                         Padding="8,4" />
                             </Grid>
+                            <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{DynamicResource Task.FileSortLabel}"
+                                           Style="{StaticResource MutedTextStyle}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,6,0" />
+                                <ComboBox Grid.Column="1"
+                                          SelectedValue="{Binding TaskEditor.TaskFileSortModeKey}"
+                                          SelectedValuePath="Tag"
+                                          Margin="0,0,6,0">
+                                    <ComboBoxItem Tag="Name" Content="{DynamicResource Task.FileSortByName}" />
+                                    <ComboBoxItem Tag="ModifiedTime" Content="{DynamicResource Task.FileSortByModified}" />
+                                </ComboBox>
+                                <Button Grid.Column="2"
+                                        Content="{Binding TaskEditor.TaskFileSortDirectionGlyph}"
+                                        Command="{Binding TaskEditor.ToggleTaskFileSortDirectionCommand}"
+                                        Style="{StaticResource NeutralButtonStyle}"
+                                        FontFamily="Consolas"
+                                        FontSize="14"
+                                        FontWeight="SemiBold"
+                                        MinWidth="36"
+                                        Padding="8,2"
+                                        ToolTip="{DynamicResource Task.FileSortToggleDirection}" />
+                            </Grid>
 
                             <Border DockPanel.Dock="Top" Style="{StaticResource StatusPanelStyle}">
                                 <TextBlock Text="{Binding TaskEditor.EffectiveStatusMessage}"

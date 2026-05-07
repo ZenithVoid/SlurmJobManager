@@ -259,6 +259,10 @@
     <sys:String x:Key="Task.FileMenuUpload">上传文件</sys:String>
     <sys:String x:Key="Task.FileMenuDelete">删除</sys:String>
     <sys:String x:Key="Task.FileMenuViewTimeInfo">查看时间信息</sys:String>
+    <sys:String x:Key="Task.FileSortLabel">排序</sys:String>
+    <sys:String x:Key="Task.FileSortByName">名称</sys:String>
+    <sys:String x:Key="Task.FileSortByModified">修改时间</sys:String>
+    <sys:String x:Key="Task.FileSortToggleDirection">切换排序方向</sys:String>
     <sys:String x:Key="Task.FileCreateTitle">新建文件</sys:String>
     <sys:String x:Key="Task.FileCreatePrompt">请输入当前远程目录中新文件的名称：</sys:String>
     <sys:String x:Key="Task.FileCreateConfirm">创建</sys:String>
