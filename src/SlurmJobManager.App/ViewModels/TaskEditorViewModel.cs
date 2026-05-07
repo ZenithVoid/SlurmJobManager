@@ -578,7 +578,10 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private string BuildUniqueTaskUnitName()
     {
-        var baseName = !string.IsNullOrWhiteSpace(TaskId) ? TaskId.Trim() : "task_unit";
+        var baseName = !string.IsNullOrWhiteSpace(TaskId) ? TaskId.Trim() : string.Empty;
+        if (string.IsNullOrWhiteSpace(baseName))
+            return string.Empty;
+
         if (!TaskUnits.Any(u => string.Equals(u.TaskName, baseName, StringComparison.OrdinalIgnoreCase)))
             return baseName;
 
@@ -1933,7 +1936,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             taskId:         TaskId,
             remoteWorkDir:  effectiveWorkDir,
             initialCommands: unit.Commands.Select(c => c.ToModel()),
-            initialSbatch:  unit.SbatchTemplate);
+            initialSbatch:  unit.SbatchTemplate,
+            initialSbatchOptions: unit.SbatchOptions);
 
         var win = new CommandBuilderView { DataContext = dlgVm };
         if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
@@ -1976,6 +1980,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
             // Persist the user-edited sbatch content on the unit
             unit.SbatchTemplate = dlgVm.GetResultSbatch();
+            unit.SbatchOptions = dlgVm.GetResultSbatchOptions();
 
             SetStatus("Task.CommandUpdated", "SuccessTextStyle");
             CommandManager.InvalidateRequerySuggested();
@@ -2368,6 +2373,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         RemoteWorkDirectory = source.RemoteWorkDirectory,
         SlurmJobId = source.SlurmJobId,
         SbatchTemplate = source.SbatchTemplate,
+        SbatchOptions = CloneSbatchOptions(source.SbatchOptions),
         ProgramEntries = source.ProgramEntries.Select(p => new ProgramEntry
         {
             ProgramPath = p.ProgramPath,
@@ -2391,6 +2397,18 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             MpirunPath = c.MpirunPath,
         }).ToList(),
         ExtraParameters = new Dictionary<string, string>(source.ExtraParameters),
+    };
+
+    private static SbatchJobOptions CloneSbatchOptions(SbatchJobOptions? source) => new()
+    {
+        JobName = source?.JobName ?? string.Empty,
+        Partition = source?.Partition ?? string.Empty,
+        Nodes = source?.Nodes ?? "1",
+        CpuCount = source?.CpuCount ?? string.Empty,
+        TimeLimit = source?.TimeLimit ?? "99-00:00:00",
+        Account = source?.Account ?? "preproc",
+        Exclusive = source?.Exclusive ?? false,
+        ModulePurge = source?.ModulePurge ?? false,
     };
 
     // ── Persistence (workspace + legacy) ────────────────────────────────────

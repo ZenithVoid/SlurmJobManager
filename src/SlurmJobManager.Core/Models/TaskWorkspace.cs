@@ -35,6 +35,9 @@ public class TaskUnit
     /// <summary>Custom sbatch script template (falls back to workspace default when null).</summary>
     public string? SbatchTemplate { get; set; }
 
+    /// <summary>Structured sbatch/job configuration used to generate sbatch headers and MPI launch behavior.</summary>
+    public SbatchJobOptions SbatchOptions { get; set; } = new();
+
     /// <summary>Programs to run (ordered).</summary>
     public List<ProgramEntry> ProgramEntries { get; set; } = new();
 
@@ -46,6 +49,19 @@ public class TaskUnit
 
     /// <summary>Arbitrary key/value extra sbatch parameters.</summary>
     public Dictionary<string, string> ExtraParameters { get; set; } = new();
+}
+
+/// <summary>Structured sbatch/job-level options edited in the command builder.</summary>
+public class SbatchJobOptions
+{
+    public string JobName { get; set; } = string.Empty;
+    public string Partition { get; set; } = string.Empty;
+    public string Nodes { get; set; } = "1";
+    public string CpuCount { get; set; } = string.Empty;
+    public string TimeLimit { get; set; } = "99-00:00:00";
+    public string Account { get; set; } = "preproc";
+    public bool Exclusive { get; set; }
+    public bool ModulePurge { get; set; }
 }
 
 /// <summary>A single program (executable) entry within a <see cref="TaskUnit"/>.</summary>
