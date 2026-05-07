@@ -122,14 +122,15 @@ public partial class RemoteFileEditorView : Window
         Close();
     }
 
-    private void BtnSave_Click(object sender, RoutedEventArgs e)
+    private async void BtnSave_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not RemoteFileEditorViewModel vm)
             return;
+        if (vm.IsBusy)
+            return;
 
         var editorText = Editor.Text ?? string.Empty;
-        if (!string.Equals(vm.Content, editorText, StringComparison.Ordinal))
-            vm.Content = editorText;
+        await vm.SaveChangesAsync(editorText);
     }
 
     private void OnClosing(object? sender, CancelEventArgs e)

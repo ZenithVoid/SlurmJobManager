@@ -21,6 +21,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     // ── Remote source directories ───────────────────────────────────────────
     private static readonly string[] AppSourceDirs = { "/env/preprocess/out", "/env/preprocess/bin" };
     private const string RemoteParamDir = "/env/preprocess/out/config";
+    private const string InterfaceProbeIp = "10.10.10.202";
 
     private readonly ISshClientService _ssh;
 
@@ -807,7 +808,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         sb.AppendLine();
         sb.AppendLine("module purge");
         sb.AppendLine($"cd {workDir}");
-        sb.AppendLine("IFACE_NAME=$(ip route get 10.10.10.202 | awk '{print $3}')");
+        sb.AppendLine($"IFACE_NAME=$(ip route get {InterfaceProbeIp} | awk '{{print $3}}')");
         sb.AppendLine();
         sb.AppendLine($"echo \"Starting job {jobName} at $(date)\"");
         sb.AppendLine();
@@ -840,7 +841,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             $"#SBATCH --chdir={workDir}\n\n" +
             "module purge\n" +
             $"cd {workDir}\n" +
-            "IFACE_NAME=$(ip route get 10.10.10.202 | awk '{print $3}')\n\n" +
+            $"IFACE_NAME=$(ip route get {InterfaceProbeIp} | awk '{{print $3}}')\n\n" +
             $"echo \"Starting job {jobName} at $(date)\"\n\n" +
             "# commands here\n\n" +
             "echo \"Job finished at $(date)\"\n";
