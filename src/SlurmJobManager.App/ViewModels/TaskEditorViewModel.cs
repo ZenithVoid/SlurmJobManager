@@ -933,6 +933,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         }
 
         IsBusy = true;
+        var refreshTaskIdDirectoryState = false;
         try
         {
             var (_, stderr, exitCode) = await _ssh.ExecuteAsync($"mkdir -p {EscapeShellArg(targetPath)}", ct);
@@ -943,9 +944,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 return;
             }
 
-            _taskIdDirectoryExists = true;
-            TaskIdDirectoryStatus = L("Task.TaskIdDirExists");
-            CommandManager.InvalidateRequerySuggested();
+            refreshTaskIdDirectoryState = true;
+            await RefreshTaskIdDirectoryStateAsync(ct);
             SetStatus(string.Format(L("Task.TaskIdDirCreateSucceeded"), CollapseHomePath(targetPath)), "SuccessTextStyle", localize: false);
         }
         catch (Exception ex)
@@ -955,7 +955,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         finally
         {
             IsBusy = false;
-            await RefreshTaskIdDirectoryStateAsync(ct);
+            if (refreshTaskIdDirectoryState)
+                CommandManager.InvalidateRequerySuggested();
         }
     }
 
