@@ -149,7 +149,6 @@
                     </Style>
                 </Border.Style>
                 <avalonedit:TextEditor x:Name="Editor"
-                                       Text="{Binding Content, UpdateSourceTrigger=LostFocus}"
                                        ShowLineNumbers="True"
                                        FontFamily="Consolas"
                                        FontSize="13"

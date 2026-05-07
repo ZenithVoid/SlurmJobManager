@@ -8,10 +8,15 @@ namespace SlurmJobManager.App.Views;
 public partial class RemoteFileEditorView : Window
 {
     private bool _allowClose;
+    private bool _syncingFromViewModel;
+    private bool _syncingFromEditor;
+    private RemoteFileEditorViewModel? _boundViewModel;
 
     public RemoteFileEditorView()
     {
         InitializeComponent();
+        DataContextChanged += OnDataContextChanged;
+        Editor.TextChanged += Editor_TextChanged;
         Closing += OnClosing;
         Closed  += OnClosed;
         Loaded += (_, _) =>
@@ -22,6 +27,71 @@ public partial class RemoteFileEditorView : Window
             Editor.LineNumbersForeground = (System.Windows.Media.Brush?)FindResource("TextMutedBrush");
             Editor.Options.HighlightCurrentLine = true;
         };
+    }
+
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (_boundViewModel is not null)
+            _boundViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+
+        _boundViewModel = e.NewValue as RemoteFileEditorViewModel;
+        if (_boundViewModel is null)
+            return;
+
+        _boundViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        SyncEditorFromViewModel(_boundViewModel);
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!string.Equals(e.PropertyName, nameof(RemoteFileEditorViewModel.Content), StringComparison.Ordinal))
+            return;
+        if (sender is not RemoteFileEditorViewModel vm)
+            return;
+
+        SyncEditorFromViewModel(vm);
+    }
+
+    private void SyncEditorFromViewModel(RemoteFileEditorViewModel vm)
+    {
+        if (_syncingFromEditor)
+            return;
+
+        var vmContent = vm.Content ?? string.Empty;
+        if (string.Equals(Editor.Text, vmContent, StringComparison.Ordinal))
+            return;
+
+        _syncingFromViewModel = true;
+        try
+        {
+            Editor.Text = vmContent;
+        }
+        finally
+        {
+            _syncingFromViewModel = false;
+        }
+    }
+
+    private void Editor_TextChanged(object? sender, EventArgs e)
+    {
+        if (_syncingFromViewModel)
+            return;
+        if (DataContext is not RemoteFileEditorViewModel vm)
+            return;
+
+        var editorText = Editor.Text ?? string.Empty;
+        if (string.Equals(vm.Content, editorText, StringComparison.Ordinal))
+            return;
+
+        _syncingFromEditor = true;
+        try
+        {
+            vm.Content = editorText;
+        }
+        finally
+        {
+            _syncingFromEditor = false;
+        }
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -93,6 +163,13 @@ public partial class RemoteFileEditorView : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        DataContextChanged -= OnDataContextChanged;
+        Editor.TextChanged -= Editor_TextChanged;
+        if (_boundViewModel is not null)
+        {
+            _boundViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            _boundViewModel = null;
+        }
         Closing -= OnClosing;
         Closed  -= OnClosed;
     }
