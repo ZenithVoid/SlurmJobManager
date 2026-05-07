@@ -22,6 +22,9 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private static readonly string[] AppSourceDirs = { "/env/preprocess/out", "/env/preprocess/bin" };
     private const string RemoteParamDir = "/env/preprocess/out/config";
     private const string InterfaceProbeIp = "10.10.10.202";
+    private const string DefaultNodes = "1";
+    private const string DefaultTimeLimit = "99-00:00:00";
+    private const string DefaultAccount = "preproc";
 
     private readonly ISshClientService _ssh;
 
@@ -41,10 +44,10 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private string _homeDirectory = string.Empty;
     private string _sbatchJobName = string.Empty;
     private string _sbatchPartition = string.Empty;
-    private string _sbatchNodes = "1";
+    private string _sbatchNodes = DefaultNodes;
     private string _sbatchCpuCount = string.Empty;
-    private string _sbatchTimeLimit = "99-00:00:00";
-    private string _sbatchAccount = "preproc";
+    private string _sbatchTimeLimit = DefaultTimeLimit;
+    private string _sbatchAccount = DefaultAccount;
     private bool _sbatchExclusive;
     private bool _sbatchModulePurge;
 
@@ -870,19 +873,19 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         {
             _sbatchJobName = initialSbatchOptions.JobName ?? string.Empty;
             _sbatchPartition = initialSbatchOptions.Partition ?? string.Empty;
-            _sbatchNodes = string.IsNullOrWhiteSpace(initialSbatchOptions.Nodes) ? "1" : initialSbatchOptions.Nodes.Trim();
+            _sbatchNodes = NormalizeNodes(initialSbatchOptions.Nodes);
             _sbatchCpuCount = initialSbatchOptions.CpuCount ?? string.Empty;
-            _sbatchTimeLimit = string.IsNullOrWhiteSpace(initialSbatchOptions.TimeLimit) ? "99-00:00:00" : initialSbatchOptions.TimeLimit.Trim();
-            _sbatchAccount = string.IsNullOrWhiteSpace(initialSbatchOptions.Account) ? "preproc" : initialSbatchOptions.Account.Trim();
+            _sbatchTimeLimit = NormalizeTimeLimit(initialSbatchOptions.TimeLimit);
+            _sbatchAccount = NormalizeAccount(initialSbatchOptions.Account);
             _sbatchExclusive = initialSbatchOptions.Exclusive;
             _sbatchModulePurge = initialSbatchOptions.ModulePurge;
             return;
         }
 
-        _sbatchNodes = "1";
+        _sbatchNodes = DefaultNodes;
         _sbatchCpuCount = string.Empty;
-        _sbatchTimeLimit = "99-00:00:00";
-        _sbatchAccount = "preproc";
+        _sbatchTimeLimit = DefaultTimeLimit;
+        _sbatchAccount = DefaultAccount;
         _sbatchExclusive = false;
         _sbatchModulePurge = false;
 
@@ -921,10 +924,10 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     {
         JobName = _sbatchJobName.Trim(),
         Partition = _sbatchPartition.Trim(),
-        Nodes = string.IsNullOrWhiteSpace(_sbatchNodes) ? "1" : _sbatchNodes.Trim(),
+        Nodes = NormalizeNodes(_sbatchNodes),
         CpuCount = _sbatchCpuCount.Trim(),
-        TimeLimit = string.IsNullOrWhiteSpace(_sbatchTimeLimit) ? "99-00:00:00" : _sbatchTimeLimit.Trim(),
-        Account = string.IsNullOrWhiteSpace(_sbatchAccount) ? "preproc" : _sbatchAccount.Trim(),
+        TimeLimit = NormalizeTimeLimit(_sbatchTimeLimit),
+        Account = NormalizeAccount(_sbatchAccount),
         Exclusive = _sbatchExclusive,
         ModulePurge = _sbatchModulePurge,
     };
@@ -980,14 +983,13 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             ? (string.IsNullOrEmpty(progName) ? "job" : progName)
             : (string.IsNullOrEmpty(progName) ? _taskId : $"{_taskId}_{progName}");
         var jobName = string.IsNullOrWhiteSpace(_sbatchJobName) ? generatedJobName : _sbatchJobName.Trim();
-        _sbatchJobName = jobName;
 
         var workDir = string.IsNullOrEmpty(_remoteWorkDir) ? "/tmp/job" : _remoteWorkDir;
         var stdout  = $"{workDir}/logs/job.out";
         var stderr  = $"{workDir}/logs/job.err";
-        var nodes = string.IsNullOrWhiteSpace(_sbatchNodes) ? "1" : _sbatchNodes.Trim();
-        var timeLimit = string.IsNullOrWhiteSpace(_sbatchTimeLimit) ? "99-00:00:00" : _sbatchTimeLimit.Trim();
-        var account = string.IsNullOrWhiteSpace(_sbatchAccount) ? "preproc" : _sbatchAccount.Trim();
+        var nodes = NormalizeNodes(_sbatchNodes);
+        var timeLimit = NormalizeTimeLimit(_sbatchTimeLimit);
+        var account = NormalizeAccount(_sbatchAccount);
         var partition = _sbatchPartition.Trim();
         var cpuCount = _sbatchCpuCount.Trim();
 
@@ -1032,9 +1034,9 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         var jobName = string.IsNullOrWhiteSpace(_sbatchJobName)
             ? (string.IsNullOrEmpty(_taskId) ? "job" : _taskId)
             : _sbatchJobName.Trim();
-        var nodes = string.IsNullOrWhiteSpace(_sbatchNodes) ? "1" : _sbatchNodes.Trim();
-        var timeLimit = string.IsNullOrWhiteSpace(_sbatchTimeLimit) ? "99-00:00:00" : _sbatchTimeLimit.Trim();
-        var account = string.IsNullOrWhiteSpace(_sbatchAccount) ? "preproc" : _sbatchAccount.Trim();
+        var nodes = NormalizeNodes(_sbatchNodes);
+        var timeLimit = NormalizeTimeLimit(_sbatchTimeLimit);
+        var account = NormalizeAccount(_sbatchAccount);
         var partition = _sbatchPartition.Trim();
         var cpuCount = _sbatchCpuCount.Trim();
         return
@@ -1079,6 +1081,15 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
     private static string TruncateText(string text, int maxLen)
         => text.Length <= maxLen ? text : text[..maxLen] + "…";
+
+    private static string NormalizeNodes(string? value)
+        => string.IsNullOrWhiteSpace(value) ? DefaultNodes : value.Trim();
+
+    private static string NormalizeTimeLimit(string? value)
+        => string.IsNullOrWhiteSpace(value) ? DefaultTimeLimit : value.Trim();
+
+    private static string NormalizeAccount(string? value)
+        => string.IsNullOrWhiteSpace(value) ? DefaultAccount : value.Trim();
 
     /// <summary>Safely extracts the file name component from a Unix path.</summary>
     private static string GetFileNameFromPath(string path)
