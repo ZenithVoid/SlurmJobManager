@@ -40,6 +40,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     // ── Remote source directories ────────────────────────────────────────────
     private static readonly string[] AppSourceDirs = { "/env/preprocess/out", "/env/preprocess/bin" };
     private const string RemoteTemplateDir = "/env/preprocess/out/config";
+    private const int MaxTaskIdLength = 200;
 
     // ── Scalar backing fields ────────────────────────────────────────────────
     private string _rootDirectory = string.Empty;
@@ -742,7 +743,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private static string NormalizeTaskIdForRestore(string? value)
     {
         var taskId = value?.Trim() ?? string.Empty;
-        if (taskId.Length == 0 || taskId.Length > 200)
+        if (taskId.Length == 0 || taskId.Length > MaxTaskIdLength)
             return string.Empty;
         if (taskId.Contains('/') || taskId.Contains('\\') || taskId.Any(char.IsControl))
             return string.Empty;
@@ -780,7 +781,19 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             LastUsedAt = DateTimeOffset.UtcNow,
         };
 
-        _ = PersistLastTaskContextAsync(record);
+        QueueLastTaskContextSave(record);
+    }
+
+    private void QueueLastTaskContextSave(LastTaskContextRecord record)
+    {
+        try
+        {
+            _ = PersistLastTaskContextAsync(record);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[TaskEditorViewModel.QueueLastTaskContextSave] {ex.Message}");
+        }
     }
 
     private async Task PersistLastTaskContextAsync(LastTaskContextRecord record)
