@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 
 namespace SlurmJobManager.App.Behaviors;
@@ -183,11 +185,27 @@ public static class SmoothScrollBehavior
                     return childSv.VerticalOffset > 0;
             }
 
-            // Walk up the visual tree.
-            candidate = VisualTreeHelper.GetParent(candidate)
-                        ?? LogicalTreeHelper.GetParent(candidate);
+            candidate = GetParentSafely(candidate);
         }
 
         return false;
+    }
+
+    private static DependencyObject? GetParentSafely(DependencyObject node)
+    {
+        if (node is Visual or Visual3D)
+        {
+            var visualParent = VisualTreeHelper.GetParent(node);
+            if (visualParent != null)
+                return visualParent;
+        }
+
+        if (node is FrameworkContentElement fce)
+            return fce.Parent ?? LogicalTreeHelper.GetParent(fce);
+
+        if (node is ContentElement ce)
+            return ContentOperations.GetParent(ce) ?? LogicalTreeHelper.GetParent(ce);
+
+        return LogicalTreeHelper.GetParent(node);
     }
 }
