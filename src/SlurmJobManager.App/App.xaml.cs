@@ -50,6 +50,7 @@ public partial class App : Application
         var blueprints = new TaskBlueprintService();
         ILastTaskContextService lastTaskContextService = new LastTaskContextService(_logger);
         var logChunk = new SshLogChunkService(ssh, settings, _logger);
+        INotificationService notificationService = new WindowsNotificationService(_logger);
 
         // Credential protection (DPAPI, Windows-only)
         IConnectionProfileStore? profileStore = null;
@@ -63,7 +64,7 @@ public partial class App : Application
         // ViewModels
         var connectionVm = new ConnectionViewModel(ssh, profileStore, recentConnectionService);
         var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints, lastTaskContextService);
-        var monitorVm    = new MonitorViewModel(slurm, settings, _logger, connectionVm);
+        var monitorVm    = new MonitorViewModel(slurm, settings, _logger, connectionVm, notificationService);
         var logViewerVm  = new LogViewerViewModel(logChunk, _logger);
         var consoleVm    = new ConsoleViewModel(ssh, _logger, connectionVm);
 

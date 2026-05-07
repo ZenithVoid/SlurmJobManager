@@ -693,6 +693,8 @@
     <sys:String x:Key="Monitor.HistoryNoTaskContext">未找到该历史任务可关联的当前任务上下文，请手动打开任务目录 logs 排查。</sys:String>
     <sys:String x:Key="Monitor.HistoryOpenedPath">已打开：{0}</sys:String>
     <sys:String x:Key="Monitor.HistoryOpenPathFailed">无法打开：{0}</sys:String>
+    <sys:String x:Key="Monitor.JobCompletionNotificationTitle">任务已结束</sys:String>
+    <sys:String x:Key="Monitor.JobCompletionNotificationBody">Job {0}（{1}）状态：{2}</sys:String>
     <sys:String x:Key="Monitor.PollingEvery">轮询间隔 {0}s…</sys:String>
     <sys:String x:Key="Monitor.PollingStopped">已停止轮询。</sys:String>
     <sys:String x:Key="Monitor.PollingHalted">连续失败 {0} 次后已停止轮询。请检查连接后手动重启。</sys:String>

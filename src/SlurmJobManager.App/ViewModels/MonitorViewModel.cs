@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using SlurmJobManager.App.Services;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
 using SlurmJobManager.Infrastructure.Resilience;
@@ -20,6 +21,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private readonly AppSettings _settings;
     private readonly IAppLogger? _logger;
     private readonly ConnectionViewModel? _connection;
+    private readonly INotificationService? _notificationService;
     private Func<JobRow?, string?>? _resolveHistoryWorkDir;
     private Func<string, CancellationToken, Task<bool>>? _openRemoteFileAsync;
     private Func<string, CancellationToken, Task<bool>>? _openInConsoleAsync;
@@ -32,6 +34,9 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
     // Source-of-truth caches
     private List<JobRow> _allCurrentJobs = new();
+    private Dictionary<long, JobRow> _lastCurrentSnapshot = new();
+    private readonly HashSet<long> _notifiedCompletedJobIds = new();
+    private readonly object _completionNotificationGate = new();
 
     private string _watchedUser = string.Empty;
     private int _pollIntervalSeconds = 3;
@@ -232,12 +237,14 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         ISlurmService slurm,
         AppSettings? settings = null,
         IAppLogger? logger = null,
-        ConnectionViewModel? connection = null)
+        ConnectionViewModel? connection = null,
+        INotificationService? notificationService = null)
     {
         _slurm = slurm ?? throw new ArgumentNullException(nameof(slurm));
         _settings = settings ?? new AppSettings();
         _logger = logger;
         _connection = connection;
+        _notificationService = notificationService;
 
         ResetFilterOptions();
         _statusFilter = _allStatusFilter;
@@ -285,15 +292,19 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
                 ? await _slurm.GetAllJobsAsync(ct)
                 : await _slurm.GetUserJobsAsync(WatchedUser, ct);
 
+            var mappedJobs = jobs
+                .Select(MapCurrentJob)
+                .OrderByDescending(j => j.JobId)
+                .ToList();
+            var completionNotifications = await DetectCompletionNotificationsAsync(mappedJobs, ct);
+
             Application.Current.Dispatcher.Invoke(() =>
             {
-                _allCurrentJobs = jobs
-                    .Select(MapCurrentJob)
-                    .OrderByDescending(j => j.JobId)
-                    .ToList();
+                _allCurrentJobs = mappedJobs;
                 ApplyCurrentFilter();
                 UpdateCurrentElapsedDisplays();
             });
+            NotifyCompletedJobs(completionNotifications);
 
             _consecutiveFailures = 0;
             SetStatus(string.Format(L("Monitor.CurrentUpdated"), DateTime.Now, jobs.Count), "SuccessTextStyle", localize: false);
@@ -683,6 +694,147 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
     private static string ValueOrDash(string? value)
         => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
+    private async Task<IReadOnlyList<JobRow>> DetectCompletionNotificationsAsync(
+        IReadOnlyList<JobRow> currentSnapshot,
+        CancellationToken ct)
+    {
+        Dictionary<long, JobRow> previousSnapshot;
+        HashSet<long> notifiedSnapshot;
+        lock (_completionNotificationGate)
+        {
+            previousSnapshot = new Dictionary<long, JobRow>(_lastCurrentSnapshot);
+            notifiedSnapshot = new HashSet<long>(_notifiedCompletedJobIds);
+        }
+
+        var currentById = currentSnapshot
+            .GroupBy(row => row.JobId)
+            .ToDictionary(group => group.Key, group => group.First());
+
+        if (previousSnapshot.Count == 0)
+        {
+            lock (_completionNotificationGate)
+                _lastCurrentSnapshot = currentById;
+            return Array.Empty<JobRow>();
+        }
+
+        var readyToNotify = new Dictionary<long, JobRow>();
+
+        foreach (var row in currentById.Values)
+        {
+            if (notifiedSnapshot.Contains(row.JobId))
+                continue;
+
+            var hasPrevious = previousSnapshot.TryGetValue(row.JobId, out var previous);
+            if (IsTerminalState(row.State) && (!hasPrevious || !IsTerminalState(previous!.State)))
+                readyToNotify[row.JobId] = row;
+        }
+
+        var disappeared = previousSnapshot.Values
+            .Where(previous => !currentById.ContainsKey(previous.JobId))
+            .ToList();
+
+        if (disappeared.Count > 0)
+        {
+            var resolved = await ResolveTerminalRowsFromHistoryAsync(disappeared, ct);
+            foreach (var row in resolved)
+            {
+                if (!notifiedSnapshot.Contains(row.JobId))
+                    readyToNotify[row.JobId] = row;
+            }
+        }
+
+        lock (_completionNotificationGate)
+            _lastCurrentSnapshot = currentById;
+        return readyToNotify.Values.ToList();
+    }
+
+    private async Task<IReadOnlyList<JobRow>> ResolveTerminalRowsFromHistoryAsync(
+        IReadOnlyList<JobRow> disappearedJobs,
+        CancellationToken ct)
+    {
+        var disappearedById = disappearedJobs
+            .Where(row => row.JobId > 0)
+            .ToDictionary(row => row.JobId, row => row);
+        if (disappearedById.Count == 0)
+            return Array.Empty<JobRow>();
+
+        var terminalById = new Dictionary<long, JobRow>();
+        var users = disappearedJobs
+            .Select(row => row.User?.Trim())
+            .Where(user => !string.IsNullOrWhiteSpace(user))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var user in users)
+        {
+            try
+            {
+                var history = await _slurm.GetUserJobHistoryAsync(user!, HistoryFetchLimit, ct);
+                foreach (var historyStatus in history)
+                {
+                    if (!disappearedById.ContainsKey(historyStatus.JobId) || !IsTerminalState(historyStatus.State))
+                        continue;
+                    if (!terminalById.ContainsKey(historyStatus.JobId))
+                        terminalById[historyStatus.JobId] = MapHistoricalJob(historyStatus);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger?.Warning($"Monitor completion history lookup failed for user '{user}': {ex.Message}");
+            }
+        }
+
+        return terminalById.Values.ToList();
+    }
+
+    private void NotifyCompletedJobs(IReadOnlyList<JobRow> completedJobs)
+    {
+        if (completedJobs.Count == 0)
+            return;
+
+        foreach (var row in completedJobs.OrderBy(r => r.JobId))
+        {
+            lock (_completionNotificationGate)
+            {
+                if (_notifiedCompletedJobIds.Contains(row.JobId))
+                    continue;
+                _notifiedCompletedJobIds.Add(row.JobId);
+            }
+
+            try
+            {
+                _notificationService?.Show(
+                    L("Monitor.JobCompletionNotificationTitle"),
+                    string.Format(
+                        L("Monitor.JobCompletionNotificationBody"),
+                        row.JobId,
+                        ValueOrDash(row.JobName),
+                        ValueOrDash(row.State)));
+            }
+            catch (Exception ex)
+            {
+                _logger?.Warning($"Monitor completion notification failed for job {row.JobId}: {ex.Message}");
+            }
+        }
+    }
+
+    private static bool IsTerminalState(string? state)
+    {
+        if (string.IsNullOrWhiteSpace(state))
+            return false;
+
+        var value = state.Trim();
+        return value.Equals(SlurmJobState.Completed, StringComparison.OrdinalIgnoreCase)
+            || value.Equals(SlurmJobState.Failed, StringComparison.OrdinalIgnoreCase)
+            || value.Equals(SlurmJobState.Cancelled, StringComparison.OrdinalIgnoreCase)
+            || value.Equals(SlurmJobState.Timeout, StringComparison.OrdinalIgnoreCase)
+            || value.Equals(SlurmJobState.NodeFail, StringComparison.OrdinalIgnoreCase);
+    }
 
     private string GetHistoryQueryUser()
     {

@@ -693,6 +693,8 @@
     <sys:String x:Key="Monitor.HistoryNoTaskContext">No matching task context found for this history entry. Open the related task directory logs manually.</sys:String>
     <sys:String x:Key="Monitor.HistoryOpenedPath">Opened: {0}</sys:String>
     <sys:String x:Key="Monitor.HistoryOpenPathFailed">Unable to open: {0}</sys:String>
+    <sys:String x:Key="Monitor.JobCompletionNotificationTitle">Job Finished</sys:String>
+    <sys:String x:Key="Monitor.JobCompletionNotificationBody">Job {0} ({1}) reached terminal state: {2}</sys:String>
     <sys:String x:Key="Monitor.PollingEvery">Polling every {0}s…</sys:String>
     <sys:String x:Key="Monitor.PollingStopped">Polling stopped.</sys:String>
     <sys:String x:Key="Monitor.PollingHalted">Polling stopped after {0} consecutive failures. Check connection and restart polling manually.</sys:String>
