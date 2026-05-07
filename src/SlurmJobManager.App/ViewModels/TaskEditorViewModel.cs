@@ -1968,7 +1968,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 unit.ParamFiles.Add(new ParameterFileEntryViewModel(new ParameterFileEntry
                 {
                     FilePath = path,
-                    Alias = Path.GetFileName(path),
+                    Alias = GetRemoteFileNameFromPath(path),
                 }));
             }
 
@@ -2313,7 +2313,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             return normalized;
         }
 
-        var mapped = $"{normalizedWorkDir.TrimEnd('/')}/{Path.GetFileName(normalized)}";
+        var mapped = $"{normalizedWorkDir.TrimEnd('/')}/{GetRemoteFileNameFromPath(normalized)}";
         if (!string.IsNullOrWhiteSpace(oldTaskId)
             && ContainsTaskIdLiteral(normalized, oldTaskId))
         {
@@ -2553,19 +2553,19 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         foreach (var rawPath in allParamPaths)
         {
             var path = rawPath.Trim();
-            var fileName = Path.GetFileName(path.Replace('\\', '/'));
+            var fileName = GetRemoteFileNameFromPath(path);
             if (string.IsNullOrWhiteSpace(fileName))
                 continue;
 
             var targetPath = $"{normalizedWorkDir.TrimEnd('/')}/{fileName}";
             var normalizedSource = NormalizeRemotePath(path);
-            if (!normalizedSource.StartsWith("/", StringComparison.Ordinal))
-                normalizedSource = $"{normalizedWorkDir.TrimEnd('/')}/{fileName}";
-            var samePath = string.Equals(normalizedSource, NormalizeRemotePath(targetPath), StringComparison.Ordinal);
+            var sourceIsAbsolute = normalizedSource.StartsWith("/", StringComparison.Ordinal);
+            var sourcePath = sourceIsAbsolute ? normalizedSource : targetPath;
+            var samePath = string.Equals(sourcePath, NormalizeRemotePath(targetPath), StringComparison.Ordinal);
             if (!samePath)
             {
                 var (_, copyErr, copyExit) = await _ssh.ExecuteAsync(
-                    $"cp -- {EscapeShellArg(normalizedSource)} {EscapeShellArg(targetPath)}",
+                    $"cp -- {EscapeShellArg(sourcePath)} {EscapeShellArg(targetPath)}",
                     ct);
                 if (copyExit != 0)
                 {
@@ -3057,7 +3057,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     {
         if (string.IsNullOrWhiteSpace(rawPath)) return string.Empty;
         var normalized = rawPath.Trim().Replace('\\', '/');
-        var fileName = Path.GetFileName(normalized);
+        var fileName = GetRemoteFileNameFromPath(normalized);
         if (string.IsNullOrWhiteSpace(fileName))
             return string.Empty;
         if (string.IsNullOrWhiteSpace(workDir))
@@ -3070,8 +3070,17 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     {
         if (string.IsNullOrWhiteSpace(absolutePath))
             return string.Empty;
-        var fileName = Path.GetFileName(absolutePath.Trim().Replace('\\', '/'));
+        var fileName = GetRemoteFileNameFromPath(absolutePath);
         return string.IsNullOrWhiteSpace(fileName) ? string.Empty : $"./{fileName}";
+    }
+
+    private static string GetRemoteFileNameFromPath(string? path)
+    {
+        var normalized = (path ?? string.Empty).Trim().Replace('\\', '/');
+        if (string.IsNullOrWhiteSpace(normalized))
+            return string.Empty;
+        var slashIndex = normalized.LastIndexOf('/');
+        return slashIndex >= 0 ? normalized[(slashIndex + 1)..] : normalized;
     }
 
     private static string ResolveUnitWorkDir(TaskUnitViewModel? unit)
