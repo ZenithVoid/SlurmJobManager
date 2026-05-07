@@ -254,6 +254,7 @@
                 <!-- Selected command detail editor -->
                 <Border Grid.Row="2" Style="{StaticResource CardStyle}" Padding="6">
                     <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
                                   b:SmoothScrollBehavior.IsEnabled="True"
                                   b:SmoothScrollBehavior.ScrollAmount="40">
                         <StackPanel IsEnabled="{Binding HasSelectedCommand}">
@@ -263,13 +264,16 @@
                                        Style="{StaticResource SectionHeaderStyle}" />
                             <Grid Margin="0,0,0,2">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" MinWidth="0" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBox Grid.Column="0"
-                                         Text="{Binding SelectedCommand.ProgramPath, UpdateSourceTrigger=PropertyChanged}"
-                                         FontFamily="Consolas" FontSize="11"
-                                         ToolTip="{DynamicResource CmdBuilder.ProgramPathHint}" />
+                                          Text="{Binding SelectedCommand.ProgramPath, UpdateSourceTrigger=PropertyChanged}"
+                                          FontFamily="Consolas" FontSize="11"
+                                          MinWidth="0"
+                                          HorizontalAlignment="Stretch"
+                                          ToolTip="{Binding SelectedCommand.ProgramPath}"
+                                          />
                                 <Button Grid.Column="1"
                                         Content="..."
                                         Command="{Binding BrowseProgramPathCommand}"

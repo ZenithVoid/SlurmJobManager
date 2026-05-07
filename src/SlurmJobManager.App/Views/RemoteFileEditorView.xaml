@@ -181,7 +181,7 @@
 
                 <Button Grid.Column="1" Content="{DynamicResource RemoteEditor.Save}"
                         Command="{Binding SaveCommand}"
-                        CommandParameter="{Binding Text, ElementName=Editor}"
+                        Click="BtnSave_Click"
                         Style="{StaticResource AccentButtonStyle}"
                         Padding="12,5" Margin="0,0,6,0" />
                 <Button Grid.Column="2" Content="{DynamicResource RemoteEditor.Close}"
