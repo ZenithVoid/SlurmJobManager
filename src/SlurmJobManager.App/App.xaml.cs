@@ -48,6 +48,7 @@ public partial class App : Application
         var slurm    = new SlurmService(ssh, settings, _logger);
         var storage  = new TaskStorageService();
         var blueprints = new TaskBlueprintService();
+        ILastTaskContextService lastTaskContextService = new LastTaskContextService(_logger);
         var logChunk = new SshLogChunkService(ssh, settings, _logger);
 
         // Credential protection (DPAPI, Windows-only)
@@ -61,13 +62,16 @@ public partial class App : Application
 
         // ViewModels
         var connectionVm = new ConnectionViewModel(ssh, profileStore, recentConnectionService);
-        var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints);
+        var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints, lastTaskContextService);
         var monitorVm    = new MonitorViewModel(slurm, settings, _logger, connectionVm);
         var logViewerVm  = new LogViewerViewModel(logChunk, _logger);
         var consoleVm    = new ConsoleViewModel(ssh, _logger, connectionVm);
 
-        // Wire SSH connection → TaskEditor auto-fill
-        connectionVm.ConnectionEstablished += username => taskEditorVm.OnConnectionEstablished(connectionVm.Host, username);
+        // Wire SSH connection → TaskEditor auto-fill and optional task auto-restore
+        connectionVm.ConnectionEstablished += username =>
+        {
+            _ = HandleConnectionEstablishedAsync(connectionVm, taskEditorVm, prefs, username);
+        };
 
         _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm, prefs);
 
@@ -126,6 +130,26 @@ public partial class App : Application
 
     private static string L(string key)
         => Current.TryFindResource(key) as string ?? key;
+
+    private async Task HandleConnectionEstablishedAsync(
+        ConnectionViewModel connectionVm,
+        TaskEditorViewModel taskEditorVm,
+        AppPreferencesService prefs,
+        string username)
+    {
+        var restoredTaskId = await taskEditorVm.OnConnectionEstablishedAsync(
+            connectionVm.Host,
+            username,
+            prefs.AutoRestoreLastTaskOnLogin);
+
+        if (!restoredTaskId || !prefs.AutoRestoreLastTaskOnLogin || _mainVm == null)
+            return;
+
+        if (Current.Dispatcher.CheckAccess())
+            _mainVm.ActiveTab = "Tasks";
+        else
+            await Current.Dispatcher.InvokeAsync(() => _mainVm.ActiveTab = "Tasks");
+    }
 
     private void OnMainWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {

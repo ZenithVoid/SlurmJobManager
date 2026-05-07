@@ -51,6 +51,29 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// When enabled, successful login restores the last task context for the same host/user
+    /// and auto-navigates to Tasks if a valid previous TaskId exists.
+    /// </summary>
+    public bool AutoRestoreLastTaskOnLogin
+    {
+        get => _prefs.AutoRestoreLastTaskOnLogin;
+        set
+        {
+            if (_prefs.TrySetAutoRestoreLastTaskOnLogin(value, out var saveError))
+            {
+                ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+            }
+            else
+            {
+                ToastService.Instance.Error(string.Format(
+                    L("Settings.AutoSaveFailedFormat"),
+                    saveError ?? L("Settings.UnknownError")));
+            }
+            OnPropertyChanged();
+        }
+    }
+
     // ── Theme ─────────────────────────────────────────────────────────────
 
     public bool IsDarkTheme
@@ -103,6 +126,7 @@ public sealed class SettingsViewModel : ViewModelBase
     public string BlueprintsDirectory => LocalDataPaths.BlueprintsDirectory;
     public string RecentConnectionsFilePath => LocalDataPaths.RecentConnectionsFilePath;
     public string PreferencesFilePath => LocalDataPaths.PreferencesFilePath;
+    public string LastTaskContextsFilePath => LocalDataPaths.LastTaskContextsFilePath;
 
     internal void NotifyLocaleChanged()
     {

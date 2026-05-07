@@ -128,6 +128,9 @@
     <sys:String x:Key="Settings.AutoConnectLabel">Auto-connect saved profile on startup</sys:String>
     <sys:String x:Key="Settings.AutoConnectDesc">Automatically connect using the last saved SSH profile when the application starts.</sys:String>
     <sys:String x:Key="Settings.AutoConnectEffect">Saved immediately. Takes effect the next time the app starts.</sys:String>
+    <sys:String x:Key="Settings.AutoRestoreLastTaskLabel">Auto-restore last task after login</sys:String>
+    <sys:String x:Key="Settings.AutoRestoreLastTaskDesc">On successful login, restore the last task context for the same host and username.</sys:String>
+    <sys:String x:Key="Settings.AutoRestoreLastTaskEffect">When enabled, the app navigates to Tasks and restores the last TaskId (plus related context). Without history, no forced jump is performed.</sys:String>
     <sys:String x:Key="Settings.AutoSaveHint">Settings on this page are auto-saved when changed.</sys:String>
     <sys:String x:Key="Settings.Appearance">Appearance</sys:String>
     <sys:String x:Key="Settings.Theme">Theme:</sys:String>
@@ -155,6 +158,7 @@
     <sys:String x:Key="Settings.LocalDataBlueprints">Blueprints: </sys:String>
     <sys:String x:Key="Settings.LocalDataRecentConnections">Recent Connections: </sys:String>
     <sys:String x:Key="Settings.LocalDataPreferences">Preferences: </sys:String>
+    <sys:String x:Key="Settings.LocalDataLastTaskContexts">Last Task Contexts: </sys:String>
     <sys:String x:Key="Settings.AutoSaveSuccess">Setting saved automatically.</sys:String>
     <sys:String x:Key="Settings.AutoSaveFailedFormat">Failed to save setting: {0}</sys:String>
     <sys:String x:Key="Settings.OpenDataDirSuccess">Opened local data directory.</sys:String>

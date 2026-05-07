@@ -69,6 +69,26 @@
                                Style="{StaticResource MutedTextStyle}"
                                Margin="0,6,0,0"
                                TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,4">
+                        <CheckBox x:Name="AutoRestoreLastTaskCheckBox"
+                                  IsChecked="{Binding AutoRestoreLastTaskOnLogin, Mode=TwoWay}"
+                                  Margin="0,0,10,0" />
+                        <Label Target="{Binding ElementName=AutoRestoreLastTaskCheckBox}"
+                               Content="{DynamicResource Settings.AutoRestoreLastTaskLabel}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               VerticalAlignment="Center"
+                               Cursor="Hand"
+                               Padding="0" />
+                    </StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.AutoRestoreLastTaskDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.AutoRestoreLastTaskEffect}"
+                               Style="{StaticResource MutedTextStyle}"
+                               Margin="0,6,0,0"
+                               TextWrapping="Wrap" />
+
                     <TextBlock Text="{DynamicResource Settings.AutoSaveHint}"
                                Style="{StaticResource MutedTextStyle}"
                                Margin="0,2,0,0"
@@ -238,6 +258,14 @@
                         <Run Text="• " />
                         <Run Text="{DynamicResource Settings.LocalDataPreferences}" />
                         <Run Text="{Binding PreferencesFilePath, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock Margin="0,2,0,0"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               TextWrapping="Wrap"
+                               ToolTip="{Binding LastTaskContextsFilePath, Mode=OneWay}">
+                        <Run Text="• " />
+                        <Run Text="{DynamicResource Settings.LocalDataLastTaskContexts}" />
+                        <Run Text="{Binding LastTaskContextsFilePath, Mode=OneWay}" />
                     </TextBlock>
                 </StackPanel>
             </Border>
