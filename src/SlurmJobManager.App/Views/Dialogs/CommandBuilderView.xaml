@@ -406,29 +406,73 @@
             <!-- ── RIGHT: sbatch editor ──────────────────────────────── -->
             <Border Grid.Column="4" Style="{StaticResource CardStyle}" Padding="6">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top"
-                               Text="{DynamicResource CmdBuilder.SbatchScript}"
-                               Style="{StaticResource SectionHeaderStyle}" />
-                    <TextBlock DockPanel.Dock="Top"
-                               Text="{DynamicResource CmdBuilder.SbatchHint}"
-                               Style="{StaticResource MutedTextStyle}"
-                               FontSize="10" Margin="0,0,0,4"
-                               TextWrapping="Wrap" />
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
-                                Margin="0,4,0,0" HorizontalAlignment="Left">
+                                 Margin="0,4,0,0" HorizontalAlignment="Left">
                         <Button Content="{DynamicResource CmdBuilder.RegenSbatch}"
                                 Click="BtnRegenSbatch_Click"
                                 Style="{StaticResource NeutralButtonStyle}"
                                 Padding="8,3" FontSize="11" />
                     </StackPanel>
-                    <TextBox Text="{Binding SbatchContent, UpdateSourceTrigger=PropertyChanged}"
-                             FontFamily="Consolas" FontSize="11"
-                             Background="{DynamicResource BgCrustBrush}"
-                             Foreground="{DynamicResource AccentGreenBrush}"
-                             AcceptsReturn="True" TextWrapping="NoWrap"
-                             VerticalScrollBarVisibility="Auto"
-                             HorizontalScrollBarVisibility="Auto"
-                             Padding="6,4" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  b:SmoothScrollBehavior.IsEnabled="True"
+                                  b:SmoothScrollBehavior.ScrollAmount="40">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchJobConfig}"
+                                       Style="{StaticResource SectionHeaderStyle}" />
+                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchJobConfigHint}"
+                                       Style="{StaticResource MutedTextStyle}"
+                                       FontSize="10" Margin="0,0,0,4"
+                                       TextWrapping="Wrap" />
+
+                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchJobName}" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding SbatchJobName, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
+
+                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchPartition}" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding SbatchPartition, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
+
+                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchNodes}" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding SbatchNodes, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
+
+                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchCpuCount}" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding SbatchCpuCount, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
+
+                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchTimeLimit}" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding SbatchTimeLimit, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
+
+                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchAccount}" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding SbatchAccount, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
+
+                            <CheckBox Content="{DynamicResource CmdBuilder.SbatchExclusive}"
+                                      IsChecked="{Binding SbatchExclusive, Mode=TwoWay}"
+                                      Margin="0,0,0,2" />
+                            <CheckBox Content="{DynamicResource CmdBuilder.SbatchModulePurge}"
+                                      IsChecked="{Binding SbatchModulePurge, Mode=TwoWay}"
+                                      Margin="0,0,0,8" />
+
+                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchScript}"
+                                       Style="{StaticResource SectionHeaderStyle}" />
+                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchHint}"
+                                       Style="{StaticResource MutedTextStyle}"
+                                       FontSize="10" Margin="0,0,0,4"
+                                       TextWrapping="Wrap" />
+                            <TextBox Text="{Binding SbatchContent, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Consolas" FontSize="11"
+                                     Background="{DynamicResource BgCrustBrush}"
+                                     Foreground="{DynamicResource AccentGreenBrush}"
+                                     AcceptsReturn="True" TextWrapping="NoWrap"
+                                     MinHeight="260"
+                                     VerticalScrollBarVisibility="Auto"
+                                     HorizontalScrollBarVisibility="Auto"
+                                     Padding="6,4" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </DockPanel>
             </Border>
         </Grid>

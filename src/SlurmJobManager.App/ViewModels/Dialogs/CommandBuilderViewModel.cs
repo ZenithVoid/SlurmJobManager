@@ -22,6 +22,9 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private static readonly string[] AppSourceDirs = { "/env/preprocess/out", "/env/preprocess/bin" };
     private const string RemoteParamDir = "/env/preprocess/out/config";
     private const string InterfaceProbeIp = "10.10.10.202";
+    private const string DefaultNodes = "1";
+    private const string DefaultTimeLimit = "99-00:00:00";
+    private const string DefaultAccount = "preproc";
 
     private readonly ISshClientService _ssh;
 
@@ -39,6 +42,14 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private CommandEntryViewModel? _selectedCommand;
     private string  _selectedAvailableParamFile = string.Empty;
     private string _homeDirectory = string.Empty;
+    private string _sbatchJobName = string.Empty;
+    private string _sbatchPartition = string.Empty;
+    private string _sbatchNodes = DefaultNodes;
+    private string _sbatchCpuCount = string.Empty;
+    private string _sbatchTimeLimit = DefaultTimeLimit;
+    private string _sbatchAccount = DefaultAccount;
+    private bool _sbatchExclusive;
+    private bool _sbatchModulePurge;
 
     // ── Result ─────────────────────────────────────────────────────────────
     public bool Confirmed { get; private set; }
@@ -119,6 +130,89 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         private set { SetField(ref _isBusy, value); CommandManager.InvalidateRequerySuggested(); }
     }
 
+    public string SbatchJobName
+    {
+        get => _sbatchJobName;
+        set
+        {
+            if (SetField(ref _sbatchJobName, value))
+                RegenerateSbatch();
+        }
+    }
+
+    public string SbatchPartition
+    {
+        get => _sbatchPartition;
+        set
+        {
+            if (SetField(ref _sbatchPartition, value))
+                RegenerateSbatch();
+        }
+    }
+
+    public string SbatchNodes
+    {
+        get => _sbatchNodes;
+        set
+        {
+            if (SetField(ref _sbatchNodes, value))
+                RegenerateSbatch();
+        }
+    }
+
+    public string SbatchCpuCount
+    {
+        get => _sbatchCpuCount;
+        set
+        {
+            if (SetField(ref _sbatchCpuCount, value))
+            {
+                ApplyMpiBindingPolicy();
+                RegenerateSbatch();
+            }
+        }
+    }
+
+    public string SbatchTimeLimit
+    {
+        get => _sbatchTimeLimit;
+        set
+        {
+            if (SetField(ref _sbatchTimeLimit, value))
+                RegenerateSbatch();
+        }
+    }
+
+    public string SbatchAccount
+    {
+        get => _sbatchAccount;
+        set
+        {
+            if (SetField(ref _sbatchAccount, value))
+                RegenerateSbatch();
+        }
+    }
+
+    public bool SbatchExclusive
+    {
+        get => _sbatchExclusive;
+        set
+        {
+            if (SetField(ref _sbatchExclusive, value))
+                RegenerateSbatch();
+        }
+    }
+
+    public bool SbatchModulePurge
+    {
+        get => _sbatchModulePurge;
+        set
+        {
+            if (SetField(ref _sbatchModulePurge, value))
+                RegenerateSbatch();
+        }
+    }
+
     // ── Commands ───────────────────────────────────────────────────────────
     public ICommand RefreshCommand          { get; }
     public ICommand AddCommandCommand       { get; }
@@ -146,7 +240,8 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         string taskId = "",
         string remoteWorkDir = "",
         IEnumerable<CommandEntry>? initialCommands = null,
-        string? initialSbatch = null)
+        string? initialSbatch = null,
+        SbatchJobOptions? initialSbatchOptions = null)
     {
         _ssh           = ssh           ?? throw new ArgumentNullException(nameof(ssh));
         _taskId        = taskId;
@@ -164,6 +259,9 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             Commands.Add(new CommandEntryViewModel());
 
         SelectedCommand = Commands[0];
+
+        ApplyInitialSbatchOptions(taskId, initialSbatchOptions, initialSbatch);
+        ApplyMpiBindingPolicy();
 
         // sbatch content
         _sbatchContent = !string.IsNullOrEmpty(initialSbatch)
@@ -265,7 +363,11 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
     private void AddCommand()
     {
-        var cmd = new CommandEntryViewModel { Order = Commands.Count };
+        var cmd = new CommandEntryViewModel
+        {
+            Order = Commands.Count,
+            IncludeBindToNone = ShouldIncludeBindToNone(),
+        };
         WireCommandCollections(cmd);
         Commands.Add(cmd);
         SelectedCommand = cmd;
@@ -755,6 +857,46 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         return $"{normalizedWorkDir.TrimEnd('/')}/{fileName}";
     }
 
+    private void ApplyMpiBindingPolicy()
+    {
+        var includeBindToNone = ShouldIncludeBindToNone();
+        foreach (var command in Commands)
+            command.IncludeBindToNone = includeBindToNone;
+    }
+
+    private bool ShouldIncludeBindToNone()
+        => string.IsNullOrWhiteSpace(_sbatchCpuCount);
+
+    private void ApplyInitialSbatchOptions(string taskId, SbatchJobOptions? initialSbatchOptions, string? initialSbatch)
+    {
+        if (initialSbatchOptions != null)
+        {
+            _sbatchJobName = initialSbatchOptions.JobName ?? string.Empty;
+            _sbatchPartition = initialSbatchOptions.Partition ?? string.Empty;
+            _sbatchNodes = NormalizeNodes(initialSbatchOptions.Nodes);
+            _sbatchCpuCount = initialSbatchOptions.CpuCount ?? string.Empty;
+            _sbatchTimeLimit = NormalizeTimeLimit(initialSbatchOptions.TimeLimit);
+            _sbatchAccount = NormalizeAccount(initialSbatchOptions.Account);
+            _sbatchExclusive = initialSbatchOptions.Exclusive;
+            _sbatchModulePurge = initialSbatchOptions.ModulePurge;
+            return;
+        }
+
+        _sbatchNodes = DefaultNodes;
+        _sbatchCpuCount = string.Empty;
+        _sbatchTimeLimit = DefaultTimeLimit;
+        _sbatchAccount = DefaultAccount;
+        _sbatchExclusive = false;
+        _sbatchModulePurge = false;
+
+        var defaultJobName = string.IsNullOrWhiteSpace(taskId) ? "job" : taskId.Trim();
+        _sbatchJobName = defaultJobName;
+        _sbatchPartition = string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(initialSbatch))
+            ParseSbatchOptionsFromScript(initialSbatch);
+    }
+
     // ── Save & Apply ───────────────────────────────────────────────────────
 
     private void SaveAndApply()
@@ -778,35 +920,97 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     /// <summary>Returns the current sbatch content.</summary>
     public string GetResultSbatch() => _sbatchContent;
 
+    public SbatchJobOptions GetResultSbatchOptions() => new()
+    {
+        JobName = _sbatchJobName.Trim(),
+        Partition = _sbatchPartition.Trim(),
+        Nodes = NormalizeNodes(_sbatchNodes),
+        CpuCount = _sbatchCpuCount.Trim(),
+        TimeLimit = NormalizeTimeLimit(_sbatchTimeLimit),
+        Account = NormalizeAccount(_sbatchAccount),
+        Exclusive = _sbatchExclusive,
+        ModulePurge = _sbatchModulePurge,
+    };
+
     // ── sbatch generation ──────────────────────────────────────────────────
+
+    private void ParseSbatchOptionsFromScript(string script)
+    {
+        var lines = script.Replace("\r\n", "\n").Split('\n');
+        if (TryReadDirective(lines, "--job-name", out var jobName))
+            _sbatchJobName = jobName;
+        if (TryReadDirective(lines, "--partition", out var partition))
+            _sbatchPartition = partition;
+        if (TryReadDirective(lines, "--nodes", out var nodes))
+            _sbatchNodes = nodes;
+        if (TryReadDirective(lines, "--cpus-per-task", out var cpus))
+            _sbatchCpuCount = cpus;
+        if (TryReadDirective(lines, "--time", out var timeLimit))
+            _sbatchTimeLimit = timeLimit;
+        if (TryReadDirective(lines, "--account", out var account))
+            _sbatchAccount = account;
+
+        _sbatchExclusive = lines.Any(line => line.Trim().Equals("#SBATCH --exclusive", StringComparison.OrdinalIgnoreCase));
+        _sbatchModulePurge = lines.Any(line => line.Trim().Equals("module purge", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool TryReadDirective(IEnumerable<string> lines, string directiveName, out string value)
+    {
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            var prefix = $"#SBATCH {directiveName}";
+            if (!trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var remaining = trimmed[prefix.Length..].TrimStart();
+            if (remaining.StartsWith("=", StringComparison.Ordinal))
+                remaining = remaining[1..].Trim();
+            value = remaining;
+            return true;
+        }
+
+        value = string.Empty;
+        return false;
+    }
 
     /// <summary>Rebuilds the sbatch content from the current commands list.</summary>
     public void RegenerateSbatch()
     {
         var firstProg = Commands.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c.ProgramPath))?.ProgramPath ?? string.Empty;
         var progName  = GetFileNameFromPath(firstProg);
-
-        var jobName = string.IsNullOrEmpty(_taskId)
-            ? progName
+        var generatedJobName = string.IsNullOrEmpty(_taskId)
+            ? (string.IsNullOrEmpty(progName) ? "job" : progName)
             : (string.IsNullOrEmpty(progName) ? _taskId : $"{_taskId}_{progName}");
+        var jobName = string.IsNullOrWhiteSpace(_sbatchJobName) ? generatedJobName : _sbatchJobName.Trim();
 
         var workDir = string.IsNullOrEmpty(_remoteWorkDir) ? "/tmp/job" : _remoteWorkDir;
         var stdout  = $"{workDir}/logs/job.out";
         var stderr  = $"{workDir}/logs/job.err";
+        var nodes = NormalizeNodes(_sbatchNodes);
+        var timeLimit = NormalizeTimeLimit(_sbatchTimeLimit);
+        var account = NormalizeAccount(_sbatchAccount);
+        var partition = _sbatchPartition.Trim();
+        var cpuCount = _sbatchCpuCount.Trim();
 
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("#!/bin/bash -l");
         sb.AppendLine($"#SBATCH --job-name={jobName}");
-        sb.AppendLine("#SBATCH --partition=");
-        sb.AppendLine("#SBATCH --nodes=1");
+        sb.AppendLine($"#SBATCH --partition={partition}");
+        sb.AppendLine($"#SBATCH --nodes={nodes}");
         sb.AppendLine("#SBATCH --ntasks=1");
-        sb.AppendLine("#SBATCH --cpus-per-task=1");
-        sb.AppendLine("#SBATCH --time=01:00:00");
+        if (!string.IsNullOrWhiteSpace(cpuCount))
+            sb.AppendLine($"#SBATCH --cpus-per-task={cpuCount}");
+        sb.AppendLine($"#SBATCH --time={timeLimit}");
+        sb.AppendLine($"#SBATCH --account={account}");
+        if (_sbatchExclusive)
+            sb.AppendLine("#SBATCH --exclusive");
         sb.AppendLine($"#SBATCH --output={stdout}");
         sb.AppendLine($"#SBATCH --error={stderr}");
         sb.AppendLine($"#SBATCH --chdir={workDir}");
         sb.AppendLine();
-        sb.AppendLine("module purge");
+        if (_sbatchModulePurge)
+            sb.AppendLine("module purge");
         sb.AppendLine($"cd {workDir}");
         sb.AppendLine($"IFACE_NAME=$(ip route get {InterfaceProbeIp} | awk '{{print $3}}')");
         sb.AppendLine();
@@ -827,19 +1031,28 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private string BuildDefaultSbatch()
     {
         var workDir = string.IsNullOrEmpty(_remoteWorkDir) ? "/tmp/job" : _remoteWorkDir;
-        var jobName = string.IsNullOrEmpty(_taskId) ? "job" : _taskId;
+        var jobName = string.IsNullOrWhiteSpace(_sbatchJobName)
+            ? (string.IsNullOrEmpty(_taskId) ? "job" : _taskId)
+            : _sbatchJobName.Trim();
+        var nodes = NormalizeNodes(_sbatchNodes);
+        var timeLimit = NormalizeTimeLimit(_sbatchTimeLimit);
+        var account = NormalizeAccount(_sbatchAccount);
+        var partition = _sbatchPartition.Trim();
+        var cpuCount = _sbatchCpuCount.Trim();
         return
             "#!/bin/bash -l\n" +
             $"#SBATCH --job-name={jobName}\n" +
-            "#SBATCH --partition=\n" +
-            "#SBATCH --nodes=1\n" +
+            $"#SBATCH --partition={partition}\n" +
+            $"#SBATCH --nodes={nodes}\n" +
             "#SBATCH --ntasks=1\n" +
-            "#SBATCH --cpus-per-task=1\n" +
-            "#SBATCH --time=01:00:00\n" +
+            (string.IsNullOrWhiteSpace(cpuCount) ? string.Empty : $"#SBATCH --cpus-per-task={cpuCount}\n") +
+            $"#SBATCH --time={timeLimit}\n" +
+            $"#SBATCH --account={account}\n" +
+            (_sbatchExclusive ? "#SBATCH --exclusive\n" : string.Empty) +
             $"#SBATCH --output={workDir}/logs/job.out\n" +
             $"#SBATCH --error={workDir}/logs/job.err\n" +
             $"#SBATCH --chdir={workDir}\n\n" +
-            "module purge\n" +
+            (_sbatchModulePurge ? "module purge\n" : string.Empty) +
             $"cd {workDir}\n" +
             $"IFACE_NAME=$(ip route get {InterfaceProbeIp} | awk '{{print $3}}')\n\n" +
             $"echo \"Starting job {jobName} at $(date)\"\n\n" +
@@ -868,6 +1081,15 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
     private static string TruncateText(string text, int maxLen)
         => text.Length <= maxLen ? text : text[..maxLen] + "…";
+
+    private static string NormalizeNodes(string? value)
+        => string.IsNullOrWhiteSpace(value) ? DefaultNodes : value.Trim();
+
+    private static string NormalizeTimeLimit(string? value)
+        => string.IsNullOrWhiteSpace(value) ? DefaultTimeLimit : value.Trim();
+
+    private static string NormalizeAccount(string? value)
+        => string.IsNullOrWhiteSpace(value) ? DefaultAccount : value.Trim();
 
     /// <summary>Safely extracts the file name component from a Unix path.</summary>
     private static string GetFileNameFromPath(string path)

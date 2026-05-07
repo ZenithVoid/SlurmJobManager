@@ -12,11 +12,13 @@ public sealed class TaskUnitViewModel : ViewModelBase
 {
     private string _taskName;
     private bool   _enabled;
+    private SbatchJobOptions _sbatchOptions;
 
     public TaskUnitViewModel(TaskUnit model)
     {
         _taskName = model.TaskName;
         _enabled  = model.Enabled;
+        _sbatchOptions = model.SbatchOptions ?? new SbatchJobOptions();
 
         foreach (var p in model.ProgramEntries)
             Programs.Add(new ProgramEntryViewModel(p));
@@ -52,6 +54,11 @@ public sealed class TaskUnitViewModel : ViewModelBase
     public string? RemoteWorkDirectory { get; set; }
     public long?   SlurmJobId          { get; set; }
     public string? SbatchTemplate      { get; set; }
+    public SbatchJobOptions SbatchOptions
+    {
+        get => _sbatchOptions;
+        set => SetField(ref _sbatchOptions, value);
+    }
 
     // ── Collections ──────────────────────────────────────────────────────────
 
@@ -69,12 +76,25 @@ public sealed class TaskUnitViewModel : ViewModelBase
         RemoteWorkDirectory = RemoteWorkDirectory,
         SlurmJobId          = SlurmJobId,
         SbatchTemplate      = SbatchTemplate,
+        SbatchOptions       = CloneSbatchOptions(SbatchOptions),
         ProgramEntries      = Programs.Select(p => p.ToModel()).ToList(),
         ParameterFiles      = ParamFiles.Select(f => f.ToModel()).ToList(),
         CommandEntries      = Commands.Select(c => c.ToModel()).ToList(),
         ExtraParameters     = ExtraParams
             .Where(e => !string.IsNullOrWhiteSpace(e.Key))
             .ToDictionary(e => e.Key, e => e.Value),
+    };
+
+    private static SbatchJobOptions CloneSbatchOptions(SbatchJobOptions? source) => new()
+    {
+        JobName = source?.JobName ?? string.Empty,
+        Partition = source?.Partition ?? string.Empty,
+        Nodes = source?.Nodes ?? "1",
+        CpuCount = source?.CpuCount ?? string.Empty,
+        TimeLimit = source?.TimeLimit ?? "99-00:00:00",
+        Account = source?.Account ?? "preproc",
+        Exclusive = source?.Exclusive ?? false,
+        ModulePurge = source?.ModulePurge ?? false,
     };
 }
 
@@ -137,13 +157,14 @@ public sealed class ParameterFileEntryViewModel : ViewModelBase
 public sealed class CommandEntryViewModel : ViewModelBase
 {
     // Required MPI launch options for this project; IFACE_NAME is prepared in the sbatch header.
-    private const string RequiredMpiLaunchArgs = "--bind-to none -np $SLURM_NPROCS --mca btl_tcp_if_include $IFACE_NAME";
+    private const string MpiLaunchArgsWithoutBinding = "-np $SLURM_NPROCS --mca btl_tcp_if_include $IFACE_NAME";
 
     private string  _commandLine;
     private string? _description;
     private int     _order;
     private string  _programPath;
     private string? _mpirunPath;
+    private bool _includeBindToNone = true;
 
     public CommandEntryViewModel(CommandEntry m)
     {
@@ -178,6 +199,12 @@ public sealed class CommandEntryViewModel : ViewModelBase
         set { if (SetField(ref _mpirunPath, value)) RebuildCommandLine(); }
     }
 
+    public bool IncludeBindToNone
+    {
+        get => _includeBindToNone;
+        set { if (SetField(ref _includeBindToNone, value)) RebuildCommandLine(); }
+    }
+
     public ObservableCollection<string>         ParameterFiles { get; } = new();
     public ObservableCollection<ExtraArgViewModel> ExtraArgs   { get; } = new();
 
@@ -205,7 +232,9 @@ public sealed class CommandEntryViewModel : ViewModelBase
         if (!string.IsNullOrWhiteSpace(_mpirunPath))
         {
             parts.Add(_mpirunPath);
-            parts.Add(RequiredMpiLaunchArgs);
+            if (_includeBindToNone)
+                parts.Add("--bind-to none");
+            parts.Add(MpiLaunchArgsWithoutBinding);
         }
         parts.Add(_programPath);
         foreach (var pf in ParameterFiles.Where(p => !string.IsNullOrWhiteSpace(p)))
