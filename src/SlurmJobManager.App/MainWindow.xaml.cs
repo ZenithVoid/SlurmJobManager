@@ -138,15 +138,15 @@ public partial class MainWindow : Window
         }
 
         var selectedCount = listBox.SelectedItems.Count;
-        if (selectedCount <= 0)
-        {
-            menu.IsOpen = false;
-            return;
-        }
 
         var hasSingleSelection = selectedCount == 1 && listBox.SelectedItem is TaskFileEntry;
+        var selectedEntry = listBox.SelectedItem as TaskFileEntry;
         if (menu.FindName("TaskFileContextOpenMenuItem") is MenuItem openItem)
             openItem.IsEnabled = hasSingleSelection;
+        if (menu.FindName("TaskFileContextRenameMenuItem") is MenuItem renameItem)
+            renameItem.IsEnabled = hasSingleSelection;
+        if (menu.FindName("TaskFileContextDownloadMenuItem") is MenuItem downloadItem)
+            downloadItem.IsEnabled = hasSingleSelection && selectedEntry is { IsDirectory: false };
         if (menu.FindName("TaskFileContextTimeInfoMenuItem") is MenuItem timeInfoItem)
             timeInfoItem.IsEnabled = hasSingleSelection;
         if (menu.FindName("TaskFileContextDeleteMenuItem") is MenuItem deleteItem)

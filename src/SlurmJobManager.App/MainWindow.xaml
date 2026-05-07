@@ -290,7 +290,7 @@
                                 </TextBox.InputBindings>
                             </TextBox>
 
-                            <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                            <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
@@ -312,6 +312,27 @@
                                         Command="{Binding TaskEditor.OpenInConsoleCommand}"
                                         Style="{StaticResource NeutralButtonStyle}"
                                         ToolTip="{DynamicResource Task.OpenInTerminalHint}"
+                                        Padding="8,4" />
+                            </Grid>
+                            <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="{DynamicResource Task.FileMenuNewFile}"
+                                        Command="{Binding TaskEditor.CreateTaskFileCommand}"
+                                        Style="{StaticResource NeutralButtonStyle}"
+                                        Padding="8,4"
+                                        Margin="0,0,4,0" />
+                                <Button Grid.Column="1" Content="{DynamicResource Task.FileMenuNewDirectory}"
+                                        Command="{Binding TaskEditor.CreateTaskDirectoryCommand}"
+                                        Style="{StaticResource NeutralButtonStyle}"
+                                        Padding="8,4"
+                                        Margin="0,0,4,0" />
+                                <Button Grid.Column="2" Content="{DynamicResource Task.FileMenuUpload}"
+                                        Command="{Binding TaskEditor.UploadTaskFileCommand}"
+                                        Style="{StaticResource NeutralButtonStyle}"
                                         Padding="8,4" />
                             </Grid>
 
@@ -349,14 +370,32 @@
                                                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                          <ListBox.ContextMenu>
-                                             <ContextMenu Opened="TaskFileContextMenu_Opened">
-                                                 <MenuItem x:Name="TaskFileContextOpenMenuItem"
-                                                           Header="{DynamicResource Task.FileMenuOpen}"
-                                                           Command="{Binding PlacementTarget.DataContext.TaskEditor.OpenTaskFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                           CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                                 <MenuItem x:Name="TaskFileContextDeleteMenuItem"
-                                                           Header="{DynamicResource Task.FileMenuDelete}"
-                                                           Click="TaskFileContextDelete_Click" />
+                                              <ContextMenu Opened="TaskFileContextMenu_Opened">
+                                                  <MenuItem x:Name="TaskFileContextNewFileMenuItem"
+                                                            Header="{DynamicResource Task.FileMenuNewFile}"
+                                                            Command="{Binding PlacementTarget.DataContext.TaskEditor.CreateTaskFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                  <MenuItem x:Name="TaskFileContextNewDirectoryMenuItem"
+                                                            Header="{DynamicResource Task.FileMenuNewDirectory}"
+                                                            Command="{Binding PlacementTarget.DataContext.TaskEditor.CreateTaskDirectoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                  <MenuItem x:Name="TaskFileContextUploadMenuItem"
+                                                            Header="{DynamicResource Task.FileMenuUpload}"
+                                                            Command="{Binding PlacementTarget.DataContext.TaskEditor.UploadTaskFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                  <Separator />
+                                                  <MenuItem x:Name="TaskFileContextOpenMenuItem"
+                                                            Header="{DynamicResource Task.FileMenuOpen}"
+                                                            Command="{Binding PlacementTarget.DataContext.TaskEditor.OpenTaskFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                            CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                  <MenuItem x:Name="TaskFileContextRenameMenuItem"
+                                                            Header="{DynamicResource Task.FileMenuRename}"
+                                                            Command="{Binding PlacementTarget.DataContext.TaskEditor.RenameTaskFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                            CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                  <MenuItem x:Name="TaskFileContextDownloadMenuItem"
+                                                            Header="{DynamicResource Task.FileMenuDownload}"
+                                                            Command="{Binding PlacementTarget.DataContext.TaskEditor.DownloadTaskFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                            CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                  <MenuItem x:Name="TaskFileContextDeleteMenuItem"
+                                                            Header="{DynamicResource Task.FileMenuDelete}"
+                                                            Click="TaskFileContextDelete_Click" />
                                                 <MenuItem x:Name="TaskFileContextTimeInfoMenuItem"
                                                           Header="{DynamicResource Task.FileMenuViewTimeInfo}"
                                                           Click="TaskFileContextViewTimeInfo_Click" />

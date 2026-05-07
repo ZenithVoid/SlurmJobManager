@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Win32;
 using SlurmJobManager.App.Services;
 using SlurmJobManager.App.ViewModels.Dialogs;
 using SlurmJobManager.App.Views;
@@ -417,6 +418,11 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     public ICommand OpenTaskFileCommand               { get; }
     public ICommand DeleteTaskFilesCommand            { get; }
     public ICommand ViewTaskFileTimeInfoCommand       { get; }
+    public ICommand CreateTaskFileCommand             { get; }
+    public ICommand CreateTaskDirectoryCommand        { get; }
+    public ICommand RenameTaskFileCommand             { get; }
+    public ICommand DownloadTaskFileCommand           { get; }
+    public ICommand UploadTaskFileCommand             { get; }
     public ICommand GoUpTaskFilesPathCommand          { get; }
     public ICommand OpenInConsoleCommand              { get; }
     public ICommand OpenLastSubmitScriptCommand       { get; }
@@ -462,6 +468,11 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         OpenTaskFileCommand              = new AsyncRelayCommand<TaskFileEntry>(OpenTaskFileAsync, entry => entry is not null && !IsBusy);
         DeleteTaskFilesCommand           = new AsyncRelayCommand<IReadOnlyList<TaskFileEntry>>(DeleteTaskFilesAsync);
         ViewTaskFileTimeInfoCommand      = new AsyncRelayCommand<TaskFileEntry>(ViewTaskFileTimeInfoAsync);
+        CreateTaskFileCommand            = new AsyncRelayCommand(CreateTaskFileAsync, CanRunSshCommand);
+        CreateTaskDirectoryCommand       = new AsyncRelayCommand(CreateTaskDirectoryAsync, CanRunSshCommand);
+        RenameTaskFileCommand            = new AsyncRelayCommand<TaskFileEntry>(RenameTaskFileAsync, entry => entry is not null && !IsBusy);
+        DownloadTaskFileCommand          = new AsyncRelayCommand<TaskFileEntry>(DownloadTaskFileAsync, entry => entry is not null && !IsBusy);
+        UploadTaskFileCommand            = new AsyncRelayCommand(UploadTaskFileAsync, CanRunSshCommand);
         GoUpTaskFilesPathCommand         = new AsyncRelayCommand(GoUpTaskFilesPathAsync,            CanRunSshCommand);
         OpenInConsoleCommand             = new AsyncRelayCommand(OpenInConsoleAsync,                 () => !IsBusy);
         OpenLastSubmitScriptCommand      = new AsyncRelayCommand(OpenLastSubmitScriptAsync,          () => !IsBusy);
@@ -1140,6 +1151,260 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         }
 
         await OpenRemoteTextFileInEditorAsync(fileEntry.RemotePath, "Task.TaskFileMissing", ct);
+    }
+
+    private async Task CreateTaskFileAsync(CancellationToken ct)
+    {
+        var currentDirectory = await ResolveCurrentTaskDirectoryAsync(ct);
+        if (string.IsNullOrWhiteSpace(currentDirectory))
+            return;
+
+        var input = ShowTaskFileNameInputDialog(
+            title: L("Task.FileCreateTitle"),
+            prompt: L("Task.FileCreatePrompt"),
+            confirmButtonText: L("Task.FileCreateConfirm"),
+            initialValue: string.Empty);
+        if (input == null)
+            return;
+
+        var fileName = input.Trim();
+        var nameValidationError = ValidateTaskFileEntryName(fileName);
+        if (!string.IsNullOrWhiteSpace(nameValidationError))
+        {
+            SetStatus(nameValidationError, "WarningTextStyle", localize: false);
+            return;
+        }
+
+        var targetPath = BuildRemotePath(currentDirectory, fileName);
+        try
+        {
+            if (await RemotePathExistsAsync(targetPath, ct))
+            {
+                SetStatus(string.Format(L("Task.FilePathExists"), CollapseHomePath(targetPath)), "WarningTextStyle", localize: false);
+                return;
+            }
+
+            await _ssh.WriteTextFileAsync(targetPath, string.Empty, ct);
+            await RefreshTaskFilesAsync(ct);
+            _ = await OpenRemoteTextFileInEditorAsync(targetPath, "Task.TaskFileMissing", ct);
+            SetStatus(string.Format(L("Task.FileCreateSucceeded"), fileName), "SuccessTextStyle", localize: false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.FileCreateFailed"), ex.Message), "ErrorTextStyle", localize: false);
+        }
+    }
+
+    private async Task CreateTaskDirectoryAsync(CancellationToken ct)
+    {
+        var currentDirectory = await ResolveCurrentTaskDirectoryAsync(ct);
+        if (string.IsNullOrWhiteSpace(currentDirectory))
+            return;
+
+        var input = ShowTaskFileNameInputDialog(
+            title: L("Task.DirectoryCreateTitle"),
+            prompt: L("Task.DirectoryCreatePrompt"),
+            confirmButtonText: L("Task.DirectoryCreateConfirm"),
+            initialValue: string.Empty);
+        if (input == null)
+            return;
+
+        var directoryName = input.Trim();
+        var nameValidationError = ValidateTaskFileEntryName(directoryName);
+        if (!string.IsNullOrWhiteSpace(nameValidationError))
+        {
+            SetStatus(nameValidationError, "WarningTextStyle", localize: false);
+            return;
+        }
+
+        var targetPath = BuildRemotePath(currentDirectory, directoryName);
+        try
+        {
+            if (await RemotePathExistsAsync(targetPath, ct))
+            {
+                SetStatus(string.Format(L("Task.FilePathExists"), CollapseHomePath(targetPath)), "WarningTextStyle", localize: false);
+                return;
+            }
+
+            var (_, stderr, exitCode) = await _ssh.ExecuteAsync($"mkdir -- {EscapeShellArg(targetPath)}", ct);
+            if (exitCode != 0)
+            {
+                var detail = string.IsNullOrWhiteSpace(stderr) ? L("Task.DirReadFailedNoDetail") : stderr.Trim();
+                SetStatus(string.Format(L("Task.DirectoryCreateFailed"), detail), "ErrorTextStyle", localize: false);
+                return;
+            }
+
+            await RefreshTaskFilesAsync(ct);
+            SetStatus(string.Format(L("Task.DirectoryCreateSucceeded"), directoryName), "SuccessTextStyle", localize: false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.DirectoryCreateFailed"), ex.Message), "ErrorTextStyle", localize: false);
+        }
+    }
+
+    private async Task RenameTaskFileAsync(TaskFileEntry? fileEntry, CancellationToken ct)
+    {
+        if (fileEntry == null)
+            return;
+        if (!IsSshConnectedSafe())
+        {
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
+            return;
+        }
+
+        var input = ShowTaskFileNameInputDialog(
+            title: L("Task.FileRenameTitle"),
+            prompt: L("Task.FileRenamePrompt"),
+            confirmButtonText: L("Task.FileRenameConfirm"),
+            initialValue: fileEntry.Name);
+        if (input == null)
+            return;
+
+        var newName = input.Trim();
+        var nameValidationError = ValidateTaskFileEntryName(newName);
+        if (!string.IsNullOrWhiteSpace(nameValidationError))
+        {
+            SetStatus(nameValidationError, "WarningTextStyle", localize: false);
+            return;
+        }
+
+        if (string.Equals(newName, fileEntry.Name, StringComparison.Ordinal))
+        {
+            SetStatus("Task.FileRenameUnchanged", "InfoTextStyle");
+            return;
+        }
+
+        var parentPath = GetRemoteParentPath(fileEntry.RemotePath);
+        var targetPath = BuildRemotePath(parentPath, newName);
+
+        try
+        {
+            if (await RemotePathExistsAsync(targetPath, ct))
+            {
+                SetStatus(string.Format(L("Task.FilePathExists"), CollapseHomePath(targetPath)), "WarningTextStyle", localize: false);
+                return;
+            }
+
+            var (_, stderr, exitCode) = await _ssh.ExecuteAsync(
+                $"mv -- {EscapeShellArg(fileEntry.RemotePath)} {EscapeShellArg(targetPath)}", ct);
+            if (exitCode != 0)
+            {
+                var detail = string.IsNullOrWhiteSpace(stderr) ? L("Task.FileRenameFailedNoDetail") : stderr.Trim();
+                SetStatus(string.Format(L("Task.FileRenameFailed"), detail), "ErrorTextStyle", localize: false);
+                return;
+            }
+
+            await RefreshTaskFilesAsync(ct);
+            SetStatus(
+                string.Format(L("Task.FileRenameSucceeded"), fileEntry.DisplayName, fileEntry.IsDirectory ? $"{newName}/" : newName),
+                "SuccessTextStyle",
+                localize: false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.FileRenameFailed"), ex.Message), "ErrorTextStyle", localize: false);
+        }
+    }
+
+    private async Task DownloadTaskFileAsync(TaskFileEntry? fileEntry, CancellationToken ct)
+    {
+        if (fileEntry == null)
+            return;
+        if (!IsSshConnectedSafe())
+        {
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
+            return;
+        }
+
+        if (fileEntry.IsDirectory)
+        {
+            SetStatus("Task.FileDownloadDirectoryNotSupported", "WarningTextStyle");
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            FileName = fileEntry.Name,
+            Title = L("Task.FileDownloadTitle"),
+            OverwritePrompt = true,
+            AddExtension = false
+        };
+
+        if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.FileName))
+        {
+            SetStatus("Task.FileDownloadCancelled", "InfoTextStyle");
+            return;
+        }
+
+        try
+        {
+            await _ssh.DownloadFileAsync(fileEntry.RemotePath, dialog.FileName, ct);
+            SetStatus(
+                string.Format(L("Task.FileDownloadSucceeded"), fileEntry.DisplayName, dialog.FileName),
+                "SuccessTextStyle",
+                localize: false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.FileDownloadFailed"), ex.Message), "ErrorTextStyle", localize: false);
+        }
+    }
+
+    private async Task UploadTaskFileAsync(CancellationToken ct)
+    {
+        var currentDirectory = await ResolveCurrentTaskDirectoryAsync(ct);
+        if (string.IsNullOrWhiteSpace(currentDirectory))
+            return;
+
+        var dialog = new OpenFileDialog
+        {
+            Title = L("Task.FileUploadTitle"),
+            Multiselect = false,
+            CheckFileExists = true
+        };
+        if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.FileName))
+        {
+            SetStatus("Task.FileUploadCancelled", "InfoTextStyle");
+            return;
+        }
+
+        var localFilePath = dialog.FileName;
+        var localFileName = Path.GetFileName(localFilePath);
+        if (string.IsNullOrWhiteSpace(localFileName))
+        {
+            SetStatus("Task.FileUploadInvalidLocalPath", "WarningTextStyle");
+            return;
+        }
+
+        var targetPath = BuildRemotePath(currentDirectory, localFileName);
+        try
+        {
+            if (await RemotePathExistsAsync(targetPath, ct))
+            {
+                var confirmVm = new ConfirmationDialogViewModel(
+                    title: L("Task.FileUploadOverwriteTitle"),
+                    message: string.Format(L("Task.FileUploadOverwritePrompt"), CollapseHomePath(targetPath)),
+                    details: string.Empty,
+                    confirmButtonText: L("Dialog.Confirm"),
+                    cancelButtonText: L("Btn.Cancel"),
+                    isWarning: true,
+                    showCancelButton: true);
+                if (!ShowConfirmationDialog(confirmVm))
+                {
+                    SetStatus("Task.FileUploadCancelled", "InfoTextStyle");
+                    return;
+                }
+            }
+
+            await _ssh.UploadFileAsync(localFilePath, targetPath, ct);
+            await RefreshTaskFilesAsync(ct);
+            SetStatus(string.Format(L("Task.FileUploadSucceeded"), localFileName), "SuccessTextStyle", localize: false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.FileUploadFailed"), ex.Message), "ErrorTextStyle", localize: false);
+        }
     }
 
     private async Task DeleteTaskFilesAsync(IReadOnlyList<TaskFileEntry>? entries, CancellationToken ct)
@@ -2527,8 +2792,86 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         return $"{prefix}/{itemName}";
     }
 
+    private static string GetRemoteParentPath(string remotePath)
+    {
+        var normalized = NormalizeRemotePath(remotePath);
+        if (string.IsNullOrWhiteSpace(normalized) || normalized == "/")
+            return "/";
+
+        var slashIndex = normalized.LastIndexOf('/');
+        if (slashIndex <= 0)
+            return "/";
+        return normalized[..slashIndex];
+    }
+
     private static string EscapeShellArg(string arg)
         => "'" + arg.Replace("'", "'\\''") + "'";
+
+    private static string? ValidateTaskFileEntryName(string? inputName)
+    {
+        var name = inputName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(name))
+            return L("Task.FileNameValidationEmpty");
+        if (name == "." || name == ".." || name.Contains("..", StringComparison.Ordinal))
+            return L("Task.FileNameValidationTraversal");
+        if (name.Contains('/', StringComparison.Ordinal) || name.Contains('\\', StringComparison.Ordinal))
+            return L("Task.FileNameValidationSeparator");
+        if (name.Any(char.IsControl))
+            return L("Task.FileNameValidationInvalidChar");
+        return null;
+    }
+
+    private string? ShowTaskFileNameInputDialog(string title, string prompt, string confirmButtonText, string initialValue)
+    {
+        var vm = new NameInputDialogViewModel(title, prompt, initialValue, confirmButtonText, L("Btn.Cancel"));
+        var dialog = new NameInputDialogView { DataContext = vm };
+        if (Application.Current.MainWindow is { } mainWindow)
+            dialog.Owner = mainWindow;
+
+        return dialog.ShowDialog() == true && vm.Confirmed ? vm.InputValue : null;
+    }
+
+    private async Task<string?> ResolveCurrentTaskDirectoryAsync(CancellationToken ct)
+    {
+        await EnsureHomeDirectoryLoadedAsync(ct);
+
+        if (!IsSshConnectedSafe())
+        {
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
+            return null;
+        }
+
+        var currentPath = NormalizeRemotePath(CurrentTaskFilesPath);
+        if (string.IsNullOrWhiteSpace(currentPath))
+            currentPath = NormalizeRemotePath(RemoteWorkDir);
+        if (string.IsNullOrWhiteSpace(currentPath))
+        {
+            SetStatus("Task.RequireTaskPath", "WarningTextStyle");
+            return null;
+        }
+
+        if (!await RemoteDirectoryExistsAsync(currentPath, ct))
+        {
+            SetStatus("Task.PathMissing", "ErrorTextStyle");
+            return null;
+        }
+
+        return currentPath;
+    }
+
+    private async Task<bool> RemoteDirectoryExistsAsync(string remotePath, CancellationToken ct)
+    {
+        var escapedPath = EscapeShellArg(remotePath);
+        var (stdout, _, _) = await _ssh.ExecuteAsync($"if [ -d {escapedPath} ]; then echo 1; else echo 0; fi", ct);
+        return stdout.Trim() == "1";
+    }
+
+    private async Task<bool> RemotePathExistsAsync(string remotePath, CancellationToken ct)
+    {
+        var escapedPath = EscapeShellArg(remotePath);
+        var (stdout, _, _) = await _ssh.ExecuteAsync($"if [ -e {escapedPath} ] || [ -L {escapedPath} ]; then echo 1; else echo 0; fi", ct);
+        return stdout.Trim() == "1";
+    }
 
     private (string Message, string Details) BuildDeleteConfirmationContent(IReadOnlyList<TaskFileEntry> entries)
     {
