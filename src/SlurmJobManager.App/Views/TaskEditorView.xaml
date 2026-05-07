@@ -53,7 +53,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBox Grid.Column="0" Text="{Binding TaskId, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Grid.Column="1" Content="{DynamicResource Btn.New}" Command="{Binding NewTaskIdCommand}"
+                <Button Grid.Column="1" Content="{DynamicResource Btn.New}" Command="{Binding CreateTaskIdDirectoryCommand}"
                         Style="{StaticResource NeutralButtonStyle}"
                         Margin="4,0,0,0" Padding="8,4" />
             </Grid>

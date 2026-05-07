@@ -357,6 +357,8 @@
     <sys:String x:Key="Task.TaskIdDirExists">⚠ Directory already exists</sys:String>
     <sys:String x:Key="Task.TaskIdDirNotExists">✓ Directory does not exist and can be created</sys:String>
     <sys:String x:Key="Task.TaskIdDirCheckFailed">Directory validation failed. Please check connection state.</sys:String>
+    <sys:String x:Key="Task.TaskIdDirCreateSucceeded">Created task directory: {0}</sys:String>
+    <sys:String x:Key="Task.TaskIdDirCreateFailed">Failed to create task directory: {0}</sys:String>
     <sys:String x:Key="Task.LoadNotFound">Task data not found (task.json / tasks.manifest.json).</sys:String>
     <sys:String x:Key="Task.InvalidRemoteWorkDir">Please set a valid remote work directory before submitting.</sys:String>
     <sys:String x:Key="Task.LastJobId">Last Job ID: {0}</sys:String>
