@@ -39,4 +39,9 @@ public static class LocalDataPaths
     /// Recent SSH connections file path: &lt;AppBaseDirectory&gt;/Data/recent-connections.json
     /// </summary>
     public static string RecentConnectionsFilePath => Path.Combine(DataDirectory, "recent-connections.json");
+
+    /// <summary>
+    /// Per-connection last task context file path: &lt;AppBaseDirectory&gt;/Data/last-task-contexts.json
+    /// </summary>
+    public static string LastTaskContextsFilePath => Path.Combine(DataDirectory, "last-task-contexts.json");
 }

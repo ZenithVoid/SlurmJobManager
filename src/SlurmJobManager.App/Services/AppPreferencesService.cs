@@ -60,6 +60,38 @@ public sealed class AppPreferencesService
         return LastSaveSucceeded;
     }
 
+    /// <summary>
+    /// When <c>true</c> the app restores the last task context for the connected host/user
+    /// and automatically navigates to the task page when a valid task ID exists.
+    /// </summary>
+    public bool AutoRestoreLastTaskOnLogin
+    {
+        get => _dto.AutoRestoreLastTaskOnLogin;
+        set
+        {
+            if (_dto.AutoRestoreLastTaskOnLogin == value) return;
+            _dto = _dto with { AutoRestoreLastTaskOnLogin = value };
+            Save();
+        }
+    }
+
+    public bool TrySetAutoRestoreLastTaskOnLogin(bool value, out string? error)
+    {
+        if (_dto.AutoRestoreLastTaskOnLogin != value)
+        {
+            _dto = _dto with { AutoRestoreLastTaskOnLogin = value };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
     // ── Persistence ──────────────────────────────────────────────────────────
 
     private AppPrefsDto Load()
@@ -98,5 +130,7 @@ public sealed class AppPreferencesService
 
     // ── DTO ──────────────────────────────────────────────────────────────────
 
-    private sealed record AppPrefsDto(bool AutoConnectOnStartup = false);
+    private sealed record AppPrefsDto(
+        bool AutoConnectOnStartup = false,
+        bool AutoRestoreLastTaskOnLogin = false);
 }

@@ -29,6 +29,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private readonly ISlurmService _slurm;
     private readonly ITaskStorageService _storage;
     private readonly ITaskBlueprintService _blueprints;
+    private readonly ILastTaskContextService? _lastTaskContextService;
     private Func<string, Task<bool>>? _openInConsoleAsync;
 
     // ── Local storage root (under <AppBaseDirectory>/Data) ──────────────────
@@ -79,6 +80,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private CancellationTokenSource? _taskIdValidationCts;
     private int _disposeState;
     private bool IsDisposed => Volatile.Read(ref _disposeState) != 0;
+    private bool _suppressLastTaskContextCapture;
 
     // ── Workspace / active task-unit state ──────────────────────────────────
     // Each TaskId has exactly ONE active task unit.  Legacy workspaces with
@@ -100,6 +102,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(RootDirectoryDisplay));
                 CommandManager.InvalidateRequerySuggested();
                 TryAutoFillRemoteWorkDir();
+                TryScheduleLastTaskContextSave();
             }
         }
     }
@@ -116,6 +119,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 ScheduleTaskIdDirectoryCheck();
                 OnPropertyChanged(nameof(TaskContextTaskIdDisplay));
                 OnPropertyChanged(nameof(TaskContextSummary));
+                TryScheduleLastTaskContextSave();
             }
         }
     }
@@ -166,6 +170,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 {
                     CurrentTaskFilesPath = expanded;
                 }
+
+                TryScheduleLastTaskContextSave();
             }
         }
     }
@@ -314,6 +320,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(CurrentTaskFilesPathDisplay));
                 OnPropertyChanged(nameof(TaskContextFilePathDisplay));
                 OnPropertyChanged(nameof(TaskContextSummary));
+                TryScheduleLastTaskContextSave();
             }
         }
     }
@@ -444,12 +451,14 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         ISlurmService slurm,
         ITaskStorageService storage,
         ITaskBlueprintService blueprints,
+        ILastTaskContextService? lastTaskContextService = null,
         Func<string, Task<bool>>? openInConsoleAsync = null)
     {
         _ssh     = ssh     ?? throw new ArgumentNullException(nameof(ssh));
         _slurm   = slurm   ?? throw new ArgumentNullException(nameof(slurm));
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _blueprints = blueprints ?? throw new ArgumentNullException(nameof(blueprints));
+        _lastTaskContextService = lastTaskContextService;
         _openInConsoleAsync = openInConsoleAsync;
 
         BrowseRootDirectoryCommand       = new AsyncRelayCommand(BrowseRootDirectoryAsync, CanBrowseRootDirectory);
@@ -643,9 +652,10 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     // ── B1: Remote root directory + picker ───────────────────────────────────
 
-    public async void OnConnectionEstablished(string hostOrAddress, string username)
+    public async Task<bool> OnConnectionEstablishedAsync(string hostOrAddress, string username, bool autoRestoreLastTaskId)
     {
-        if (IsDisposed) return;
+        if (IsDisposed) return false;
+        var restoredTaskId = false;
         try
         {
             _connectedHostOrAddress = hostOrAddress?.Trim() ?? string.Empty;
@@ -657,8 +667,27 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 RefreshPathDisplays();
             }
 
+            LastTaskContextRecord? lastContext = null;
+            if (_lastTaskContextService != null
+                && !string.IsNullOrWhiteSpace(_connectedHostOrAddress)
+                && !string.IsNullOrWhiteSpace(_connectedUsername))
+            {
+                try
+                {
+                    lastContext = await _lastTaskContextService.GetByConnectionAsync(_connectedHostOrAddress, _connectedUsername, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[TaskEditorViewModel.OnConnectionEstablishedAsync] Restore read failed: {ex.Message}");
+                }
+            }
+
+            RestoreContextFromRecord(lastContext, autoRestoreLastTaskId, out restoredTaskId);
+
             if (!string.IsNullOrEmpty(home) && string.IsNullOrEmpty(RootDirectory))
                 RootDirectory = home;
+
+            TryScheduleLastTaskContextSave();
 
             await RefreshAppCandidatesAsync(CancellationToken.None);
             await RefreshTemplateCandidatesAsync(CancellationToken.None);
@@ -669,6 +698,101 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         {
             if (!IsDisposed)
                 SetStatus(string.Format(L("Task.InitAfterConnectFailed"), ex.Message), "ErrorTextStyle", localize: false);
+        }
+
+        return restoredTaskId;
+    }
+
+    private void RestoreContextFromRecord(LastTaskContextRecord? record, bool autoRestoreLastTaskId, out bool restoredTaskId)
+    {
+        restoredTaskId = false;
+        if (record == null) return;
+
+        var normalizedRoot = NormalizePathForRestore(record.RootDirectory);
+        var normalizedTaskId = NormalizeTaskIdForRestore(record.TaskId);
+        var normalizedWorkDir = NormalizePathForRestore(record.RemoteWorkDir);
+        var normalizedCurrentPath = NormalizePathForRestore(record.CurrentTaskFilesPath);
+
+        _suppressLastTaskContextCapture = true;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(normalizedRoot))
+                RootDirectory = normalizedRoot;
+
+            if (autoRestoreLastTaskId && !string.IsNullOrWhiteSpace(normalizedTaskId))
+            {
+                TaskId = normalizedTaskId;
+                restoredTaskId = true;
+
+                if (!string.IsNullOrWhiteSpace(normalizedWorkDir))
+                    RemoteWorkDir = normalizedWorkDir;
+                if (!string.IsNullOrWhiteSpace(normalizedCurrentPath))
+                    CurrentTaskFilesPath = normalizedCurrentPath;
+            }
+        }
+        finally
+        {
+            _suppressLastTaskContextCapture = false;
+        }
+    }
+
+    private static string NormalizePathForRestore(string? value)
+        => string.IsNullOrWhiteSpace(value) ? string.Empty : NormalizeRemotePath(value);
+
+    private static string NormalizeTaskIdForRestore(string? value)
+    {
+        var taskId = value?.Trim() ?? string.Empty;
+        if (taskId.Length == 0 || taskId.Length > 200)
+            return string.Empty;
+        if (taskId.Contains('/') || taskId.Contains('\\') || taskId.Any(char.IsControl))
+            return string.Empty;
+        return taskId;
+    }
+
+    private void TryScheduleLastTaskContextSave()
+    {
+        if (_lastTaskContextService == null || IsDisposed || _suppressLastTaskContextCapture)
+            return;
+        if (string.IsNullOrWhiteSpace(_connectedHostOrAddress) || string.IsNullOrWhiteSpace(_connectedUsername))
+            return;
+
+        var rootDirectory = NormalizePathForRestore(RootDirectory);
+        var taskId = NormalizeTaskIdForRestore(TaskId);
+        var remoteWorkDir = NormalizePathForRestore(RemoteWorkDir);
+        var currentPath = NormalizePathForRestore(CurrentTaskFilesPath);
+        if (string.IsNullOrWhiteSpace(rootDirectory)
+            && string.IsNullOrWhiteSpace(taskId)
+            && string.IsNullOrWhiteSpace(remoteWorkDir)
+            && string.IsNullOrWhiteSpace(currentPath))
+        {
+            return;
+        }
+
+        var record = new LastTaskContextRecord
+        {
+            Host = _connectedHostOrAddress,
+            Username = _connectedUsername,
+            ScopeKey = LastTaskContextRecord.BuildScopeKey(_connectedHostOrAddress, _connectedUsername),
+            RootDirectory = rootDirectory,
+            TaskId = taskId,
+            RemoteWorkDir = remoteWorkDir,
+            CurrentTaskFilesPath = currentPath,
+            LastUsedAt = DateTimeOffset.UtcNow,
+        };
+
+        _ = PersistLastTaskContextAsync(record);
+    }
+
+    private async Task PersistLastTaskContextAsync(LastTaskContextRecord record)
+    {
+        if (_lastTaskContextService == null || IsDisposed) return;
+        try
+        {
+            await _lastTaskContextService.UpsertAsync(record, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[TaskEditorViewModel.PersistLastTaskContextAsync] {ex.Message}");
         }
     }
 
