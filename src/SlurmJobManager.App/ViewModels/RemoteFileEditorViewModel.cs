@@ -97,7 +97,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         _ssh           = ssh ?? throw new ArgumentNullException(nameof(ssh));
         _homeDirectory = RemotePathDisplayHelper.NormalizeRemotePath(homeDirectory);
         RemotePath     = remotePath;
-        SaveCommand    = new AsyncRelayCommand<string>(SaveFromEditorAsync, _ => !IsBusy);
+        SaveCommand    = new AsyncRelayCommand(SaveCommandAsync, () => !IsBusy);
     }
 
     public async Task LoadAsync(CancellationToken ct = default)
@@ -180,8 +180,8 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
 
     public Task<bool> SaveChangesAsync(string? editorText = null, CancellationToken ct = default) => SaveAsync(editorText, ct);
 
-    private async Task SaveFromEditorAsync(string? editorText, CancellationToken ct)
-        => await SaveAsync(editorText, ct);
+    private async Task SaveCommandAsync(CancellationToken ct)
+        => await SaveAsync(editorText: null, ct);
 
     private async Task<bool> SaveAsync(string? editorText, CancellationToken ct)
     {

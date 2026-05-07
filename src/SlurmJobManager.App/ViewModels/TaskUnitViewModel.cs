@@ -136,6 +136,9 @@ public sealed class ParameterFileEntryViewModel : ViewModelBase
 
 public sealed class CommandEntryViewModel : ViewModelBase
 {
+    // Required MPI launch options for this project; IFACE_NAME is prepared in the sbatch header.
+    private const string RequiredMpiLaunchArgs = "--bind-to none -np $SLURM_NPROCS --mca btl_tcp_if_include $IFACE_NAME";
+
     private string  _commandLine;
     private string? _description;
     private int     _order;
@@ -200,7 +203,10 @@ public sealed class CommandEntryViewModel : ViewModelBase
 
         var parts = new List<string>();
         if (!string.IsNullOrWhiteSpace(_mpirunPath))
+        {
             parts.Add(_mpirunPath);
+            parts.Add(RequiredMpiLaunchArgs);
+        }
         parts.Add(_programPath);
         foreach (var pf in ParameterFiles.Where(p => !string.IsNullOrWhiteSpace(p)))
             parts.Add(ToWorkDirRelativeParamArg(pf));
