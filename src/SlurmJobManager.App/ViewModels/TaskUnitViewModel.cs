@@ -203,11 +203,28 @@ public sealed class CommandEntryViewModel : ViewModelBase
             parts.Add(_mpirunPath);
         parts.Add(_programPath);
         foreach (var pf in ParameterFiles.Where(p => !string.IsNullOrWhiteSpace(p)))
-            parts.Add(pf);
+            parts.Add(ToWorkDirRelativeParamArg(pf));
         foreach (var ea in ExtraArgs.Where(a => !string.IsNullOrWhiteSpace(a.Arg)))
             parts.Add(ea.Arg);
 
         CommandLine = string.Join(" ", parts);
+    }
+
+    private static string ToWorkDirRelativeParamArg(string path)
+    {
+        var normalized = path.Trim().Replace('\\', '/');
+        if (string.IsNullOrWhiteSpace(normalized))
+            return normalized;
+
+        var fileName = normalized;
+        var slashIndex = normalized.LastIndexOf('/');
+        if (slashIndex >= 0 && slashIndex + 1 < normalized.Length)
+            fileName = normalized[(slashIndex + 1)..];
+
+        if (fileName.StartsWith("./", StringComparison.Ordinal))
+            return fileName;
+
+        return $"./{fileName.TrimStart('/')}";
     }
 
     public CommandEntry ToModel() => new()

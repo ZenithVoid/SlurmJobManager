@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.App.ViewModels;
 using SlurmJobManager.App.Views;
+using SlurmJobManager.App.Views.Dialogs;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
 
@@ -125,6 +126,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     public ICommand MoveDownCommand         { get; }
     public ICommand ApplySelectedProgramCommand { get; }
     public ICommand AddParamFileCommand     { get; }
+    public ICommand CreateParamFileCommand  { get; }
     public ICommand RemoveParamFileCommand  { get; }
     public ICommand EditParamFileCommand    { get; }
     public ICommand AddExtraArgCommand      { get; }
@@ -178,7 +180,8 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         MoveUpCommand          = new RelayCommand<CommandEntryViewModel>(MoveUp,   c => c != null && Commands.IndexOf(c) > 0);
         MoveDownCommand        = new RelayCommand<CommandEntryViewModel>(MoveDown, c => c != null && Commands.IndexOf(c) < Commands.Count - 1);
         ApplySelectedProgramCommand = new RelayCommand(ApplySelectedProgram, () => _selectedCommand != null && !string.IsNullOrWhiteSpace(_selectedAvailableProgram));
-        AddParamFileCommand    = new RelayCommand(AddParamFile,    () => _selectedCommand != null && !string.IsNullOrWhiteSpace(_selectedAvailableParamFile));
+        AddParamFileCommand    = new AsyncRelayCommand(AddParamFileAsync, () => CanRunSshCommand() && _selectedCommand != null && !string.IsNullOrWhiteSpace(_selectedAvailableParamFile));
+        CreateParamFileCommand = new AsyncRelayCommand(CreateParamFileAsync, () => CanRunSshCommand() && _selectedCommand != null);
         RemoveParamFileCommand = new RelayCommand<string>(RemoveParamFile);
         EditParamFileCommand   = new AsyncRelayCommand<string>(EditParamFileAsync);
         AddExtraArgCommand     = new RelayCommand(AddExtraArg,    () => _selectedCommand != null);
@@ -304,10 +307,12 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
     // ── Param file management (per selected command) ───────────────────────
 
-    private void AddParamFile()
+    private async Task AddParamFileAsync(CancellationToken ct)
     {
         if (_selectedCommand == null || string.IsNullOrWhiteSpace(_selectedAvailableParamFile)) return;
-        var path = _selectedAvailableParamFile;
+        var path = await MaterializeParameterFileToWorkDirAsync(_selectedAvailableParamFile, ct);
+        if (string.IsNullOrWhiteSpace(path)) return;
+
         if (!_selectedCommand.ParameterFiles.Contains(path))
             _selectedCommand.ParameterFiles.Add(path);
         _selectedCommand.RebuildCommandLine();
@@ -535,11 +540,72 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         var selectedFile = await BrowseRemoteFileAsync(ct);
         if (string.IsNullOrWhiteSpace(selectedFile)) return;
 
-        if (!_selectedCommand.ParameterFiles.Contains(selectedFile))
-            _selectedCommand.ParameterFiles.Add(selectedFile);
+        var workCopy = await MaterializeParameterFileToWorkDirAsync(selectedFile, ct);
+        if (string.IsNullOrWhiteSpace(workCopy)) return;
 
-        SelectedAvailableParamFile = selectedFile;
+        if (!_selectedCommand.ParameterFiles.Contains(workCopy))
+            _selectedCommand.ParameterFiles.Add(workCopy);
+
+        SelectedAvailableParamFile = workCopy;
         _selectedCommand.RebuildCommandLine();
+    }
+
+    private async Task CreateParamFileAsync(CancellationToken ct)
+    {
+        if (_selectedCommand == null)
+            return;
+
+        if (!await EnsureRemoteWorkDirectoryExistsAsync(ct))
+            return;
+
+        var vm = new NameInputDialogViewModel(
+            title: L("CmdBuilder.NewParamDialogTitle", "新建参数文件"),
+            prompt: L("CmdBuilder.NewParamDialogPrompt", "请输入参数文件名："),
+            initialValue: string.Empty,
+            confirmButtonText: L("CmdBuilder.NewParamDialogConfirm", "新建"),
+            cancelButtonText: L("CmdBuilder.NewParamDialogCancel", "取消"));
+        var dialog = new NameInputDialogView { DataContext = vm };
+        if (Application.Current.MainWindow is { } mainWindow)
+            dialog.Owner = mainWindow;
+        if (dialog.ShowDialog() != true || !vm.Confirmed)
+            return;
+
+        var fileName = vm.InputValue.Trim();
+        var validationError = ValidateFileName(fileName);
+        if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            StatusMessage = validationError;
+            return;
+        }
+
+        var remotePath = BuildWorkDirFilePath(fileName);
+        try
+        {
+            if (await _ssh.RemoteFileExistsAsync(remotePath, ct))
+            {
+                var overwrite = MessageBox.Show(
+                    string.Format(L("CmdBuilder.OverwriteParamPrompt", "工作目录中已存在同名文件：{0}\n是否覆盖？"), remotePath),
+                    L("CmdBuilder.OverwriteParamTitle", "覆盖确认"),
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Question);
+                if (overwrite != MessageBoxResult.OK)
+                {
+                    StatusMessage = L("CmdBuilder.OperationCancelled", "已取消。");
+                    return;
+                }
+            }
+
+            await _ssh.WriteTextFileAsync(remotePath, string.Empty, ct);
+            if (!_selectedCommand.ParameterFiles.Contains(remotePath))
+                _selectedCommand.ParameterFiles.Add(remotePath);
+            _selectedCommand.RebuildCommandLine();
+            await EditParamFileAsync(remotePath, ct);
+            StatusMessage = string.Format(L("CmdBuilder.ParamCreatedInWorkDir", "已在工作目录创建参数文件副本：{0}"), remotePath);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = string.Format(L("CmdBuilder.ParamCreateFailed", "创建参数文件失败：{0}"), ex.Message);
+        }
     }
 
     private async Task<string?> BrowseRemoteFileAsync(CancellationToken ct)
@@ -580,6 +646,112 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
         _homeDirectory = "~";
         return _homeDirectory;
+    }
+
+    private async Task<string?> MaterializeParameterFileToWorkDirAsync(string sourcePath, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath))
+            return null;
+        if (string.IsNullOrWhiteSpace(_remoteWorkDir))
+        {
+            StatusMessage = L("CmdBuilder.MissingWorkDir", "请先配置远程工作目录。");
+            return null;
+        }
+        if (!await EnsureRemoteWorkDirectoryExistsAsync(ct))
+            return null;
+
+        var normalizedSource = sourcePath.Trim();
+        var fileName = GetFileNameFromPath(normalizedSource);
+        var validationError = ValidateFileName(fileName);
+        if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            StatusMessage = validationError;
+            return null;
+        }
+
+        var targetPath = BuildWorkDirFilePath(fileName);
+        try
+        {
+            var targetExists = await _ssh.RemoteFileExistsAsync(targetPath, ct);
+            var samePath = string.Equals(
+                NormalizeRemotePath(normalizedSource),
+                NormalizeRemotePath(targetPath),
+                StringComparison.Ordinal);
+
+            if (targetExists && !samePath)
+            {
+                var overwrite = MessageBox.Show(
+                    string.Format(L("CmdBuilder.OverwriteParamPrompt", "工作目录中已存在同名文件：{0}\n是否覆盖？"), targetPath),
+                    L("CmdBuilder.OverwriteParamTitle", "覆盖确认"),
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Question);
+                if (overwrite != MessageBoxResult.OK)
+                {
+                    StatusMessage = L("CmdBuilder.OperationCancelled", "已取消。");
+                    return null;
+                }
+            }
+
+            if (!samePath)
+            {
+                var escapedSource = EscapeShell(normalizedSource);
+                var escapedTarget = EscapeShell(targetPath);
+                var (_, copyErr, copyExit) = await _ssh.ExecuteAsync($"cp -- {escapedSource} {escapedTarget}", ct);
+                if (copyExit != 0)
+                {
+                    var detail = string.IsNullOrWhiteSpace(copyErr)
+                        ? L("CmdBuilder.ParamCopyFailedNoDetail", "复制参数文件失败。")
+                        : copyErr.Trim();
+                    StatusMessage = string.Format(L("CmdBuilder.ParamCopyFailed", "复制参数文件失败：{0}"), detail);
+                    return null;
+                }
+            }
+
+            StatusMessage = string.Format(
+                L("CmdBuilder.ParamCopiedToWorkDir", "已复制参数文件到工作目录副本：{0}"),
+                targetPath);
+            return targetPath;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = string.Format(L("CmdBuilder.ParamCopyFailed", "复制参数文件失败：{0}"), ex.Message);
+            return null;
+        }
+    }
+
+    private async Task<bool> EnsureRemoteWorkDirectoryExistsAsync(CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(_remoteWorkDir))
+        {
+            StatusMessage = L("CmdBuilder.MissingWorkDir", "请先配置远程工作目录。");
+            return false;
+        }
+
+        try
+        {
+            var (_, dirErr, dirExit) = await _ssh.ExecuteAsync($"mkdir -p {EscapeShell(_remoteWorkDir)}", ct);
+            if (dirExit != 0)
+            {
+                var detail = string.IsNullOrWhiteSpace(dirErr) ? L("CmdBuilder.WorkDirPrepareFailed", "准备工作目录失败。") : dirErr.Trim();
+                StatusMessage = string.Format(L("CmdBuilder.WorkDirPrepareFailedWithDetail", "准备工作目录失败：{0}"), detail);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = string.Format(L("CmdBuilder.WorkDirPrepareFailedWithDetail", "准备工作目录失败：{0}"), ex.Message);
+            return false;
+        }
+
+        return true;
+    }
+
+    private string BuildWorkDirFilePath(string fileName)
+    {
+        var normalizedWorkDir = NormalizeRemotePath(_remoteWorkDir);
+        if (normalizedWorkDir == "/")
+            return $"/{fileName}";
+        return $"{normalizedWorkDir.TrimEnd('/')}/{fileName}";
     }
 
     // ── Save & Apply ───────────────────────────────────────────────────────
@@ -681,6 +853,14 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private static string EscapeShell(string arg)
         => "'" + arg.Replace("'", "'\\''") + "'";
 
+    private static string NormalizeRemotePath(string? path)
+    {
+        var normalized = (path ?? string.Empty).Trim().Replace('\\', '/');
+        if (normalized == "/")
+            return "/";
+        return normalized.TrimEnd('/');
+    }
+
     private static string TruncateText(string text, int maxLen)
         => text.Length <= maxLen ? text : text[..maxLen] + "…";
 
@@ -690,6 +870,20 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         if (string.IsNullOrEmpty(path)) return string.Empty;
         var slashIdx = path.LastIndexOf('/');
         return slashIdx >= 0 ? path[(slashIdx + 1)..] : path;
+    }
+
+    private static string? ValidateFileName(string inputName)
+    {
+        var name = inputName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(name))
+            return L("CmdBuilder.ParamNameEmpty", "参数文件名不能为空。");
+        if (name == "." || name == ".." || name.Contains("..", StringComparison.Ordinal))
+            return L("CmdBuilder.ParamNameTraversal", "参数文件名不允许包含路径穿越片段（如 ..）。");
+        if (name.Contains('/', StringComparison.Ordinal) || name.Contains('\\', StringComparison.Ordinal))
+            return L("CmdBuilder.ParamNameSeparator", "参数文件名不能包含路径分隔符。");
+        if (name.Any(char.IsControl))
+            return L("CmdBuilder.ParamNameInvalidChar", "参数文件名包含非法字符。");
+        return null;
     }
 
     private bool ValidateSbatchContent()

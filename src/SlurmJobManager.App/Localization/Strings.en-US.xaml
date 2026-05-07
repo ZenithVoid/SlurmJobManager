@@ -491,6 +491,9 @@
     <sys:String x:Key="Task.BlueprintSbatchNeedsReview">Sbatch --job-name was adapted; please review remaining script content for old task references.</sys:String>
     <sys:String x:Key="Task.BlueprintParameterPathNeedsReview">Some parameter file paths could not be safely inferred and were kept unchanged. Please review them.</sys:String>
     <sys:String x:Key="Task.BlueprintContainsOldTaskIdPathWarning">Current blueprint may still contain old TaskId-related paths. Please review.</sys:String>
+    <sys:String x:Key="Task.SavedRemoteAssets">Task saved and remote assets materialized in: {0}</sys:String>
+    <sys:String x:Key="Task.ParamCopyFailed">Failed to materialize parameter file: {0}</sys:String>
+    <sys:String x:Key="Task.ParamCopyFailedNoDetail">Unknown error while materializing parameter file.</sys:String>
     <sys:String x:Key="Btn.AddProgram">+ Add program</sys:String>
     <sys:String x:Key="Btn.RemoveProgram">- Remove program</sys:String>
     <sys:String x:Key="Btn.AddParamFile">+ Add param file</sys:String>
@@ -513,6 +516,7 @@
     <sys:String x:Key="CmdBuilder.BrowseParamFile">Browse remote parameter file</sys:String>
     <sys:String x:Key="CmdBuilder.DoubleClickHint">Double-click to open and edit a remote parameter file</sys:String>
     <sys:String x:Key="CmdBuilder.AddParam">+ Add to command</sys:String>
+    <sys:String x:Key="CmdBuilder.NewParam">+ New in work dir</sys:String>
     <sys:String x:Key="CmdBuilder.RemoveParam">- Remove</sys:String>
     <sys:String x:Key="CmdBuilder.Refresh">⟳ Refresh remote list</sys:String>
     <sys:String x:Key="CmdBuilder.Test">🔍 Test command</sys:String>
@@ -537,6 +541,25 @@
     <sys:String x:Key="CmdBuilder.RegenSbatch">⟳ Regenerate</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchEmptyError">sbatch script cannot be empty. Please fill it before Save &amp; Apply.</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchMissingShebangError">sbatch script must include a shebang (e.g. #!/bin/bash) before Save &amp; Apply.</sys:String>
+    <sys:String x:Key="CmdBuilder.NewParamDialogTitle">Create Parameter File</sys:String>
+    <sys:String x:Key="CmdBuilder.NewParamDialogPrompt">Enter a new parameter file name:</sys:String>
+    <sys:String x:Key="CmdBuilder.NewParamDialogConfirm">Create</sys:String>
+    <sys:String x:Key="CmdBuilder.NewParamDialogCancel">Cancel</sys:String>
+    <sys:String x:Key="CmdBuilder.OverwriteParamPrompt">A file with the same name already exists in the working directory: {0}&#10;Overwrite it?</sys:String>
+    <sys:String x:Key="CmdBuilder.OverwriteParamTitle">Overwrite Confirmation</sys:String>
+    <sys:String x:Key="CmdBuilder.OperationCancelled">Operation cancelled.</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamCopiedToWorkDir">Parameter template materialized to working-directory copy: {0}</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamCopyFailed">Failed to copy parameter template: {0}</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamCopyFailedNoDetail">Unknown error while copying parameter template.</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamCreatedInWorkDir">Created parameter file in working directory: {0}</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamCreateFailed">Failed to create parameter file: {0}</sys:String>
+    <sys:String x:Key="CmdBuilder.MissingWorkDir">Please set a remote working directory first.</sys:String>
+    <sys:String x:Key="CmdBuilder.WorkDirPrepareFailed">Failed to prepare the remote working directory.</sys:String>
+    <sys:String x:Key="CmdBuilder.WorkDirPrepareFailedWithDetail">Failed to prepare the remote working directory: {0}</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamNameEmpty">Parameter file name cannot be empty.</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamNameTraversal">Parameter file name cannot contain path traversal fragments like "..".</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamNameSeparator">Parameter file name cannot contain path separators.</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamNameInvalidChar">Parameter file name contains invalid characters.</sys:String>
 
     <!-- ── Remote directory picker ──────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.TitleWindow">Select Remote Directory</sys:String>
