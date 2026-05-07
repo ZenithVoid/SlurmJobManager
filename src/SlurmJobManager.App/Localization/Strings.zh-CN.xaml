@@ -491,6 +491,9 @@
     <sys:String x:Key="Task.BlueprintSbatchNeedsReview">sbatch 已处理 --job-name；其余脚本内容请检查是否仍引用旧任务信息。</sys:String>
     <sys:String x:Key="Task.BlueprintParameterPathNeedsReview">部分参数文件路径无法自动判断，已保留原值，请检查。</sys:String>
     <sys:String x:Key="Task.BlueprintContainsOldTaskIdPathWarning">当前蓝图可能包含旧 TaskId 相关路径，请检查。</sys:String>
+    <sys:String x:Key="Task.SavedRemoteAssets">任务已保存，远程执行资产已落地到：{0}</sys:String>
+    <sys:String x:Key="Task.ParamCopyFailed">参数文件落地失败：{0}</sys:String>
+    <sys:String x:Key="Task.ParamCopyFailedNoDetail">参数文件落地失败（无详细错误）。</sys:String>
     <sys:String x:Key="Btn.AddProgram">+ 添加程序</sys:String>
     <sys:String x:Key="Btn.RemoveProgram">- 删除程序</sys:String>
     <sys:String x:Key="Btn.AddParamFile">+ 添加参数文件</sys:String>
@@ -513,6 +516,7 @@
     <sys:String x:Key="CmdBuilder.BrowseParamFile">浏览远程参数文件</sys:String>
     <sys:String x:Key="CmdBuilder.DoubleClickHint">双击可打开并编辑远程参数文件</sys:String>
     <sys:String x:Key="CmdBuilder.AddParam">+ 添加到命令</sys:String>
+    <sys:String x:Key="CmdBuilder.NewParam">+ 在工作目录新建</sys:String>
     <sys:String x:Key="CmdBuilder.RemoveParam">- 移除</sys:String>
     <sys:String x:Key="CmdBuilder.Refresh">⟳ 刷新远程列表</sys:String>
     <sys:String x:Key="CmdBuilder.Test">🔍 测试命令</sys:String>
@@ -537,6 +541,25 @@
     <sys:String x:Key="CmdBuilder.RegenSbatch">⟳ 重新生成</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchEmptyError">sbatch 脚本内容不能为空，请先填写脚本后再保存应用。</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchMissingShebangError">sbatch 脚本缺少 shebang（例如 #!/bin/bash），请先修正后再保存应用。</sys:String>
+    <sys:String x:Key="CmdBuilder.NewParamDialogTitle">新建参数文件</sys:String>
+    <sys:String x:Key="CmdBuilder.NewParamDialogPrompt">请输入新的参数文件名：</sys:String>
+    <sys:String x:Key="CmdBuilder.NewParamDialogConfirm">新建</sys:String>
+    <sys:String x:Key="CmdBuilder.NewParamDialogCancel">取消</sys:String>
+    <sys:String x:Key="CmdBuilder.OverwriteParamPrompt">工作目录中已存在同名文件：{0}&#10;是否覆盖？</sys:String>
+    <sys:String x:Key="CmdBuilder.OverwriteParamTitle">覆盖确认</sys:String>
+    <sys:String x:Key="CmdBuilder.OperationCancelled">操作已取消。</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamCopiedToWorkDir">参数模板已复制为工作目录副本：{0}</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamCopyFailed">复制参数模板失败：{0}</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamCopyFailedNoDetail">复制参数模板失败（无详细错误）。</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamCreatedInWorkDir">已在工作目录创建参数文件：{0}</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamCreateFailed">创建参数文件失败：{0}</sys:String>
+    <sys:String x:Key="CmdBuilder.MissingWorkDir">请先设置远程工作目录。</sys:String>
+    <sys:String x:Key="CmdBuilder.WorkDirPrepareFailed">准备远程工作目录失败。</sys:String>
+    <sys:String x:Key="CmdBuilder.WorkDirPrepareFailedWithDetail">准备远程工作目录失败：{0}</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamNameEmpty">参数文件名不能为空。</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamNameTraversal">参数文件名不能包含路径穿越片段（如 ..）。</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamNameSeparator">参数文件名不能包含路径分隔符。</sys:String>
+    <sys:String x:Key="CmdBuilder.ParamNameInvalidChar">参数文件名包含非法字符。</sys:String>
 
     <!-- ── 远程目录选择器 ─────────────────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.TitleWindow">选择远程目录</sys:String>

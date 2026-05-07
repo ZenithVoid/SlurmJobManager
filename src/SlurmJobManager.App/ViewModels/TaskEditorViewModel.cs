@@ -1926,11 +1926,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     {
         EnsureAtLeastOneTaskUnit();
         var unit = _selectedTaskUnit!;
+        var effectiveWorkDir = ResolveWorkDirForSubmit(unit);
 
         var dlgVm = new CommandBuilderViewModel(
             _ssh,
             taskId:         TaskId,
-            remoteWorkDir:  RemoteWorkDir,
+            remoteWorkDir:  effectiveWorkDir,
             initialCommands: unit.Commands.Select(c => c.ToModel()),
             initialSbatch:  unit.SbatchTemplate);
 
@@ -1955,6 +1956,23 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             if (!string.IsNullOrWhiteSpace(firstProg))
                 unit.Programs.Add(new ProgramEntryViewModel(new Core.Models.ProgramEntry { ProgramPath = firstProg, Order = 0 }));
             AppPath = firstProg;
+
+            var commandParamFiles = unit.Commands
+                .SelectMany(c => c.ParameterFiles)
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            unit.ParamFiles.Clear();
+            foreach (var path in commandParamFiles)
+            {
+                unit.ParamFiles.Add(new ParameterFileEntryViewModel(new ParameterFileEntry
+                {
+                    FilePath = path,
+                    Alias = Path.GetFileName(path),
+                }));
+            }
+
+            SelectedTemplate = unit.ParamFiles.FirstOrDefault()?.FilePath;
 
             // Persist the user-edited sbatch content on the unit
             unit.SbatchTemplate = dlgVm.GetResultSbatch();
@@ -2295,7 +2313,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             return normalized;
         }
 
-        var mapped = $"{normalizedWorkDir.TrimEnd('/')}/params/{normalized.TrimStart('/')}";
+        var mapped = $"{normalizedWorkDir.TrimEnd('/')}/{Path.GetFileName(normalized)}";
         if (!string.IsNullOrWhiteSpace(oldTaskId)
             && ContainsTaskIdLiteral(normalized, oldTaskId))
         {
@@ -2382,6 +2400,11 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private async Task SaveTaskAsync(CancellationToken ct)
     {
         if (!ValidateRootAndId()) return;
+        if (!IsSshConnectedSafe())
+        {
+            SetStatus("Task.RequireConnection", "WarningTextStyle");
+            return;
+        }
         IsBusy = true;
         SetStatus("Task.Saving", "InfoTextStyle");
         try
@@ -2390,6 +2413,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             SyncToSelectedUnit();
 
             var workspace = BuildWorkspace();
+            await PersistWorkspaceAssetsToRemoteAsync(workspace, ct);
             await _storage.SaveWorkspaceAsync(workspace, ct);
 
             // Also persist legacy task.json for tooling that reads only that
@@ -2397,6 +2421,17 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
             SetStatus(string.Format(L("Task.SavedPath"), GetLocalTaskDir()), "SuccessTextStyle", localize: false);
             LastSavedTime = string.Format(L("Task.LastSavedAt"), DateTime.Now);
+
+            var activeWorkDir = ResolveWorkDirForSubmit(_selectedTaskUnit);
+            if (!string.IsNullOrWhiteSpace(activeWorkDir))
+            {
+                CurrentTaskFilesPath = NormalizeRemotePath(activeWorkDir);
+                await RefreshTaskFilesAsync(ct);
+                SetStatus(
+                    string.Format(L("Task.SavedRemoteAssets"), CollapseHomePath(CurrentTaskFilesPath)),
+                    "SuccessTextStyle",
+                    localize: false);
+            }
         }
         catch (Exception ex) { SetStatus(string.Format(L("Task.SaveFailed"), ex.Message), "ErrorTextStyle", localize: false); }
         finally { IsBusy = false; }
@@ -2467,6 +2502,85 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         Tasks    = TaskUnits.Select(u => u.ToModel()).ToList(),
     };
 
+    private async Task PersistWorkspaceAssetsToRemoteAsync(TaskWorkspace workspace, CancellationToken ct)
+    {
+        foreach (var unit in workspace.Tasks)
+        {
+            var workDir = ResolveWorkDirForPersist(unit, workspace);
+            if (string.IsNullOrWhiteSpace(workDir))
+                continue;
+
+            var normalizedWorkDir = NormalizeRemotePath(workDir);
+            var escapedWorkDir = EscapeShellArg(normalizedWorkDir);
+            var (_, stderr, exitCode) = await _ssh.ExecuteAsync($"mkdir -p {escapedWorkDir}/logs", ct);
+            if (exitCode != 0)
+            {
+                var detail = string.IsNullOrWhiteSpace(stderr) ? L("Task.RemoteWorkDirPrepareFailedNoDetail") : stderr.Trim();
+                throw new InvalidOperationException(detail);
+            }
+
+            _ = await MaterializeUnitParamFilesToWorkDirAsync(unit, normalizedWorkDir, ct);
+            var stableSbatchPath = $"{normalizedWorkDir.TrimEnd('/')}/submit.sbatch";
+            var stableSbatchContent = !string.IsNullOrWhiteSpace(unit.SbatchTemplate)
+                ? unit.SbatchTemplate!
+                : SbatchTemplate;
+            await _ssh.WriteTextFileAsync(stableSbatchPath, stableSbatchContent, ct);
+        }
+    }
+
+    private static string ResolveWorkDirForPersist(TaskUnit unit, TaskWorkspace workspace)
+    {
+        if (!string.IsNullOrWhiteSpace(unit.RemoteWorkDirectory))
+            return unit.RemoteWorkDirectory.Trim();
+        var candidate = workspace.Tasks
+            .Select(u => u.RemoteWorkDirectory)
+            .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
+        if (!string.IsNullOrWhiteSpace(candidate))
+            return candidate.Trim();
+        return string.Empty;
+    }
+
+    private async Task<List<string>> MaterializeUnitParamFilesToWorkDirAsync(TaskUnit unit, string normalizedWorkDir, CancellationToken ct)
+    {
+        var result = new List<string>();
+        var allParamPaths = unit.ParameterFiles
+            .Select(p => p.FilePath)
+            .Concat(unit.CommandEntries.SelectMany(c => c.ParameterFiles))
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        foreach (var rawPath in allParamPaths)
+        {
+            var path = rawPath.Trim();
+            var fileName = Path.GetFileName(path.Replace('\\', '/'));
+            if (string.IsNullOrWhiteSpace(fileName))
+                continue;
+
+            var targetPath = $"{normalizedWorkDir.TrimEnd('/')}/{fileName}";
+            var normalizedSource = NormalizeRemotePath(path);
+            if (!normalizedSource.StartsWith("/", StringComparison.Ordinal))
+                normalizedSource = $"{normalizedWorkDir.TrimEnd('/')}/{fileName}";
+            var samePath = string.Equals(normalizedSource, NormalizeRemotePath(targetPath), StringComparison.Ordinal);
+            if (!samePath)
+            {
+                var (_, copyErr, copyExit) = await _ssh.ExecuteAsync(
+                    $"cp -- {EscapeShellArg(normalizedSource)} {EscapeShellArg(targetPath)}",
+                    ct);
+                if (copyExit != 0)
+                {
+                    var detail = string.IsNullOrWhiteSpace(copyErr) ? L("Task.ParamCopyFailedNoDetail") : copyErr.Trim();
+                    throw new InvalidOperationException(string.Format(L("Task.ParamCopyFailed"), detail));
+                }
+            }
+
+            if (!result.Contains(targetPath, StringComparer.Ordinal))
+                result.Add(targetPath);
+        }
+
+        return result;
+    }
+
     // ── sbatch submit ────────────────────────────────────────────────────────
 
     private async Task SubmitJobAsync(CancellationToken ct)
@@ -2533,7 +2647,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         if (!IsSshConnectedSafe())
             throw new SubmitStageException(SubmitFailureStage.SshConnectionFailed, L("Task.RequireConnection"));
 
-        var paramFile = GetParameterFilePath(unit, workDir);
+        var paramFileAbsolute = GetParameterFilePath(unit, workDir);
+        var paramFile = BuildWorkDirRelativeParamArg(paramFileAbsolute);
         var normalizedWorkDir = NormalizeRemotePath(workDir);
         var stdoutPath = $"{normalizedWorkDir.TrimEnd('/')}/logs/job.out";
         var stderrPath = $"{normalizedWorkDir.TrimEnd('/')}/logs/job.err";
@@ -2601,17 +2716,27 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             throw new SubmitStageException(SubmitFailureStage.RemoteWorkDirFailed, ex.Message, ex);
         }
 
-        if (!string.IsNullOrWhiteSpace(paramFile))
+        if (!string.IsNullOrWhiteSpace(paramFileAbsolute))
         {
             try
             {
-                if (!await _ssh.RemoteFileExistsAsync(paramFile, ct))
-                    throw new SubmitStageException(SubmitFailureStage.ParameterPathFailed, string.Format(L("Task.ParameterFileMissing"), paramFile));
+                if (!await _ssh.RemoteFileExistsAsync(paramFileAbsolute, ct))
+                    throw new SubmitStageException(SubmitFailureStage.ParameterPathFailed, string.Format(L("Task.ParameterFileMissing"), paramFileAbsolute));
             }
             catch (Exception ex)
             {
                 throw new SubmitStageException(SubmitFailureStage.ParameterPathFailed, ex.Message, ex);
             }
+        }
+
+        try
+        {
+            var remoteSbatchPath = $"{normalizedWorkDir.TrimEnd('/')}/submit.sbatch";
+            await _ssh.WriteTextFileAsync(remoteSbatchPath, rendered, ct);
+        }
+        catch (Exception ex)
+        {
+            throw new SubmitStageException(SubmitFailureStage.RemoteWorkDirFailed, ex.Message, ex);
         }
 
         long jobId;
@@ -2932,12 +3057,21 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     {
         if (string.IsNullOrWhiteSpace(rawPath)) return string.Empty;
         var normalized = rawPath.Trim().Replace('\\', '/');
-        if (normalized.StartsWith("/", StringComparison.Ordinal))
-            return normalized;
+        var fileName = Path.GetFileName(normalized);
+        if (string.IsNullOrWhiteSpace(fileName))
+            return string.Empty;
         if (string.IsNullOrWhiteSpace(workDir))
             return string.Empty;
 
-        return $"{workDir.TrimEnd('/')}/params/{normalized}";
+        return $"{NormalizeRemotePath(workDir).TrimEnd('/')}/{fileName}";
+    }
+
+    private static string BuildWorkDirRelativeParamArg(string? absolutePath)
+    {
+        if (string.IsNullOrWhiteSpace(absolutePath))
+            return string.Empty;
+        var fileName = Path.GetFileName(absolutePath.Trim().Replace('\\', '/'));
+        return string.IsNullOrWhiteSpace(fileName) ? string.Empty : $"./{fileName}";
     }
 
     private static string ResolveUnitWorkDir(TaskUnitViewModel? unit)

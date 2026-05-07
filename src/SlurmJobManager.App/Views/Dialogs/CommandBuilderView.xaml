@@ -156,6 +156,10 @@
                             <Button Content="{DynamicResource CmdBuilder.AddParam}"
                                     Command="{Binding AddParamFileCommand}"
                                     Style="{StaticResource AccentButtonStyle}"
+                                    Padding="8,3" FontSize="11" Margin="0,0,4,0" />
+                            <Button Content="{DynamicResource CmdBuilder.NewParam}"
+                                    Command="{Binding CreateParamFileCommand}"
+                                    Style="{StaticResource NeutralButtonStyle}"
                                     Padding="8,3" FontSize="11" />
                         </DockPanel>
                         <ListBox ItemsSource="{Binding FilteredParamFiles}"
