@@ -28,6 +28,20 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="UpdateConnectionTestStatusStyle" TargetType="TextBlock" BasedOn="{StaticResource MutedTextStyle}">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding UpdateConnectionTestStatusTone, Mode=OneWay}" Value="Success">
+                    <Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding UpdateConnectionTestStatusTone, Mode=OneWay}" Value="Warning">
+                    <Setter Property="Foreground" Value="{DynamicResource AccentYellowBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding UpdateConnectionTestStatusTone, Mode=OneWay}" Value="Failure">
+                    <Setter Property="Foreground" Value="{DynamicResource AccentRedBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0"
@@ -335,6 +349,11 @@
                                 Style="{StaticResource NeutralButtonStyle}"
                                 Padding="10,5"
                                 Margin="0,0,6,0" />
+                        <Button Content="{DynamicResource Settings.TestUpdateConnectivityButton}"
+                                Command="{Binding TestUpdateConnectivityCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="10,5"
+                                Margin="0,0,6,0" />
                         <Button Content="{DynamicResource Settings.OpenUpdateSourceButton}"
                                 Command="{Binding OpenUpdateSourceCommand}"
                                 Style="{StaticResource NeutralButtonStyle}"
@@ -384,6 +403,33 @@
                             <TextBlock Text="{Binding ReleaseNotes, Mode=OneWay}"
                                        Style="{StaticResource MutedTextStyle}"
                                        Margin="0,6,0,0"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{DynamicResource Settings.UpdateConnectionTestStatusLabel}"
+                                       Style="{StaticResource FieldLabelStyle}"
+                                       Margin="0,8,0,0" />
+                            <TextBlock Text="{Binding UpdateConnectionTestStatusMessage, Mode=OneWay}"
+                                       Style="{StaticResource UpdateConnectionTestStatusStyle}"
+                                       Margin="0,2,0,0"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0">
+                                <Run Text="{DynamicResource Settings.UpdateConnectionTargetLabel}" />
+                                <Run Text="{Binding UpdateConnectionTestTarget, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0">
+                                <Run Text="{DynamicResource Settings.UpdateConnectionProxyLabel}" />
+                                <Run Text="{Binding UpdateConnectionTestProxyPolicy, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0">
+                                <Run Text="{DynamicResource Settings.UpdateConnectionDurationLabel}" />
+                                <Run Text="{Binding UpdateConnectionTestDuration, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Foreground="{DynamicResource AccentRedBrush}"
+                                       Text="{Binding UpdateConnectionTestErrorSummary, Mode=OneWay}"
+                                       Margin="0,4,0,0"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding UpdateConnectionTestSuggestion, Mode=OneWay}"
+                                       Style="{StaticResource MutedTextStyle}"
+                                       Margin="0,2,0,0"
                                        TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>

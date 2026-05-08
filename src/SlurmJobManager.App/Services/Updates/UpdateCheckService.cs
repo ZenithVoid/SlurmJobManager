@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Diagnostics;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Services;
 
@@ -34,6 +35,28 @@ public sealed class UpdateCheckService : IUpdateCheckService
             UpdateSourceType.GitHub => await CheckGitHubAsync(request, cancellationToken),
             UpdateSourceType.Folder => await CheckFolderAsync(request.FolderPath),
             _ => BuildFailure(UpdateSourceType.GitHub, "Unsupported update source type."),
+        };
+    }
+
+    public async Task<UpdateConnectivityTestResult> TestConnectivityAsync(UpdateCheckRequest request, CancellationToken cancellationToken = default)
+    {
+        _logger?.Info(
+            $"Update connectivity test started. Source={request.SourceType}, ProxyEnabled={request.UseProxyForUpdates}, ProxyMode={request.ProxyMode}");
+
+        return request.SourceType switch
+        {
+            UpdateSourceType.GitHub => await TestGitHubConnectivityAsync(request, cancellationToken),
+            UpdateSourceType.Folder => await TestFolderConnectivityAsync(request),
+            _ => new UpdateConnectivityTestResult(
+                IsSuccess: false,
+                SourceType: request.SourceType,
+                Target: "-",
+                EffectiveProxyPolicy: DescribeEffectiveProxyPolicy(request),
+                UseProxyForUpdates: request.UseProxyForUpdates,
+                DurationMs: 0,
+                Summary: "Unsupported update source type.",
+                ErrorSummary: "Unsupported update source type.",
+                Suggestion: "Choose a valid update source and retry."),
         };
     }
 
@@ -141,6 +164,136 @@ public sealed class UpdateCheckService : IUpdateCheckService
         }
     }
 
+    private async Task<UpdateConnectivityTestResult> TestGitHubConnectivityAsync(UpdateCheckRequest request, CancellationToken cancellationToken)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            using var client = BuildHttpClient(_versionService.CurrentVersion, request, out var proxyPolicy);
+            _logger?.Info($"Update connectivity test using target '{GitHubReleasesApi}', proxy policy: {proxyPolicy}");
+
+            using var response = await client.GetAsync(GitHubReleasesApi, cancellationToken);
+            stopwatch.Stop();
+            if (response.IsSuccessStatusCode)
+            {
+                var summary = $"Connection test succeeded (HTTP {(int)response.StatusCode}).";
+                _logger?.Info($"Update connectivity test succeeded for '{GitHubReleasesApi}' in {stopwatch.ElapsedMilliseconds} ms.");
+                return new UpdateConnectivityTestResult(
+                    IsSuccess: true,
+                    SourceType: UpdateSourceType.GitHub,
+                    Target: GitHubReleasesApi,
+                    EffectiveProxyPolicy: proxyPolicy,
+                    UseProxyForUpdates: request.UseProxyForUpdates,
+                    DurationMs: stopwatch.ElapsedMilliseconds,
+                    Summary: summary,
+                    ErrorSummary: null,
+                    Suggestion: null);
+            }
+
+            var errorSummary = $"Received HTTP {(int)response.StatusCode} ({response.ReasonPhrase ?? "Unknown"}).";
+            _logger?.Warning(
+                $"Update connectivity test failed for '{GitHubReleasesApi}' with HTTP {(int)response.StatusCode}. Proxy={proxyPolicy}");
+            return new UpdateConnectivityTestResult(
+                IsSuccess: false,
+                SourceType: UpdateSourceType.GitHub,
+                Target: GitHubReleasesApi,
+                EffectiveProxyPolicy: proxyPolicy,
+                UseProxyForUpdates: request.UseProxyForUpdates,
+                DurationMs: stopwatch.ElapsedMilliseconds,
+                Summary: "Connection test failed.",
+                ErrorSummary: errorSummary,
+                Suggestion: BuildGitHubConnectivitySuggestion(request));
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.Warning("Update connectivity test was canceled.");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            var proxyPolicy = DescribeEffectiveProxyPolicy(request);
+            _logger?.Error($"Update connectivity test threw for '{GitHubReleasesApi}'. Proxy={proxyPolicy}", ex);
+            return new UpdateConnectivityTestResult(
+                IsSuccess: false,
+                SourceType: UpdateSourceType.GitHub,
+                Target: GitHubReleasesApi,
+                EffectiveProxyPolicy: proxyPolicy,
+                UseProxyForUpdates: request.UseProxyForUpdates,
+                DurationMs: stopwatch.ElapsedMilliseconds,
+                Summary: "Connection test failed.",
+                ErrorSummary: ex.Message,
+                Suggestion: BuildGitHubConnectivitySuggestion(request));
+        }
+    }
+
+    private Task<UpdateConnectivityTestResult> TestFolderConnectivityAsync(UpdateCheckRequest request)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var path = (request.FolderPath ?? string.Empty).Trim();
+        var effectiveProxyPolicy = DescribeEffectiveProxyPolicy(request);
+
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            stopwatch.Stop();
+            return Task.FromResult(new UpdateConnectivityTestResult(
+                IsSuccess: false,
+                SourceType: UpdateSourceType.Folder,
+                Target: "(empty folder path)",
+                EffectiveProxyPolicy: effectiveProxyPolicy,
+                UseProxyForUpdates: request.UseProxyForUpdates,
+                DurationMs: stopwatch.ElapsedMilliseconds,
+                Summary: "Connection test failed.",
+                ErrorSummary: "Update folder path is empty.",
+                Suggestion: "Set a valid update folder path and retry."));
+        }
+
+        if (!Directory.Exists(path))
+        {
+            stopwatch.Stop();
+            return Task.FromResult(new UpdateConnectivityTestResult(
+                IsSuccess: false,
+                SourceType: UpdateSourceType.Folder,
+                Target: path,
+                EffectiveProxyPolicy: effectiveProxyPolicy,
+                UseProxyForUpdates: request.UseProxyForUpdates,
+                DurationMs: stopwatch.ElapsedMilliseconds,
+                Summary: "Connection test failed.",
+                ErrorSummary: "Update folder does not exist.",
+                Suggestion: "Check the configured folder path and access permissions."));
+        }
+
+        if (!TryLoadFolderManifest(path, out _, out var manifestError))
+        {
+            stopwatch.Stop();
+            var target = ResolveFolderManifestTarget(path);
+            return Task.FromResult(new UpdateConnectivityTestResult(
+                IsSuccess: false,
+                SourceType: UpdateSourceType.Folder,
+                Target: target,
+                EffectiveProxyPolicy: effectiveProxyPolicy,
+                UseProxyForUpdates: request.UseProxyForUpdates,
+                DurationMs: stopwatch.ElapsedMilliseconds,
+                Summary: "Connection test failed.",
+                ErrorSummary: manifestError ?? "Failed to load update manifest.",
+                Suggestion: "Check latest.json/version.json format and folder read permissions."));
+        }
+
+        stopwatch.Stop();
+        var manifestTarget = ResolveFolderManifestTarget(path);
+        _logger?.Info($"Folder update connectivity test succeeded for '{manifestTarget}' in {stopwatch.ElapsedMilliseconds} ms.");
+        return Task.FromResult(new UpdateConnectivityTestResult(
+            IsSuccess: true,
+            SourceType: UpdateSourceType.Folder,
+            Target: manifestTarget,
+            EffectiveProxyPolicy: effectiveProxyPolicy,
+            UseProxyForUpdates: request.UseProxyForUpdates,
+            DurationMs: stopwatch.ElapsedMilliseconds,
+            Summary: "Connection test succeeded.",
+            ErrorSummary: null,
+            Suggestion: null));
+    }
+
     private static string? ResolveFolderTarget(string folderPath, string? package, Version remoteVersion)
     {
         if (!string.IsNullOrWhiteSpace(package))
@@ -155,6 +308,19 @@ public sealed class UpdateCheckService : IUpdateCheckService
         var inferredPackage = UpdatePackageNaming.ResolveBestPackagePath(folderPath, remoteVersion, out _);
         if (!string.IsNullOrWhiteSpace(inferredPackage))
             return inferredPackage;
+
+        return folderPath;
+    }
+
+    private static string ResolveFolderManifestTarget(string folderPath)
+    {
+        var latestPath = Path.Combine(folderPath, LatestManifestFileName);
+        if (File.Exists(latestPath))
+            return latestPath;
+
+        var legacyPath = Path.Combine(folderPath, LegacyManifestFileName);
+        if (File.Exists(legacyPath))
+            return legacyPath;
 
         return folderPath;
     }
@@ -308,16 +474,49 @@ public sealed class UpdateCheckService : IUpdateCheckService
         DateTimeOffset? PublishedAt,
         string? Package);
 
+    private static string BuildGitHubConnectivitySuggestion(UpdateCheckRequest request)
+    {
+        if (!request.UseProxyForUpdates)
+            return "Proxy for updates is disabled. If your network requires a proxy, enable it and retry.";
+
+        return request.ProxyMode switch
+        {
+            UpdateProxyMode.NoProxy => "No-proxy mode bypasses system proxy. Try system proxy or custom proxy if your network is restricted.",
+            UpdateProxyMode.SystemProxy => "Verify Windows system proxy settings and then retry.",
+            UpdateProxyMode.CustomProxy => "Check custom proxy host/port and ensure the proxy is reachable.",
+            _ => "Verify update source availability and proxy settings, then retry.",
+        };
+    }
+
+    private static string DescribeEffectiveProxyPolicy(UpdateCheckRequest request)
+    {
+        if (!request.UseProxyForUpdates)
+            return "disabled-by-setting (direct connection)";
+
+        return request.ProxyMode switch
+        {
+            UpdateProxyMode.NoProxy => "no-proxy (system proxy ignored)",
+            UpdateProxyMode.SystemProxy => "system-proxy",
+            UpdateProxyMode.CustomProxy => UpdateProxyValidation.TryBuildCustomProxyUri(
+                request.CustomProxyHost,
+                request.CustomProxyPort,
+                out var proxyUri,
+                out _)
+                ? $"custom-proxy ({proxyUri!.Host}:{proxyUri.Port})"
+                : "custom-proxy (invalid configuration)",
+            _ => "disabled-by-unknown-mode",
+        };
+    }
+
     private static HttpClient BuildHttpClient(Version currentVersion, UpdateCheckRequest request, out string proxyLog)
     {
         var handler = new HttpClientHandler();
-        proxyLog = "disabled";
+        proxyLog = DescribeEffectiveProxyPolicy(request);
 
         if (!request.UseProxyForUpdates)
         {
             handler.UseProxy = false;
             handler.Proxy = null;
-            proxyLog = "disabled-by-setting";
         }
         else
         {
@@ -326,12 +525,10 @@ public sealed class UpdateCheckService : IUpdateCheckService
                 case UpdateProxyMode.NoProxy:
                     handler.UseProxy = false;
                     handler.Proxy = null;
-                    proxyLog = "no-proxy (system proxy ignored)";
                     break;
                 case UpdateProxyMode.SystemProxy:
                     handler.UseProxy = true;
                     handler.Proxy = null;
-                    proxyLog = "system-proxy";
                     break;
                 case UpdateProxyMode.CustomProxy:
                     if (!UpdateProxyValidation.TryBuildCustomProxyUri(
@@ -345,12 +542,10 @@ public sealed class UpdateCheckService : IUpdateCheckService
 
                     handler.UseProxy = true;
                     handler.Proxy = new WebProxy(proxyUri!);
-                    proxyLog = $"custom-proxy ({proxyUri!.Host}:{proxyUri.Port})";
                     break;
                 default:
                     handler.UseProxy = false;
                     handler.Proxy = null;
-                    proxyLog = "disabled-by-unknown-mode";
                     break;
             }
         }

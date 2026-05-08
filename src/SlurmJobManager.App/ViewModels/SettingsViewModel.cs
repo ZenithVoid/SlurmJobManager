@@ -19,8 +19,17 @@ namespace SlurmJobManager.App.ViewModels;
 /// </summary>
 public sealed class SettingsViewModel : ViewModelBase
 {
+    private enum ConnectivityTestStatus
+    {
+        Neutral,
+        Success,
+        Warning,
+        Failure,
+    }
+
     private const string GitHubReleasesPage = "https://github.com/ZenithVoid/SlurmJobManager/releases";
     private const int ReleaseScriptSearchMaxDepth = 8;
+    private const long SlowConnectionThresholdMs = 5000;
     private static readonly TimeSpan UpdateLaunchGracePeriod = TimeSpan.FromMilliseconds(250);
 
     private readonly MainViewModel _main;
@@ -50,6 +59,14 @@ public sealed class SettingsViewModel : ViewModelBase
     private string _releasePackagingStatusMessage;
     private bool _isGeneratingReleasePackage;
     private string _updateCustomProxyPortText;
+    private bool _isTestingUpdateConnectivity;
+    private ConnectivityTestStatus _updateConnectivityStatus = ConnectivityTestStatus.Neutral;
+    private string _updateConnectionTestStatusMessage = "-";
+    private string _updateConnectionTestTarget = "-";
+    private string _updateConnectionTestProxyPolicy = "-";
+    private string _updateConnectionTestDuration = "-";
+    private string _updateConnectionTestErrorSummary = string.Empty;
+    private string _updateConnectionTestSuggestion = string.Empty;
 
     public SettingsViewModel(
         MainViewModel main,
@@ -75,8 +92,14 @@ public sealed class SettingsViewModel : ViewModelBase
         _releasePackagingStatusMessage = L("Settings.ReleasePackagingReady");
         _releasePackagingOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         _updateCustomProxyPortText = _prefs.UpdateCustomProxyPort?.ToString() ?? string.Empty;
+        _updateConnectionTestStatusMessage = L("Settings.UpdateConnectionTestNotRun");
 
-        CheckForUpdatesCommand = new AsyncRelayCommand(() => CheckForUpdatesAsync(showToasts: true), () => !IsCheckingUpdates);
+        CheckForUpdatesCommand = new AsyncRelayCommand(
+            () => CheckForUpdatesAsync(showToasts: true),
+            () => !IsCheckingUpdates && !IsTestingUpdateConnectivity);
+        TestUpdateConnectivityCommand = new AsyncRelayCommand(
+            () => TestUpdateConnectivityAsync(showToasts: true),
+            () => !IsCheckingUpdates && !IsTestingUpdateConnectivity);
         LaunchUpdateCommand = new AsyncRelayCommand(LaunchUpdateAsync, CanLaunchUpdate);
         OpenUpdateTargetCommand = new RelayCommand(OpenUpdateTarget, CanOpenUpdateTarget);
         OpenUpdateSourceCommand = new RelayCommand(OpenConfiguredUpdateSource);
@@ -371,6 +394,50 @@ public sealed class SettingsViewModel : ViewModelBase
         private set => SetField(ref _isCheckingUpdates, value);
     }
 
+    public bool IsTestingUpdateConnectivity
+    {
+        get => _isTestingUpdateConnectivity;
+        private set => SetField(ref _isTestingUpdateConnectivity, value);
+    }
+
+    public string UpdateConnectionTestStatusMessage
+    {
+        get => _updateConnectionTestStatusMessage;
+        private set => SetField(ref _updateConnectionTestStatusMessage, value);
+    }
+
+    public string UpdateConnectionTestStatusTone => _updateConnectivityStatus.ToString();
+
+    public string UpdateConnectionTestTarget
+    {
+        get => _updateConnectionTestTarget;
+        private set => SetField(ref _updateConnectionTestTarget, value);
+    }
+
+    public string UpdateConnectionTestProxyPolicy
+    {
+        get => _updateConnectionTestProxyPolicy;
+        private set => SetField(ref _updateConnectionTestProxyPolicy, value);
+    }
+
+    public string UpdateConnectionTestDuration
+    {
+        get => _updateConnectionTestDuration;
+        private set => SetField(ref _updateConnectionTestDuration, value);
+    }
+
+    public string UpdateConnectionTestErrorSummary
+    {
+        get => _updateConnectionTestErrorSummary;
+        private set => SetField(ref _updateConnectionTestErrorSummary, value);
+    }
+
+    public string UpdateConnectionTestSuggestion
+    {
+        get => _updateConnectionTestSuggestion;
+        private set => SetField(ref _updateConnectionTestSuggestion, value);
+    }
+
     public bool HasUpdate
     {
         get => _hasUpdate;
@@ -424,6 +491,7 @@ public sealed class SettingsViewModel : ViewModelBase
     }
 
     public ICommand CheckForUpdatesCommand { get; }
+    public ICommand TestUpdateConnectivityCommand { get; }
     public ICommand LaunchUpdateCommand { get; }
     public ICommand OpenUpdateTargetCommand { get; }
     public ICommand OpenUpdateSourceCommand { get; }
@@ -449,22 +517,18 @@ public sealed class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(ThemeLabel));
         if (!_hasCheckedUpdates)
             UpdateStatusMessage = L("Settings.UpdateNotCheckedYet");
+        if (_updateConnectivityStatus == ConnectivityTestStatus.Neutral)
+            UpdateConnectionTestStatusMessage = L("Settings.UpdateConnectionTestNotRun");
     }
 
     private async Task CheckForUpdatesAsync(bool showToasts)
     {
-        if (_prefs.UseProxyForUpdates && _prefs.UpdateProxyMode == UpdateProxyMode.CustomProxy)
+        if (!TryValidateUpdateProxyConfiguration(out var proxyValidationError))
         {
-            if (!UpdateProxyValidation.TryValidateCustomProxy(
-                    _prefs.UpdateCustomProxyHost,
-                    _prefs.UpdateCustomProxyPort,
-                    out _))
-            {
-                UpdateStatusMessage = L("Settings.ProxyConfigInvalid");
-                if (showToasts)
-                    ToastService.Instance.Error(UpdateStatusMessage);
-                return;
-            }
+            UpdateStatusMessage = proxyValidationError;
+            if (showToasts)
+                ToastService.Instance.Error(UpdateStatusMessage);
+            return;
         }
 
         _logger?.Info(
@@ -475,14 +539,7 @@ public sealed class SettingsViewModel : ViewModelBase
             UpdateStatusMessage = L("Settings.UpdateChecking");
             CommandManager.InvalidateRequerySuggested();
 
-            var result = await _updateCheckService.CheckForUpdatesAsync(new UpdateCheckRequest(
-                _prefs.UpdateSourceType,
-                _prefs.IncludePrereleaseUpdates,
-                _prefs.UpdateFolderPath,
-                _prefs.UseProxyForUpdates,
-                _prefs.UpdateProxyMode,
-                _prefs.UpdateCustomProxyHost,
-                _prefs.UpdateCustomProxyPort));
+            var result = await _updateCheckService.CheckForUpdatesAsync(BuildUpdateCheckRequest());
 
             ApplyUpdateResult(result, showToasts);
         }
@@ -500,6 +557,124 @@ public sealed class SettingsViewModel : ViewModelBase
             LastCheckedAtDisplay = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             CommandManager.InvalidateRequerySuggested();
         }
+    }
+
+    private async Task TestUpdateConnectivityAsync(bool showToasts)
+    {
+        if (!TryValidateUpdateProxyConfiguration(out var proxyValidationError))
+        {
+            UpdateConnectionTestStatusMessage = proxyValidationError;
+            UpdateConnectionTestErrorSummary = proxyValidationError;
+            _updateConnectivityStatus = ConnectivityTestStatus.Failure;
+            OnPropertyChanged(nameof(UpdateConnectionTestStatusTone));
+            if (showToasts)
+                ToastService.Instance.Error(proxyValidationError);
+            return;
+        }
+
+        var request = BuildUpdateCheckRequest();
+        _logger?.Info(
+            $"Update connectivity test requested. Source={request.SourceType}, UseProxyForUpdates={request.UseProxyForUpdates}, ProxyMode={request.ProxyMode}");
+
+        try
+        {
+            IsTestingUpdateConnectivity = true;
+            UpdateConnectionTestStatusMessage = L("Settings.UpdateConnectionTesting");
+            UpdateConnectionTestErrorSummary = string.Empty;
+            UpdateConnectionTestSuggestion = string.Empty;
+            _updateConnectivityStatus = ConnectivityTestStatus.Neutral;
+            OnPropertyChanged(nameof(UpdateConnectionTestStatusTone));
+            CommandManager.InvalidateRequerySuggested();
+
+            var result = await _updateCheckService.TestConnectivityAsync(request);
+            ApplyConnectivityTestResult(result, showToasts);
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error("Update connectivity test failed unexpectedly.", ex);
+            UpdateConnectionTestStatusMessage = string.Format(L("Settings.UpdateConnectionTestFailedFormat"), ex.Message);
+            UpdateConnectionTestErrorSummary = ex.Message;
+            UpdateConnectionTestSuggestion = L("Settings.UpdateConnectionTestFallbackSuggestion");
+            _updateConnectivityStatus = ConnectivityTestStatus.Failure;
+            OnPropertyChanged(nameof(UpdateConnectionTestStatusTone));
+            if (showToasts)
+                ToastService.Instance.Error(UpdateConnectionTestStatusMessage);
+        }
+        finally
+        {
+            IsTestingUpdateConnectivity = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    private bool TryValidateUpdateProxyConfiguration(out string errorMessage)
+    {
+        errorMessage = string.Empty;
+        if (!_prefs.UseProxyForUpdates || _prefs.UpdateProxyMode != UpdateProxyMode.CustomProxy)
+            return true;
+
+        if (UpdateProxyValidation.TryValidateCustomProxy(
+                _prefs.UpdateCustomProxyHost,
+                _prefs.UpdateCustomProxyPort,
+                out _))
+        {
+            return true;
+        }
+
+        errorMessage = L("Settings.ProxyConfigInvalid");
+        return false;
+    }
+
+    private UpdateCheckRequest BuildUpdateCheckRequest()
+    {
+        return new UpdateCheckRequest(
+            _prefs.UpdateSourceType,
+            _prefs.IncludePrereleaseUpdates,
+            _prefs.UpdateFolderPath,
+            _prefs.UseProxyForUpdates,
+            _prefs.UpdateProxyMode,
+            _prefs.UpdateCustomProxyHost,
+            _prefs.UpdateCustomProxyPort);
+    }
+
+    private void ApplyConnectivityTestResult(UpdateConnectivityTestResult result, bool showToasts)
+    {
+        _logger?.Info(
+            $"Update connectivity test completed. Success={result.IsSuccess}, Source={result.SourceType}, Target={result.Target}, ProxyPolicy={result.EffectiveProxyPolicy}, DurationMs={result.DurationMs}");
+
+        var isSlow = result.IsSuccess && result.DurationMs >= SlowConnectionThresholdMs;
+        _updateConnectivityStatus = result.IsSuccess
+            ? (isSlow ? ConnectivityTestStatus.Warning : ConnectivityTestStatus.Success)
+            : ConnectivityTestStatus.Failure;
+        OnPropertyChanged(nameof(UpdateConnectionTestStatusTone));
+
+        UpdateConnectionTestStatusMessage = isSlow
+            ? $"{result.Summary} {L("Settings.UpdateConnectionSlowWarning")}"
+            : result.Summary;
+        UpdateConnectionTestTarget = result.Target;
+        UpdateConnectionTestProxyPolicy = result.SourceType == UpdateSourceType.Folder
+            ? $"{result.EffectiveProxyPolicy}; {L("Settings.UpdateConnectionFolderProxyNote")}"
+            : result.EffectiveProxyPolicy;
+        UpdateConnectionTestDuration = $"{result.DurationMs} ms";
+        UpdateConnectionTestErrorSummary = result.ErrorSummary ?? string.Empty;
+        UpdateConnectionTestSuggestion = result.Suggestion ?? string.Empty;
+
+        if (!showToasts)
+            return;
+
+        if (!result.IsSuccess)
+        {
+            var toastMessage = string.IsNullOrWhiteSpace(result.ErrorSummary)
+                ? UpdateConnectionTestStatusMessage
+                : $"{UpdateConnectionTestStatusMessage} {result.ErrorSummary}";
+            ToastService.Instance.Error(toastMessage);
+            return;
+        }
+
+        if (isSlow)
+            ToastService.Instance.Warning(UpdateConnectionTestStatusMessage);
+        else
+            ToastService.Instance.Success(UpdateConnectionTestStatusMessage);
     }
 
     private void ApplyUpdateResult(UpdateCheckResult result, bool showToasts)

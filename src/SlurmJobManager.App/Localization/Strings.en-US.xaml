@@ -214,6 +214,7 @@
     <sys:String x:Key="Settings.ProxyPortInvalid">Proxy port must be an integer between 1 and 65535.</sys:String>
     <sys:String x:Key="Settings.ProxyConfigInvalid">Custom proxy configuration is invalid. Please provide a non-empty host and a valid port (1-65535).</sys:String>
     <sys:String x:Key="Settings.CheckUpdateButton">Check Updates</sys:String>
+    <sys:String x:Key="Settings.TestUpdateConnectivityButton">Test Connectivity</sys:String>
     <sys:String x:Key="Settings.OpenUpdateSourceButton">Open Source</sys:String>
     <sys:String x:Key="Settings.OpenUpdateTargetButton">Open Latest Target</sys:String>
     <sys:String x:Key="Settings.StartUpdateButton">Start Update</sys:String>
@@ -237,6 +238,16 @@
     <sys:String x:Key="Settings.UpdateLaunchFailedFormat">Failed to launch updater: {0}</sys:String>
     <sys:String x:Key="Settings.UpdateLaunchInvalidTargetFormat">Update target is invalid: {0}</sys:String>
     <sys:String x:Key="Settings.UpdatePackageAutoSelectedFormat">Multiple packages found; using best version match: {0}</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionTestStatusLabel">Connection test status:</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionTargetLabel">Test target: </sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionProxyLabel">Effective proxy policy: </sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionDurationLabel">Duration: </sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionFolderProxyNote">folder source uses local file access and does not send HTTP requests.</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionTestNotRun">Not tested yet.</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionTesting">Testing connectivity…</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionTestFailedFormat">Connectivity test failed: {0}</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionTestFallbackSuggestion">Check update source and proxy settings, then retry.</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionSlowWarning">Response is slow; network or proxy latency may be high.</sys:String>
     <sys:String x:Key="Settings.ReleasePackagingSection">Release Packaging</sys:String>
     <sys:String x:Key="Settings.ReleasePackagingPublishDirLabel">Publish output directory:</sys:String>
     <sys:String x:Key="Settings.ReleasePackagingOutputDirLabel">Release output directory:</sys:String>
