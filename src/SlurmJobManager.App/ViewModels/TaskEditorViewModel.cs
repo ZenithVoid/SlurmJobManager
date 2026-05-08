@@ -2879,7 +2879,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private string GetLocalTaskDir() => Path.Combine(LocalDataRoot, TaskId);
 
     private async Task SaveTaskAsync(CancellationToken ct)
-        => _ = await SaveTaskCoreAsync(ct);
+        => await SaveTaskCoreAsync(ct);
 
     private async Task<bool> SaveTaskCoreAsync(CancellationToken ct)
     {

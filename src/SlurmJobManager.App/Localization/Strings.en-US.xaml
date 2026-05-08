@@ -434,7 +434,7 @@
     <sys:String x:Key="Task.OverwritePrompt">Remote file {0} already exists. Overwrite?</sys:String>
     <sys:String x:Key="Task.SaveCancelled">Save cancelled.</sys:String>
     <sys:String x:Key="Task.UnsavedTitle">Unsaved Changes</sys:String>
-    <sys:String x:Key="Task.UnsavedDiscardPrompt">There are unsaved changes in [{1}]. Continuing will discard them before {0}. Continue?</sys:String>
+    <sys:String x:Key="Task.UnsavedDiscardPrompt">There are unsaved changes in [{1}]. Continuing with {0} will discard these changes. Continue?</sys:String>
     <sys:String x:Key="Task.UnsavedStatusFormat">Unsaved changes: {0}</sys:String>
     <sys:String x:Key="Task.UnsavedSourceTaskConfig">Task configuration</sys:String>
     <sys:String x:Key="Task.UnsavedActionLoadTask">loading another task</sys:String>
