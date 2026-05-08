@@ -3,6 +3,7 @@ using System.Windows.Threading;
 using SlurmJobManager.App.Services;
 using SlurmJobManager.App.Services.CrashHandling;
 using SlurmJobManager.App.Services.Logging;
+using SlurmJobManager.App.Services.Packaging;
 using SlurmJobManager.App.Services.Updates;
 using SlurmJobManager.App.Services.Validation;
 using SlurmJobManager.App.ViewModels;
@@ -49,6 +50,7 @@ public partial class App : Application
         _logger?.Info($"SlurmJobManager version: {versionService.CurrentVersionDisplay} (Comparable={versionService.CurrentVersion})");
         IUpdateCheckService updateCheckService = new UpdateCheckService(versionService, _logger);
         IUpdateLaunchService updateLaunchService = new UpdateLaunchService(versionService);
+        IPackagingFeatureAuthorizationService packagingFeatureAuthorizationService = new PackagingFeatureAuthorizationService(_logger);
 
         // Infrastructure services (one SSH client shared across all consumers)
         var ssh      = new SshClientService(settings, _logger);
@@ -83,7 +85,19 @@ public partial class App : Application
             _ = HandleConnectionEstablishedAsync(connectionVm, taskEditorVm, prefs, username);
         };
 
-        _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm, prefs, updateCheckService, versionService, updateLaunchService, logFileService, _logger);
+        _mainVm = new MainViewModel(
+            connectionVm,
+            taskEditorVm,
+            monitorVm,
+            logViewerVm,
+            consoleVm,
+            prefs,
+            updateCheckService,
+            versionService,
+            updateLaunchService,
+            packagingFeatureAuthorizationService,
+            logFileService,
+            _logger);
 
         // Default locale: zh-CN (loaded regardless of system language)
         _mainVm.ApplyLocale("zh-CN");

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.App.Services;
 using SlurmJobManager.App.Services.Logging;
+using SlurmJobManager.App.Services.Packaging;
 using SlurmJobManager.App.Services.Updates;
 using SlurmJobManager.Core.Interfaces;
 
@@ -139,6 +140,7 @@ public sealed class MainViewModel : ViewModelBase
         IUpdateCheckService updateCheckService,
         IApplicationVersionService versionService,
         IUpdateLaunchService updateLaunchService,
+        IPackagingFeatureAuthorizationService packagingFeatureAuthorizationService,
         ILogFileService logFileService,
         IAppLogger? logger = null)
     {
@@ -167,7 +169,15 @@ public sealed class MainViewModel : ViewModelBase
         _activeNavItem = NavItems[0];
 
         Dashboard = new DashboardViewModel(connection, monitor, tab => ActiveTab = tab);
-        Settings  = new SettingsViewModel(this, prefs, updateCheckService, versionService, updateLaunchService, logFileService, logger);
+        Settings  = new SettingsViewModel(
+            this,
+            prefs,
+            updateCheckService,
+            versionService,
+            updateLaunchService,
+            packagingFeatureAuthorizationService,
+            logFileService,
+            logger);
         About     = new AboutViewModel(versionService, () =>
         {
             ActivateTab("Settings");

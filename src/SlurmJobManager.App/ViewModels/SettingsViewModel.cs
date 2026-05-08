@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.App.Services;
 using SlurmJobManager.App.Services.Logging;
+using SlurmJobManager.App.Services.Packaging;
 using SlurmJobManager.App.Services.Updates;
 using SlurmJobManager.App.Views.Dialogs;
 using SlurmJobManager.Core.Interfaces;
@@ -28,6 +29,7 @@ public sealed class SettingsViewModel : ViewModelBase
     private readonly IUpdateLaunchService _updateLaunchService;
     private readonly ILogFileService _logFileService;
     private readonly IAppLogger? _logger;
+    private readonly PackagingFeatureAuthorizationResult _packagingAuthorizationResult;
 
     private string _updateStatusMessage;
     private string _latestVersionDisplay = "-";
@@ -41,6 +43,11 @@ public sealed class SettingsViewModel : ViewModelBase
     private bool _hasCheckedUpdates;
     private string? _lastOpenTarget;
     private Version? _latestVersion;
+    private string _releasePackagingPublishDirectory = string.Empty;
+    private string _releasePackagingOutputDirectory = string.Empty;
+    private string _releasePackagingNotes = string.Empty;
+    private string _releasePackagingStatusMessage;
+    private bool _isGeneratingReleasePackage;
 
     public SettingsViewModel(
         MainViewModel main,
@@ -48,6 +55,7 @@ public sealed class SettingsViewModel : ViewModelBase
         IUpdateCheckService updateCheckService,
         IApplicationVersionService versionService,
         IUpdateLaunchService updateLaunchService,
+        IPackagingFeatureAuthorizationService packagingFeatureAuthorizationService,
         ILogFileService logFileService,
         IAppLogger? logger = null)
     {
@@ -58,14 +66,19 @@ public sealed class SettingsViewModel : ViewModelBase
         _updateLaunchService = updateLaunchService ?? throw new ArgumentNullException(nameof(updateLaunchService));
         _logFileService = logFileService ?? throw new ArgumentNullException(nameof(logFileService));
         _logger = logger;
+        _packagingAuthorizationResult = (packagingFeatureAuthorizationService ?? throw new ArgumentNullException(nameof(packagingFeatureAuthorizationService))).EvaluateAuthorization();
 
         _updateStatusMessage = L("Settings.UpdateNotCheckedYet");
         _updateSourceDisplay = L("Settings.UpdateSourceUnknown");
+        _releasePackagingStatusMessage = L("Settings.ReleasePackagingReady");
+        _releasePackagingOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
 
         CheckForUpdatesCommand = new AsyncRelayCommand(() => CheckForUpdatesAsync(showToasts: true), () => !IsCheckingUpdates);
         LaunchUpdateCommand = new AsyncRelayCommand(LaunchUpdateAsync, CanLaunchUpdate);
         OpenUpdateTargetCommand = new RelayCommand(OpenUpdateTarget, CanOpenUpdateTarget);
         OpenUpdateSourceCommand = new RelayCommand(OpenConfiguredUpdateSource);
+        GenerateReleasePackageCommand = new AsyncRelayCommand(GenerateReleasePackageAsync, CanGenerateReleasePackage);
+        OpenReleasePackageOutputDirectoryCommand = new RelayCommand(OpenReleasePackageOutputDirectory, CanOpenReleasePackageOutputDirectory);
     }
 
     // ── Connection configuration (re-exposed for embedding ConnectionView) ──
@@ -147,6 +160,8 @@ public sealed class SettingsViewModel : ViewModelBase
     public ICommand OpenLogDirectoryCommand => new RelayCommand(OpenLogDirectory);
     public ICommand ViewRecentLogCommand => new RelayCommand(ViewRecentLog);
     public ICommand ExportLogsCommand => new RelayCommand(ExportLogs);
+    public ICommand GenerateReleasePackageCommand { get; }
+    public ICommand OpenReleasePackageOutputDirectoryCommand { get; }
 
     // ── Local data paths ───────────────────────────────────────────────────
 
@@ -157,6 +172,44 @@ public sealed class SettingsViewModel : ViewModelBase
     public string RecentConnectionsFilePath => LocalDataPaths.RecentConnectionsFilePath;
     public string PreferencesFilePath => LocalDataPaths.PreferencesFilePath;
     public string LastTaskContextsFilePath => LocalDataPaths.LastTaskContextsFilePath;
+
+    // ── Release packaging ───────────────────────────────────────────────────
+
+    public bool IsReleasePackagingAuthorized => _packagingAuthorizationResult.IsAuthorized;
+
+    public string ReleasePackagingPublishDirectory
+    {
+        get => _releasePackagingPublishDirectory;
+        set => SetField(ref _releasePackagingPublishDirectory, value);
+    }
+
+    public string ReleasePackagingOutputDirectory
+    {
+        get => _releasePackagingOutputDirectory;
+        set => SetField(ref _releasePackagingOutputDirectory, value);
+    }
+
+    public string ReleasePackagingNotes
+    {
+        get => _releasePackagingNotes;
+        set => SetField(ref _releasePackagingNotes, value);
+    }
+
+    public string ReleasePackagingStatusMessage
+    {
+        get => _releasePackagingStatusMessage;
+        private set => SetField(ref _releasePackagingStatusMessage, value);
+    }
+
+    public bool IsGeneratingReleasePackage
+    {
+        get => _isGeneratingReleasePackage;
+        private set
+        {
+            if (!SetField(ref _isGeneratingReleasePackage, value)) return;
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
 
     // ── Update check ───────────────────────────────────────────────────────
 
@@ -659,4 +712,191 @@ public sealed class SettingsViewModel : ViewModelBase
             selectionMessage = string.Format(L("Settings.UpdatePackageAutoSelectedFormat"), Path.GetFileName(packagePath));
         return true;
     }
+
+    private bool CanGenerateReleasePackage()
+        => IsReleasePackagingAuthorized
+           && !IsGeneratingReleasePackage
+           && !string.IsNullOrWhiteSpace(ReleasePackagingPublishDirectory)
+           && !string.IsNullOrWhiteSpace(ReleasePackagingOutputDirectory);
+
+    private bool CanOpenReleasePackageOutputDirectory()
+        => IsReleasePackagingAuthorized
+           && !string.IsNullOrWhiteSpace(ReleasePackagingOutputDirectory);
+
+    private async Task GenerateReleasePackageAsync()
+    {
+        if (!IsReleasePackagingAuthorized)
+            return;
+
+        var publishDirectory = (ReleasePackagingPublishDirectory ?? string.Empty).Trim();
+        var outputDirectory = (ReleasePackagingOutputDirectory ?? string.Empty).Trim();
+
+        if (!Directory.Exists(publishDirectory))
+        {
+            ReleasePackagingStatusMessage = string.Format(L("Settings.ReleasePackagingPublishDirMissingFormat"), publishDirectory);
+            return;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(outputDirectory);
+            IsGeneratingReleasePackage = true;
+            ReleasePackagingStatusMessage = L("Settings.ReleasePackagingRunning");
+            _logger?.Info("Starting release packaging generation by script.");
+
+            var scriptPath = ResolveReleaseArtifactsScriptPath();
+            if (string.IsNullOrWhiteSpace(scriptPath))
+            {
+                ReleasePackagingStatusMessage = L("Settings.ReleasePackagingScriptMissing");
+                _logger?.Warning("Release packaging script was not found from current app location.");
+                return;
+            }
+
+            var invocationResult = await RunReleaseScriptAsync(scriptPath, publishDirectory, outputDirectory, ReleasePackagingNotes);
+            if (!invocationResult.IsSuccess)
+            {
+                var errorText = string.IsNullOrWhiteSpace(invocationResult.ErrorMessage)
+                    ? L("Settings.UnknownError")
+                    : invocationResult.ErrorMessage;
+                ReleasePackagingStatusMessage = string.Format(L("Settings.ReleasePackagingFailedFormat"), errorText);
+                _logger?.Warning($"Release packaging script failed. Error={errorText}");
+                return;
+            }
+
+            ReleasePackagingStatusMessage = string.Format(L("Settings.ReleasePackagingSuccessFormat"), outputDirectory);
+            _logger?.Info($"Release packaging completed. Output={outputDirectory}");
+            ToastService.Instance.Success(ReleasePackagingStatusMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error("Release packaging failed unexpectedly.", ex);
+            ReleasePackagingStatusMessage = string.Format(L("Settings.ReleasePackagingFailedFormat"), ex.Message);
+            ToastService.Instance.Error(ReleasePackagingStatusMessage);
+        }
+        finally
+        {
+            IsGeneratingReleasePackage = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    private void OpenReleasePackageOutputDirectory()
+    {
+        if (!IsReleasePackagingAuthorized || string.IsNullOrWhiteSpace(ReleasePackagingOutputDirectory))
+            return;
+
+        var outputDirectory = ReleasePackagingOutputDirectory.Trim();
+        try
+        {
+            Directory.CreateDirectory(outputDirectory);
+            var started = Process.Start(new ProcessStartInfo
+            {
+                FileName = outputDirectory,
+                UseShellExecute = true,
+            });
+
+            if (started is null)
+                ReleasePackagingStatusMessage = L("Settings.ReleasePackagingOpenOutputFailed");
+        }
+        catch (Exception ex)
+        {
+            ReleasePackagingStatusMessage = string.Format(L("Settings.ReleasePackagingOpenOutputFailedFormat"), ex.Message);
+        }
+    }
+
+    private static async Task<ScriptInvocationResult> RunReleaseScriptAsync(
+        string scriptPath,
+        string publishDirectory,
+        string outputDirectory,
+        string notes)
+    {
+        var result = await TryRunPowerShellAsync(
+            "pwsh",
+            scriptPath,
+            publishDirectory,
+            outputDirectory,
+            notes);
+        if (result.IsSuccess || !result.IsExecutableMissing)
+            return result;
+
+        return await TryRunPowerShellAsync(
+            "powershell",
+            scriptPath,
+            publishDirectory,
+            outputDirectory,
+            notes);
+    }
+
+    private static async Task<ScriptInvocationResult> TryRunPowerShellAsync(
+        string executable,
+        string scriptPath,
+        string publishDirectory,
+        string outputDirectory,
+        string notes)
+    {
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = executable,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            }
+        };
+
+        process.StartInfo.ArgumentList.Add("-NoProfile");
+        process.StartInfo.ArgumentList.Add("-ExecutionPolicy");
+        process.StartInfo.ArgumentList.Add("Bypass");
+        process.StartInfo.ArgumentList.Add("-File");
+        process.StartInfo.ArgumentList.Add(scriptPath);
+        process.StartInfo.ArgumentList.Add("-PublishDirectory");
+        process.StartInfo.ArgumentList.Add(publishDirectory);
+        process.StartInfo.ArgumentList.Add("-OutputDirectory");
+        process.StartInfo.ArgumentList.Add(outputDirectory);
+        process.StartInfo.ArgumentList.Add("-RuntimeIdentifier");
+        process.StartInfo.ArgumentList.Add("win-x64");
+        process.StartInfo.ArgumentList.Add("-Notes");
+        process.StartInfo.ArgumentList.Add(notes ?? string.Empty);
+
+        try
+        {
+            if (!process.Start())
+                return new ScriptInvocationResult(false, false, "Failed to start release script process.");
+
+            var stdOutTask = process.StandardOutput.ReadToEndAsync();
+            var stdErrTask = process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+            var stdOut = await stdOutTask;
+            var stdErr = await stdErrTask;
+
+            if (process.ExitCode == 0)
+                return new ScriptInvocationResult(true, false, stdOut);
+
+            var failureMessage = string.IsNullOrWhiteSpace(stdErr) ? stdOut : stdErr;
+            return new ScriptInvocationResult(false, false, failureMessage);
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            return new ScriptInvocationResult(false, true, ex.Message);
+        }
+    }
+
+    private static string? ResolveReleaseArtifactsScriptPath()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var i = 0; i < 8 && current is not null; i++)
+        {
+            var candidate = Path.Combine(current.FullName, "scripts", "Generate-ReleaseArtifacts.ps1");
+            if (File.Exists(candidate))
+                return candidate;
+
+            current = current.Parent;
+        }
+
+        return null;
+    }
+
+    private sealed record ScriptInvocationResult(bool IsSuccess, bool IsExecutableMissing, string? ErrorMessage);
 }
