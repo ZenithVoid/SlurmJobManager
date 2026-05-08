@@ -153,12 +153,12 @@ internal sealed class UpdaterRunner(UpdaterLogger logger)
                     continue;
                 }
 
-                Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+                EnsureParentDirectory(destinationPath);
 
                 if (File.Exists(destinationPath))
                 {
                     var backupPath = Path.Combine(backupRoot, relativePath);
-                    Directory.CreateDirectory(Path.GetDirectoryName(backupPath)!);
+                    EnsureParentDirectory(backupPath);
                     File.Copy(destinationPath, backupPath, overwrite: true);
                     overwrittenFiles.Add((destinationPath, backupPath));
                 }
@@ -276,5 +276,13 @@ internal sealed class UpdaterRunner(UpdaterLogger logger)
         {
             _logger.Warn($"Failed to clean temporary directory: {path}. {ex.Message}");
         }
+    }
+
+    private static void EnsureParentDirectory(string filePath)
+    {
+        var directory = Path.GetDirectoryName(filePath);
+        if (string.IsNullOrWhiteSpace(directory))
+            throw new InvalidOperationException($"Cannot resolve parent directory for path: {filePath}");
+        Directory.CreateDirectory(directory);
     }
 }

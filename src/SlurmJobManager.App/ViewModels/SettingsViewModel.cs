@@ -15,6 +15,7 @@ namespace SlurmJobManager.App.ViewModels;
 public sealed class SettingsViewModel : ViewModelBase
 {
     private const string GitHubReleasesPage = "https://github.com/ZenithVoid/SlurmJobManager/releases";
+    private static readonly TimeSpan UpdateLaunchGracePeriod = TimeSpan.FromMilliseconds(250);
 
     private readonly MainViewModel _main;
     private readonly AppPreferencesService _prefs;
@@ -401,7 +402,7 @@ public sealed class SettingsViewModel : ViewModelBase
 
         UpdateStatusMessage = L("Settings.UpdateLaunchingAndClosing");
         ToastService.Instance.Success(L("Settings.UpdateLaunchSuccess"));
-        await Task.Delay(250);
+        await Task.Delay(UpdateLaunchGracePeriod);
         Application.Current?.Dispatcher.BeginInvoke(() => Application.Current?.MainWindow?.Close());
     }
 
