@@ -334,16 +334,18 @@ public sealed class UpdateCheckService : IUpdateCheckService
                     proxyLog = "system-proxy";
                     break;
                 case UpdateProxyMode.CustomProxy:
-                    var host = (request.CustomProxyHost ?? string.Empty).Trim();
-                    if (string.IsNullOrWhiteSpace(host))
-                        throw new InvalidOperationException("Custom proxy host cannot be empty.");
-                    if (request.CustomProxyPort is null || request.CustomProxyPort < 1 || request.CustomProxyPort > 65535)
-                        throw new InvalidOperationException("Custom proxy port must be between 1 and 65535.");
+                    if (!UpdateProxyValidation.TryBuildCustomProxyUri(
+                            request.CustomProxyHost,
+                            request.CustomProxyPort,
+                            out var proxyUri,
+                            out var validationError))
+                    {
+                        throw new InvalidOperationException(validationError ?? "Custom proxy configuration is invalid.");
+                    }
 
-                    var proxyUri = BuildCustomProxyUri(host, request.CustomProxyPort.Value);
                     handler.UseProxy = true;
-                    handler.Proxy = new WebProxy(proxyUri);
-                    proxyLog = $"custom-proxy ({proxyUri.Host}:{proxyUri.Port})";
+                    handler.Proxy = new WebProxy(proxyUri!);
+                    proxyLog = $"custom-proxy ({proxyUri!.Host}:{proxyUri.Port})";
                     break;
                 default:
                     handler.UseProxy = false;
@@ -357,13 +359,5 @@ public sealed class UpdateCheckService : IUpdateCheckService
         client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("SlurmJobManager", currentVersion.ToString(3)));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return client;
-    }
-
-    private static Uri BuildCustomProxyUri(string host, int port)
-    {
-        if (Uri.TryCreate(host, UriKind.Absolute, out var absolute))
-            return new UriBuilder(absolute.Scheme, absolute.Host, port).Uri;
-
-        return new UriBuilder(Uri.UriSchemeHttp, host, port).Uri;
     }
 }

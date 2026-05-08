@@ -455,9 +455,10 @@ public sealed class SettingsViewModel : ViewModelBase
     {
         if (_prefs.UseProxyForUpdates && _prefs.UpdateProxyMode == UpdateProxyMode.CustomProxy)
         {
-            var host = (_prefs.UpdateCustomProxyHost ?? string.Empty).Trim();
-            var port = _prefs.UpdateCustomProxyPort;
-            if (string.IsNullOrWhiteSpace(host) || port is null || port < 1 || port > 65535)
+            if (!UpdateProxyValidation.TryValidateCustomProxy(
+                    _prefs.UpdateCustomProxyHost,
+                    _prefs.UpdateCustomProxyPort,
+                    out _))
             {
                 UpdateStatusMessage = L("Settings.ProxyConfigInvalid");
                 if (showToasts)
