@@ -193,7 +193,7 @@
     <sys:String x:Key="Settings.UpdateSourceFolder">Internal Folder</sys:String>
     <sys:String x:Key="Settings.UpdateSourceUnknown">Unknown</sys:String>
     <sys:String x:Key="Settings.UpdateFolderPathLabel">Internal update folder path:</sys:String>
-    <sys:String x:Key="Settings.UpdateFolderPathDesc">Folder mode requires a stable metadata file: &lt;folder&gt;/version.json with at least { &quot;version&quot;: &quot;x.y.z&quot; }. Optional fields: title, notes, publishedAt, package.</sys:String>
+    <sys:String x:Key="Settings.UpdateFolderPathDesc">Folder mode requires a stable metadata file: &lt;folder&gt;/version.json with at least { &quot;version&quot;: &quot;x.y.z&quot; }. Optional fields: title, notes, publishedAt, package. Recommended package names: SlurmJobManager-x.y.z-setup.exe or SlurmJobManager-x.y.z-win-x64.zip.</sys:String>
     <sys:String x:Key="Settings.AutoCheckUpdateLabel">Check for updates on startup</sys:String>
     <sys:String x:Key="Settings.AutoCheckUpdateDesc">Runs in background after startup and does not block the main window.</sys:String>
     <sys:String x:Key="Settings.IncludePrereleaseLabel">Include prerelease versions (GitHub only)</sys:String>
@@ -221,7 +221,7 @@
     <sys:String x:Key="Settings.UpdateLaunchingAndClosing">Updater started. Closing main app to continue update…</sys:String>
     <sys:String x:Key="Settings.UpdateLaunchFailedFormat">Failed to launch updater: {0}</sys:String>
     <sys:String x:Key="Settings.UpdateLaunchInvalidTargetFormat">Update target is invalid: {0}</sys:String>
-    <sys:String x:Key="Settings.UpdatePackageAutoSelectedFormat">Multiple packages found; using latest: {0}</sys:String>
+    <sys:String x:Key="Settings.UpdatePackageAutoSelectedFormat">Multiple packages found; using best version match: {0}</sys:String>
     <sys:String x:Key="Settings.About">About</sys:String>
     <sys:String x:Key="Settings.AppName">Slurm Job Manager</sys:String>
     <sys:String x:Key="Settings.AppDesc">A modern WPF application for submitting, monitoring, and debugging Slurm HPC jobs over SSH.</sys:String>

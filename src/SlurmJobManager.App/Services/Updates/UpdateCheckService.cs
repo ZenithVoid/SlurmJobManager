@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using SlurmJobManager.Core.Interfaces;
+using SlurmJobManager.Core.Services;
 
 namespace SlurmJobManager.App.Services.Updates;
 
@@ -12,15 +13,15 @@ public sealed class UpdateCheckService : IUpdateCheckService
     private const string GitHubRepo = "SlurmJobManager";
     private const string GitHubReleasesApi = $"https://api.github.com/repos/{GitHubOwner}/{GitHubRepo}/releases?per_page=20";
     private const string GitHubReleasesPage = $"https://github.com/{GitHubOwner}/{GitHubRepo}/releases";
-    private static readonly HttpClient HttpClient = BuildHttpClient();
-
     private readonly IApplicationVersionService _versionService;
     private readonly IAppLogger? _logger;
+    private readonly HttpClient _httpClient;
 
     public UpdateCheckService(IApplicationVersionService versionService, IAppLogger? logger = null)
     {
         _versionService = versionService ?? throw new ArgumentNullException(nameof(versionService));
         _logger = logger;
+        _httpClient = BuildHttpClient(_versionService.CurrentVersion);
     }
 
     public async Task<UpdateCheckResult> CheckForUpdatesAsync(UpdateCheckRequest request, CancellationToken cancellationToken = default)
@@ -38,7 +39,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
     {
         try
         {
-            using var response = await HttpClient.GetAsync(GitHubReleasesApi, cancellationToken);
+            using var response = await _httpClient.GetAsync(GitHubReleasesApi, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 _logger?.Warning($"GitHub update check returned HTTP {(int)response.StatusCode}.");
@@ -63,7 +64,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
                     continue;
 
                 var tag = TryGetString(release, "tag_name");
-                if (!UpdateVersionParser.TryParse(tag, out var remoteVersion))
+                if (!VersionTextParser.TryParse(tag, out var remoteVersion))
                     continue;
 
                 var releaseName = TryGetString(release, "name");
@@ -124,7 +125,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
                 return Task.FromResult(BuildFailure(UpdateSourceType.Folder, "version.json is missing required field: version.", path));
 
             var versionText = versionElement.GetString();
-            if (!UpdateVersionParser.TryParse(versionText, out var remoteVersion))
+            if (!VersionTextParser.TryParse(versionText, out var remoteVersion))
                 return Task.FromResult(BuildFailure(UpdateSourceType.Folder, "version.json contains an invalid version.", path));
 
             var title = TryGetString(root, "title");
@@ -133,7 +134,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
             _ = DateTimeOffset.TryParse(publishedAtRaw, out var publishedAt);
 
             var package = TryGetString(root, "package");
-            var target = ResolveFolderTarget(path, package);
+            var target = ResolveFolderTarget(path, package, remoteVersion);
 
             _logger?.Info($"Folder update check resolved version '{versionText}' from '{path}'.");
             return Task.FromResult(BuildSuccess(
@@ -152,7 +153,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
         }
     }
 
-    private static string? ResolveFolderTarget(string folderPath, string? package)
+    private static string? ResolveFolderTarget(string folderPath, string? package, Version remoteVersion)
     {
         if (!string.IsNullOrWhiteSpace(package))
         {
@@ -162,6 +163,10 @@ public sealed class UpdateCheckService : IUpdateCheckService
             if (File.Exists(combined))
                 return combined;
         }
+
+        var inferredPackage = UpdatePackageNaming.ResolveBestPackagePath(folderPath, remoteVersion, out _);
+        if (!string.IsNullOrWhiteSpace(inferredPackage))
+            return inferredPackage;
 
         return folderPath;
     }
@@ -212,10 +217,10 @@ public sealed class UpdateCheckService : IUpdateCheckService
         return value.GetString();
     }
 
-    private static HttpClient BuildHttpClient()
+    private static HttpClient BuildHttpClient(Version currentVersion)
     {
         var client = new HttpClient();
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("SlurmJobManager", "1.0"));
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("SlurmJobManager", currentVersion.ToString(3)));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return client;
     }

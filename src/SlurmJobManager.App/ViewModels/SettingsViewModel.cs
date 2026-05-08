@@ -40,6 +40,7 @@ public sealed class SettingsViewModel : ViewModelBase
     private bool _isCheckingUpdates;
     private bool _hasCheckedUpdates;
     private string? _lastOpenTarget;
+    private Version? _latestVersion;
 
     public SettingsViewModel(
         MainViewModel main,
@@ -345,6 +346,7 @@ public sealed class SettingsViewModel : ViewModelBase
             ? L("Settings.UpdateSourceGitHub")
             : L("Settings.UpdateSourceFolder");
         LatestVersionDisplay = result.LatestVersionDisplay ?? "-";
+        _latestVersion = result.LatestVersion;
         ReleaseTitle = string.IsNullOrWhiteSpace(result.ReleaseTitle) ? "-" : result.ReleaseTitle;
         ReleasePublishedAt = result.PublishedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-";
         ReleaseNotes = string.IsNullOrWhiteSpace(result.ReleaseNotes) ? string.Empty : result.ReleaseNotes;
@@ -353,6 +355,7 @@ public sealed class SettingsViewModel : ViewModelBase
         if (!result.IsSuccess)
         {
             HasUpdate = false;
+            _latestVersion = null;
             _hasCheckedUpdates = true;
             UpdateStatusMessage = string.Format(L("Settings.UpdateCheckFailedFormat"), result.ErrorMessage ?? L("Settings.UnknownError"));
             if (showToasts)
@@ -387,7 +390,7 @@ public sealed class SettingsViewModel : ViewModelBase
 
     private async Task LaunchUpdateAsync()
     {
-        if (!TryResolveLocalUpdatePackage(_lastOpenTarget, out var packagePath, out var packageError, out var selectionMessage))
+        if (!TryResolveLocalUpdatePackage(_lastOpenTarget, _latestVersion, out var packagePath, out var packageError, out var selectionMessage))
         {
             _logger?.Warning($"Update launch aborted because target is invalid. Detail={packageError}");
             var message = string.Format(L("Settings.UpdateLaunchInvalidTargetFormat"), packageError ?? L("Settings.UnknownError"));
@@ -403,6 +406,7 @@ public sealed class SettingsViewModel : ViewModelBase
                 packagePath!,
                 restartMainApplication: true,
                 restartArguments: null,
+                targetVersionDisplay: _latestVersion?.ToString(3),
                 out var request,
                 out var createError))
         {
@@ -603,6 +607,7 @@ public sealed class SettingsViewModel : ViewModelBase
 
     private static bool TryResolveLocalUpdatePackage(
         string? openTarget,
+        Version? preferredVersion,
         out string? packagePath,
         out string? errorMessage,
         out string? selectionMessage)
@@ -627,6 +632,12 @@ public sealed class SettingsViewModel : ViewModelBase
 
         if (File.Exists(target))
         {
+            if (!UpdatePackageNaming.IsSupportedPackage(target))
+            {
+                errorMessage = "The update target file is unsupported. Only .zip/.exe/.msi are supported.";
+                return false;
+            }
+
             packagePath = target;
             return true;
         }
@@ -637,26 +648,14 @@ public sealed class SettingsViewModel : ViewModelBase
             return false;
         }
 
-        var candidates = Directory
-            .EnumerateFiles(target)
-            .Where(path =>
-            {
-                var ext = Path.GetExtension(path);
-                return string.Equals(ext, ".zip", StringComparison.OrdinalIgnoreCase)
-                       || string.Equals(ext, ".exe", StringComparison.OrdinalIgnoreCase)
-                       || string.Equals(ext, ".msi", StringComparison.OrdinalIgnoreCase);
-            })
-            .OrderByDescending(File.GetLastWriteTimeUtc)
-            .ToList();
-
-        if (candidates.Count == 0)
+        packagePath = UpdatePackageNaming.ResolveBestPackagePath(target, preferredVersion, out var hasMultipleCandidates);
+        if (string.IsNullOrWhiteSpace(packagePath))
         {
             errorMessage = "No supported update package (.zip/.exe/.msi) was found in the update target directory.";
             return false;
         }
 
-        packagePath = candidates[0];
-        if (candidates.Count > 1)
+        if (hasMultipleCandidates)
             selectionMessage = string.Format(L("Settings.UpdatePackageAutoSelectedFormat"), Path.GetFileName(packagePath));
         return true;
     }

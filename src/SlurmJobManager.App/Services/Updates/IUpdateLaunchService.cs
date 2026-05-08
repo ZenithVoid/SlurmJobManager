@@ -8,6 +8,7 @@ public interface IUpdateLaunchService
         string packagePath,
         bool restartMainApplication,
         string? restartArguments,
+        string? targetVersionDisplay,
         out UpdaterLaunchRequest? request,
         out string? errorMessage);
 

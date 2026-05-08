@@ -46,8 +46,9 @@ public partial class App : Application
         var prefs = new AppPreferencesService();
         ILogFileService logFileService = new LogFileService();
         IApplicationVersionService versionService = new ApplicationVersionService();
+        _logger?.Info($"SlurmJobManager version: {versionService.CurrentVersionDisplay} (Comparable={versionService.CurrentVersion})");
         IUpdateCheckService updateCheckService = new UpdateCheckService(versionService, _logger);
-        IUpdateLaunchService updateLaunchService = new UpdateLaunchService();
+        IUpdateLaunchService updateLaunchService = new UpdateLaunchService(versionService);
 
         // Infrastructure services (one SSH client shared across all consumers)
         var ssh      = new SshClientService(settings, _logger);

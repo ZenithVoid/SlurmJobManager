@@ -17,7 +17,9 @@ public sealed record UpdaterLaunchRequest(
     UpdatePackageType PackageType,
     bool RestartMainApplication,
     string? RestartArguments,
-    string? LogFilePath);
+    string? LogFilePath,
+    string? CurrentVersionDisplay,
+    string? TargetVersionDisplay);
 
 public static class UpdaterLaunchContract
 {

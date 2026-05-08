@@ -193,7 +193,7 @@
     <sys:String x:Key="Settings.UpdateSourceFolder">内网目录</sys:String>
     <sys:String x:Key="Settings.UpdateSourceUnknown">未知</sys:String>
     <sys:String x:Key="Settings.UpdateFolderPathLabel">内网更新目录路径：</sys:String>
-    <sys:String x:Key="Settings.UpdateFolderPathDesc">内网目录模式要求元数据文件：&lt;目录&gt;/version.json，至少包含 { &quot;version&quot;: &quot;x.y.z&quot; }。可选字段：title、notes、publishedAt、package。</sys:String>
+    <sys:String x:Key="Settings.UpdateFolderPathDesc">内网目录模式要求元数据文件：&lt;目录&gt;/version.json，至少包含 { &quot;version&quot;: &quot;x.y.z&quot; }。可选字段：title、notes、publishedAt、package。建议更新包命名：SlurmJobManager-x.y.z-setup.exe 或 SlurmJobManager-x.y.z-win-x64.zip。</sys:String>
     <sys:String x:Key="Settings.AutoCheckUpdateLabel">启动时自动检查更新</sys:String>
     <sys:String x:Key="Settings.AutoCheckUpdateDesc">在应用启动后后台执行，不阻塞主界面。</sys:String>
     <sys:String x:Key="Settings.IncludePrereleaseLabel">包含预发布版本（仅 GitHub）</sys:String>
@@ -221,7 +221,7 @@
     <sys:String x:Key="Settings.UpdateLaunchingAndClosing">更新器已启动，正在关闭主程序以继续更新…</sys:String>
     <sys:String x:Key="Settings.UpdateLaunchFailedFormat">启动更新器失败：{0}</sys:String>
     <sys:String x:Key="Settings.UpdateLaunchInvalidTargetFormat">更新目标无效：{0}</sys:String>
-    <sys:String x:Key="Settings.UpdatePackageAutoSelectedFormat">检测到多个更新包，已使用最新文件：{0}</sys:String>
+    <sys:String x:Key="Settings.UpdatePackageAutoSelectedFormat">检测到多个更新包，已使用版本匹配最佳的文件：{0}</sys:String>
     <sys:String x:Key="Settings.About">关于</sys:String>
     <sys:String x:Key="Settings.AppName">Slurm 作业管理器</sys:String>
     <sys:String x:Key="Settings.AppDesc">一款用于通过 SSH 提交、监控和调试 Slurm HPC 作业的现代 WPF 应用。</sys:String>
