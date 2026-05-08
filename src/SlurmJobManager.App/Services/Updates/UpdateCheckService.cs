@@ -231,7 +231,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
     {
         var stopwatch = Stopwatch.StartNew();
         var path = (request.FolderPath ?? string.Empty).Trim();
-        var effectiveProxyPolicy = $"{DescribeEffectiveProxyPolicy(request)}; local-folder source does not use HTTP proxy.";
+        var effectiveProxyPolicy = DescribeEffectiveProxyPolicy(request);
 
         if (string.IsNullOrWhiteSpace(path))
         {

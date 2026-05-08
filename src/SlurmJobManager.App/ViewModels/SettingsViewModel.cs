@@ -29,6 +29,7 @@ public sealed class SettingsViewModel : ViewModelBase
 
     private const string GitHubReleasesPage = "https://github.com/ZenithVoid/SlurmJobManager/releases";
     private const int ReleaseScriptSearchMaxDepth = 8;
+    private const long SlowConnectionThresholdMs = 5000;
     private static readonly TimeSpan UpdateLaunchGracePeriod = TimeSpan.FromMilliseconds(250);
 
     private readonly MainViewModel _main;
@@ -641,7 +642,7 @@ public sealed class SettingsViewModel : ViewModelBase
         _logger?.Info(
             $"Update connectivity test completed. Success={result.IsSuccess}, Source={result.SourceType}, Target={result.Target}, ProxyPolicy={result.EffectiveProxyPolicy}, DurationMs={result.DurationMs}");
 
-        var isSlow = result.IsSuccess && result.DurationMs >= 5000;
+        var isSlow = result.IsSuccess && result.DurationMs >= SlowConnectionThresholdMs;
         _updateConnectivityStatus = result.IsSuccess
             ? (isSlow ? ConnectivityTestStatus.Warning : ConnectivityTestStatus.Success)
             : ConnectivityTestStatus.Failure;
@@ -651,7 +652,9 @@ public sealed class SettingsViewModel : ViewModelBase
             ? $"{result.Summary} {L("Settings.UpdateConnectionSlowWarning")}"
             : result.Summary;
         UpdateConnectionTestTarget = result.Target;
-        UpdateConnectionTestProxyPolicy = result.EffectiveProxyPolicy;
+        UpdateConnectionTestProxyPolicy = result.SourceType == UpdateSourceType.Folder
+            ? $"{result.EffectiveProxyPolicy}; {L("Settings.UpdateConnectionFolderProxyNote")}"
+            : result.EffectiveProxyPolicy;
         UpdateConnectionTestDuration = $"{result.DurationMs} ms";
         UpdateConnectionTestErrorSummary = result.ErrorSummary ?? string.Empty;
         UpdateConnectionTestSuggestion = result.Suggestion ?? string.Empty;

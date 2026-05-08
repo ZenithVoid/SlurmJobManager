@@ -242,6 +242,7 @@
     <sys:String x:Key="Settings.UpdateConnectionTargetLabel">Test target: </sys:String>
     <sys:String x:Key="Settings.UpdateConnectionProxyLabel">Effective proxy policy: </sys:String>
     <sys:String x:Key="Settings.UpdateConnectionDurationLabel">Duration: </sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionFolderProxyNote">folder source uses local file access and does not send HTTP requests.</sys:String>
     <sys:String x:Key="Settings.UpdateConnectionTestNotRun">Not tested yet.</sys:String>
     <sys:String x:Key="Settings.UpdateConnectionTesting">Testing connectivity…</sys:String>
     <sys:String x:Key="Settings.UpdateConnectionTestFailedFormat">Connectivity test failed: {0}</sys:String>
