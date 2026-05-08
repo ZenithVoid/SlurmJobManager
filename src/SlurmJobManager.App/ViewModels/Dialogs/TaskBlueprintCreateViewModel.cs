@@ -450,7 +450,7 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
 
     private static string? GetFirstProgramPath(TaskBlueprintRecord? record)
         => record?.TaskUnits
-            .SelectMany(x => x.Programs)
+            .SelectMany(x => x.ProgramEntries)
             .Select(x => x.ProgramPath?.Trim())
             .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
 
@@ -473,20 +473,14 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
             .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
 
     private static string? GetFirstNodes(TaskBlueprintRecord? record)
-    {
-        var nodes = record?.TaskUnits
-            .Select(x => x.SbatchOptions?.Nodes)
-            .FirstOrDefault(x => x.HasValue && x.Value > 0);
-        return nodes is { HasValue: true } ? nodes.Value.ToString() : null;
-    }
+        => record?.TaskUnits
+            .Select(x => x.SbatchOptions?.Nodes?.Trim())
+            .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x) && x != "0");
 
     private static string? GetFirstCpuCount(TaskBlueprintRecord? record)
-    {
-        var cpus = record?.TaskUnits
-            .Select(x => x.SbatchOptions?.CpuCount)
-            .FirstOrDefault(x => x.HasValue && x.Value > 0);
-        return cpus is { HasValue: true } ? cpus.Value.ToString() : null;
-    }
+        => record?.TaskUnits
+            .Select(x => x.SbatchOptions?.CpuCount?.Trim())
+            .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x) && x != "0");
 
     private static string? GetFirstAccount(TaskBlueprintRecord? record)
         => record?.TaskUnits
