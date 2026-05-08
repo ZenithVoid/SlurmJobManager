@@ -4,6 +4,8 @@ namespace SlurmJobManager.App.Services.Updates;
 
 public sealed class ApplicationVersionService : IApplicationVersionService
 {
+    private static readonly Version DefaultVersion = new(1, 0, 0, 0);
+
     public Version CurrentVersion { get; }
     public string CurrentVersionDisplay { get; }
 
@@ -14,7 +16,7 @@ public sealed class ApplicationVersionService : IApplicationVersionService
         var fallback = assembly.GetName().Version;
         var parsed = UpdateVersionParser.TryParse(informational, out var infoVersion)
             ? infoVersion
-            : fallback ?? new Version(1, 0, 0, 0);
+            : fallback ?? DefaultVersion;
 
         CurrentVersion = parsed;
         CurrentVersionDisplay = informational?.Trim() is { Length: > 0 } nonEmpty
