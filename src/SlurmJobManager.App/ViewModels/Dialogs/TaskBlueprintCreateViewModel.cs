@@ -338,7 +338,7 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
         IsBusy = true;
         try
         {
-                var blueprint = await _blueprintService.LoadAsync(SelectedBlueprint.BlueprintId, _scope, ct);
+            var blueprint = await _blueprintService.LoadAsync(SelectedBlueprint.BlueprintId, _scope, ct);
             if (blueprint == null)
             {
                 SetStatus("Task.BlueprintLoadMissing", "WarningTextStyle");
