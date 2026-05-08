@@ -63,7 +63,7 @@ public partial class App : Application
 
         // ViewModels
         var connectionVm = new ConnectionViewModel(ssh, profileStore, recentConnectionService);
-        var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints, lastTaskContextService);
+        var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints, prefs, lastTaskContextService);
         var monitorVm    = new MonitorViewModel(slurm, settings, _logger, connectionVm, notificationService);
         var logViewerVm  = new LogViewerViewModel(logChunk, _logger);
         var consoleVm    = new ConsoleViewModel(ssh, _logger, connectionVm);

@@ -74,6 +74,26 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
+    public string DefaultRemotePickerDirectory
+    {
+        get => _prefs.DefaultRemotePickerDirectory;
+        set
+        {
+            if (_prefs.TrySetDefaultRemotePickerDirectory(value, out var saveError))
+            {
+                ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+            }
+            else
+            {
+                ToastService.Instance.Error(string.Format(
+                    L("Settings.AutoSaveFailedFormat"),
+                    saveError ?? L("Settings.UnknownError")));
+            }
+
+            OnPropertyChanged();
+        }
+    }
+
     // ── Theme ─────────────────────────────────────────────────────────────
 
     public bool IsDarkTheme

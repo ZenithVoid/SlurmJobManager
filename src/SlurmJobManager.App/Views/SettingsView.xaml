@@ -93,6 +93,16 @@
                                Style="{StaticResource MutedTextStyle}"
                                Margin="0,2,0,0"
                                TextWrapping="Wrap" />
+
+                    <TextBlock Text="{DynamicResource Settings.DefaultRemotePickerDirectoryLabel}"
+                               Style="{StaticResource FieldLabelStyle}"
+                               Margin="0,10,0,2" />
+                    <TextBox Text="{Binding DefaultRemotePickerDirectory, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                             ToolTip="{DynamicResource Settings.DefaultRemotePickerDirectoryDesc}" />
+                    <TextBlock Text="{DynamicResource Settings.DefaultRemotePickerDirectoryDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               Margin="0,4,0,0"
+                               TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 

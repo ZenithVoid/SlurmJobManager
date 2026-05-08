@@ -29,6 +29,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private readonly ISlurmService _slurm;
     private readonly ITaskStorageService _storage;
     private readonly ITaskBlueprintService _blueprints;
+    private readonly AppPreferencesService _prefs;
     private readonly ILastTaskContextService? _lastTaskContextService;
     private Func<string, Task<bool>>? _openInConsoleAsync;
 
@@ -497,6 +498,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         ISlurmService slurm,
         ITaskStorageService storage,
         ITaskBlueprintService blueprints,
+        AppPreferencesService prefs,
         ILastTaskContextService? lastTaskContextService = null,
         Func<string, Task<bool>>? openInConsoleAsync = null)
     {
@@ -504,6 +506,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         _slurm   = slurm   ?? throw new ArgumentNullException(nameof(slurm));
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _blueprints = blueprints ?? throw new ArgumentNullException(nameof(blueprints));
+        _prefs = prefs ?? throw new ArgumentNullException(nameof(prefs));
         _lastTaskContextService = lastTaskContextService;
         _openInConsoleAsync = openInConsoleAsync;
 
@@ -885,7 +888,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         if (string.IsNullOrEmpty(homeDir)) homeDir = "/home";
 
-        var vm  = new RemoteDirectoryPickerViewModel(_ssh, homeDir);
+        var vm  = new RemoteDirectoryPickerViewModel(_ssh, ResolveRemotePickerStartDirectory(homeDir));
         var win = new RemoteDirectoryPickerView { DataContext = vm };
 
         if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
@@ -1933,6 +1936,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         var dlgVm = new CommandBuilderViewModel(
             _ssh,
+            _prefs,
             taskId:         TaskId,
             remoteWorkDir:  effectiveWorkDir,
             initialCommands: unit.Commands.Select(c => c.ToModel()),
@@ -3144,6 +3148,18 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private static string L(string key)
         => Application.Current?.TryFindResource(key) as string ?? key;
 
+    private string ResolveRemotePickerStartDirectory(string? fallbackDirectory = null)
+    {
+        var configured = _prefs.DefaultRemotePickerDirectory;
+        if (!string.IsNullOrWhiteSpace(configured))
+            return NormalizeRemotePath(configured);
+
+        if (!string.IsNullOrWhiteSpace(fallbackDirectory))
+            return NormalizeRemotePath(fallbackDirectory);
+
+        return "/gpfs/";
+    }
+
     /// <summary>
     /// Formats task-context values for tooltip display, returning a localized placeholder when empty.
     /// </summary>
@@ -3441,7 +3457,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 return false;
             }
 
-            var editorViewModel = new RemoteFileEditorViewModel(_ssh, normalizedPath, _homeDirectory);
+            var editorViewModel = new RemoteFileEditorViewModel(_ssh, _prefs, normalizedPath, _homeDirectory);
             var editorWindow = new RemoteFileEditorView { DataContext = editorViewModel };
             if (Application.Current.MainWindow is { } mainWindow)
                 editorWindow.Owner = mainWindow;
