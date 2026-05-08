@@ -2414,7 +2414,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         Partition = source?.Partition ?? string.Empty,
         Nodes = source?.Nodes ?? "1",
         CpuCount = source?.CpuCount ?? string.Empty,
-        TimeLimit = source?.TimeLimit ?? "99-00:00:00",
+        TimeLimit = source?.TimeLimit ?? string.Empty,
         Account = source?.Account ?? "preproc",
         Exclusive = source?.Exclusive ?? false,
     };
@@ -3684,7 +3684,6 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         "#SBATCH --chdir={{WORK_DIR}}\n" +
         "#SBATCH --ntasks=1\n" +
         "#SBATCH --cpus-per-task=1\n" +
-        "#SBATCH --time=01:00:00\n" +
         "\n" +
         "echo \"Starting job {{JOB_NAME}} at $(date)\"\n" +
         "{{APP_PATH}} {{PARAM_FILE}}\n" +

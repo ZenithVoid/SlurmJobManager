@@ -58,7 +58,7 @@ public class SbatchJobOptions
     public string Partition { get; set; } = string.Empty;
     public string Nodes { get; set; } = "1";
     public string CpuCount { get; set; } = string.Empty;
-    public string TimeLimit { get; set; } = "99-00:00:00";
+    public string TimeLimit { get; set; } = string.Empty;
     public string Account { get; set; } = "preproc";
     public bool Exclusive { get; set; }
 }
