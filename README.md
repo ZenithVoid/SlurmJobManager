@@ -10,11 +10,11 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 
 1. 先发布主程序（示例）：
 
-   `dotnet publish --nologo /home/runner/work/SlurmJobManager/SlurmJobManager/src/SlurmJobManager.App/SlurmJobManager.App.csproj -c Release -r win-x64`
+   `dotnet publish --nologo ./src/SlurmJobManager.App/SlurmJobManager.App.csproj -c Release -r win-x64`
 
 2. 生成更新产物（zip + latest.json）：
 
-   `pwsh /home/runner/work/SlurmJobManager/SlurmJobManager/scripts/Generate-ReleaseArtifacts.ps1 -PublishDirectory <publish-output-dir> -OutputDirectory <release-output-dir> -RuntimeIdentifier win-x64 -Notes "release notes"`
+   `pwsh ./scripts/Generate-ReleaseArtifacts.ps1 -PublishDirectory <publish-output-dir> -OutputDirectory <release-output-dir> -RuntimeIdentifier win-x64 -Notes "release notes"`
 
 脚本输出目录包含：
 - `SlurmJobManager-<version>-<rid>.zip`
