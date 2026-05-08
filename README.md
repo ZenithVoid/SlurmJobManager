@@ -4,6 +4,14 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 
 ---
 
+## Copyright & Third-Party Notices
+
+- Product copyright statement: [`COPYRIGHT`](./COPYRIGHT)
+- Third-party dependency notices: [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)
+- Source license: [`LICENSE`](./LICENSE)
+
+---
+
 ## 本次修复说明（UI可用性修复）
 
 ### 1. 自定义应用内标题栏
@@ -720,4 +728,3 @@ Extra rows in the **Extra Parameters** grid are substituted too.
 - `sacct` integration for completed job history and accounting data
 - Per-cluster profile theming/presets
 - Telemetry hooks for performance diagnostics
-

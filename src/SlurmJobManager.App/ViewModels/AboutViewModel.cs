@@ -12,6 +12,8 @@ namespace SlurmJobManager.App.ViewModels;
 public sealed class AboutViewModel : ViewModelBase
 {
     private const string RepositoryUrl = "https://github.com/ZenithVoid/SlurmJobManager";
+    private const string CopyrightNoticeFileName = "COPYRIGHT";
+    private const string ThirdPartyNoticesFileName = "THIRD_PARTY_NOTICES.md";
     private const string MaintainerFallback = "ZenithVoid";
     private const string ProductNameFallback = "Slurm Job Manager";
     private readonly Action _checkUpdatesAction;
@@ -36,10 +38,14 @@ public sealed class AboutViewModel : ViewModelBase
         RepositoryAddress = RepositoryUrl;
         LicenseDisplay = "Apache License 2.0";
         LogsDirectory = LocalDataPaths.LogsDirectory;
+        CopyrightNoticeFilePath = Path.Combine(AppContext.BaseDirectory, CopyrightNoticeFileName);
+        ThirdPartyNoticesFilePath = Path.Combine(AppContext.BaseDirectory, ThirdPartyNoticesFileName);
 
         OpenRepositoryCommand = new RelayCommand(() => OpenPathOrUrl(RepositoryAddress));
         OpenLogsDirectoryCommand = new RelayCommand(OpenLogsDirectory);
         CheckUpdatesCommand = new RelayCommand(() => _checkUpdatesAction());
+        OpenCopyrightNoticeCommand = new RelayCommand(() => OpenBundledDocument(CopyrightNoticeFilePath, "About.CopyrightNoticeMissingFormat"));
+        OpenThirdPartyNoticesCommand = new RelayCommand(() => OpenBundledDocument(ThirdPartyNoticesFilePath, "About.ThirdPartyNoticesMissingFormat"));
     }
 
     public string ProductName { get; }
@@ -50,10 +56,14 @@ public sealed class AboutViewModel : ViewModelBase
     public string RepositoryAddress { get; }
     public string LicenseDisplay { get; }
     public string LogsDirectory { get; }
+    public string CopyrightNoticeFilePath { get; }
+    public string ThirdPartyNoticesFilePath { get; }
 
     public ICommand OpenRepositoryCommand { get; }
     public ICommand OpenLogsDirectoryCommand { get; }
     public ICommand CheckUpdatesCommand { get; }
+    public ICommand OpenCopyrightNoticeCommand { get; }
+    public ICommand OpenThirdPartyNoticesCommand { get; }
 
     private void OpenLogsDirectory()
     {
@@ -80,6 +90,24 @@ public sealed class AboutViewModel : ViewModelBase
 
             if (started == null)
                 ToastService.Instance.Error(L("About.OpenTargetFailed"));
+        }
+        catch (Exception ex)
+        {
+            ToastService.Instance.Error(string.Format(L("About.OpenTargetFailedFormat"), ex.Message));
+        }
+    }
+
+    private static void OpenBundledDocument(string path, string missingMessageKey)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                ToastService.Instance.Error(string.Format(L(missingMessageKey), path));
+                return;
+            }
+
+            OpenPathOrUrl(path);
         }
         catch (Exception ex)
         {

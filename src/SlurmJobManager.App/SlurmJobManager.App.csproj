@@ -25,6 +25,11 @@
     <Resource Include="Assets\AppIcon\server-palm.ico" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\COPYRIGHT" Link="COPYRIGHT" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <Target Name="CopyUpdaterArtifacts" AfterTargets="Build">
     <MSBuild Projects="..\SlurmJobManager.Updater\SlurmJobManager.Updater.csproj"
              Targets="Build"

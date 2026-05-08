@@ -6,6 +6,6 @@
     <InformationalVersion>$(Version)</InformationalVersion>
     <Product>Slurm Job Manager</Product>
     <Company>ZenithVoid</Company>
-    <Copyright>© ZenithVoid</Copyright>
+    <Copyright>© 2026 ZenithVoid. All rights reserved.</Copyright>
   </PropertyGroup>
 </Project>
