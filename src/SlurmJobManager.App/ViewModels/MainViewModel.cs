@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.App.Services;
+using SlurmJobManager.App.Services.Updates;
 
 namespace SlurmJobManager.App.ViewModels;
 
@@ -129,7 +130,9 @@ public sealed class MainViewModel : ViewModelBase
         MonitorViewModel    monitor,
         LogViewerViewModel  logViewer,
         ConsoleViewModel    console,
-        AppPreferencesService prefs)
+        AppPreferencesService prefs,
+        IUpdateCheckService updateCheckService,
+        IApplicationVersionService versionService)
     {
         Connection = connection ?? throw new ArgumentNullException(nameof(connection));
         TaskEditor = taskEditor ?? throw new ArgumentNullException(nameof(taskEditor));
@@ -155,7 +158,7 @@ public sealed class MainViewModel : ViewModelBase
         _activeNavItem = NavItems[0];
 
         Dashboard = new DashboardViewModel(connection, monitor, tab => ActiveTab = tab);
-        Settings  = new SettingsViewModel(this, prefs);
+        Settings  = new SettingsViewModel(this, prefs, updateCheckService, versionService);
         TaskEditor.SetOpenInConsoleHandler(OpenConsoleAtDirectoryAsync);
         Monitor.SetDiagnosticNavigationHandlers(
             row => row != null && TaskEditor.LastJobId.HasValue && TaskEditor.LastJobId.Value == row.JobId

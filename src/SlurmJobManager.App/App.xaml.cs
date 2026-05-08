@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Threading;
 using SlurmJobManager.App.Services;
 using SlurmJobManager.App.Services.CrashHandling;
+using SlurmJobManager.App.Services.Updates;
 using SlurmJobManager.App.Services.Validation;
 using SlurmJobManager.App.ViewModels;
 using SlurmJobManager.Core.Interfaces;
@@ -42,6 +43,8 @@ public partial class App : Application
 
         // App-level user preferences (auto-connect on startup, etc.)
         var prefs = new AppPreferencesService();
+        IApplicationVersionService versionService = new ApplicationVersionService();
+        IUpdateCheckService updateCheckService = new UpdateCheckService(versionService);
 
         // Infrastructure services (one SSH client shared across all consumers)
         var ssh      = new SshClientService(settings);
@@ -76,7 +79,7 @@ public partial class App : Application
             _ = HandleConnectionEstablishedAsync(connectionVm, taskEditorVm, prefs, username);
         };
 
-        _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm, prefs);
+        _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm, prefs, updateCheckService, versionService);
 
         // Default locale: zh-CN (loaded regardless of system language)
         _mainVm.ApplyLocale("zh-CN");
@@ -84,6 +87,8 @@ public partial class App : Application
         var mainWindow = new MainWindow { DataContext = _mainVm };
         mainWindow.Closing += OnMainWindowClosing;
         mainWindow.Show();
+
+        _ = _mainVm.Settings.TryAutoCheckUpdatesOnStartupAsync();
 
         // Auto-load saved profile on startup (async, does not block UI)
         if (profileStore != null)

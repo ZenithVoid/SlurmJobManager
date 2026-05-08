@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SlurmJobManager.Core.Services;
+using SlurmJobManager.App.Services.Updates;
 
 namespace SlurmJobManager.App.Services;
 
@@ -119,6 +120,114 @@ public sealed class AppPreferencesService
         return LastSaveSucceeded;
     }
 
+    public UpdateSourceType UpdateSourceType
+    {
+        get => ParseUpdateSourceType(_dto.UpdateSourceType);
+        set
+        {
+            var serialized = value.ToString();
+            if (string.Equals(_dto.UpdateSourceType, serialized, StringComparison.Ordinal))
+                return;
+
+            _dto = _dto with { UpdateSourceType = serialized };
+            Save();
+        }
+    }
+
+    public bool TrySetUpdateSourceType(UpdateSourceType value, out string? error)
+    {
+        var serialized = value.ToString();
+        if (!string.Equals(_dto.UpdateSourceType, serialized, StringComparison.Ordinal))
+        {
+            _dto = _dto with { UpdateSourceType = serialized };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
+    public string UpdateFolderPath => NormalizeFolderPath(_dto.UpdateFolderPath);
+
+    public bool TrySetUpdateFolderPath(string? value, out string? error)
+    {
+        var normalized = NormalizeFolderPath(value);
+        if (!string.Equals(_dto.UpdateFolderPath, normalized, StringComparison.Ordinal))
+        {
+            _dto = _dto with { UpdateFolderPath = normalized };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
+    public bool AutoCheckForUpdatesOnStartup
+    {
+        get => _dto.AutoCheckForUpdatesOnStartup;
+        set
+        {
+            if (_dto.AutoCheckForUpdatesOnStartup == value) return;
+            _dto = _dto with { AutoCheckForUpdatesOnStartup = value };
+            Save();
+        }
+    }
+
+    public bool TrySetAutoCheckForUpdatesOnStartup(bool value, out string? error)
+    {
+        if (_dto.AutoCheckForUpdatesOnStartup != value)
+        {
+            _dto = _dto with { AutoCheckForUpdatesOnStartup = value };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
+    public bool IncludePrereleaseUpdates
+    {
+        get => _dto.IncludePrereleaseUpdates;
+        set
+        {
+            if (_dto.IncludePrereleaseUpdates == value) return;
+            _dto = _dto with { IncludePrereleaseUpdates = value };
+            Save();
+        }
+    }
+
+    public bool TrySetIncludePrereleaseUpdates(bool value, out string? error)
+    {
+        if (_dto.IncludePrereleaseUpdates != value)
+        {
+            _dto = _dto with { IncludePrereleaseUpdates = value };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
     // ── Persistence ──────────────────────────────────────────────────────────
 
     private AppPrefsDto Load()
@@ -160,7 +269,11 @@ public sealed class AppPreferencesService
     private sealed record AppPrefsDto(
         bool AutoConnectOnStartup = false,
         bool AutoRestoreLastTaskOnLogin = false,
-        string? DefaultRemotePickerDirectory = DefaultRemotePickerDirectoryFallback);
+        string? DefaultRemotePickerDirectory = DefaultRemotePickerDirectoryFallback,
+        string UpdateSourceType = nameof(UpdateSourceType.GitHub),
+        string? UpdateFolderPath = "",
+        bool AutoCheckForUpdatesOnStartup = false,
+        bool IncludePrereleaseUpdates = false);
 
     private static string NormalizeRemoteDirectory(string? value)
     {
@@ -180,4 +293,12 @@ public sealed class AppPreferencesService
 
         return $"{trimmed.TrimEnd('/')}/";
     }
+
+    private static string NormalizeFolderPath(string? value)
+        => (value ?? string.Empty).Trim();
+
+    private static UpdateSourceType ParseUpdateSourceType(string? value)
+        => Enum.TryParse<UpdateSourceType>(value, ignoreCase: true, out var parsed)
+            ? parsed
+            : UpdateSourceType.GitHub;
 }
