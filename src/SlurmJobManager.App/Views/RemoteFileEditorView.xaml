@@ -90,10 +90,13 @@
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                FontSize="13" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding DisplayRemotePath}"
-                                Foreground="{DynamicResource TextMutedBrush}"
-                                FontFamily="Consolas" FontSize="11"
-                                ToolTip="{Binding RemotePath}"
-                                TextTrimming="CharacterEllipsis" />
+                                 Foreground="{DynamicResource TextMutedBrush}"
+                                 FontFamily="Consolas" FontSize="11"
+                                 ToolTip="{Binding RemotePath}"
+                                 TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding EditorStateText}"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               FontSize="11" />
                     <TextBlock Text="{Binding LargeFileModeText}"
                                Foreground="{DynamicResource AccentYellowBrush}"
                                FontSize="11"
@@ -326,10 +329,17 @@
                         Click="BtnSave_Click"
                         Style="{StaticResource AccentButtonStyle}"
                         Padding="12,5" Margin="0,0,6,0" />
-                <Button Grid.Column="2" Content="{DynamicResource RemoteEditor.Close}"
-                        Style="{StaticResource NeutralButtonStyle}"
-                        Padding="12,5"
-                        Click="BtnClose_Click" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Content="{DynamicResource RemoteEditor.Reload}"
+                            Style="{StaticResource NeutralButtonStyle}"
+                            Padding="12,5"
+                            Margin="0,0,6,0"
+                            Click="BtnReload_Click" />
+                    <Button Content="{DynamicResource RemoteEditor.Close}"
+                            Style="{StaticResource NeutralButtonStyle}"
+                            Padding="12,5"
+                            Click="BtnClose_Click" />
+                </StackPanel>
             </Grid>
         </Grid>
     </Grid>

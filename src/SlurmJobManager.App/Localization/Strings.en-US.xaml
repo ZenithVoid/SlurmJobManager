@@ -831,6 +831,14 @@
     <sys:String x:Key="RemoteEditor.Saving">⏳ Saving…</sys:String>
     <sys:String x:Key="RemoteEditor.SavingLarge">⏳ Saving large file…</sys:String>
     <sys:String x:Key="RemoteEditor.Save">💾 Save</sys:String>
+    <sys:String x:Key="RemoteEditor.Reload">Reload</sys:String>
+    <sys:String x:Key="RemoteEditor.ReloadTitle">Reload File</sys:String>
+    <sys:String x:Key="RemoteEditor.ReloadUnsavedPrompt">There are unsaved changes. Reloading will discard current edits. Continue?</sys:String>
+    <sys:String x:Key="RemoteEditor.ReloadNeedsConfirm">Unsaved changes detected. Confirm before reloading.</sys:String>
+    <sys:String x:Key="RemoteEditor.Reloaded">Reloaded from remote file.</sys:String>
+    <sys:String x:Key="RemoteEditor.SaveBeforeLoadBlocked">Cannot save before the remote file is loaded successfully.</sys:String>
+    <sys:String x:Key="RemoteEditor.EmptyOverwriteTitle">Confirm Empty Overwrite</sys:String>
+    <sys:String x:Key="RemoteEditor.EmptyOverwriteConfirm">You are about to overwrite a non-empty file ({0}) with empty content. Continue?</sys:String>
     <sys:String x:Key="RemoteEditor.VeryLargeSaveTitle">Confirm Save</sys:String>
     <sys:String x:Key="RemoteEditor.VeryLargeSaveConfirm">You are about to overwrite a very large file ({0}). Continue saving?</sys:String>
     <sys:String x:Key="RemoteEditor.SaveCancelled">Save cancelled.</sys:String>
@@ -843,9 +851,15 @@
     <sys:String x:Key="RemoteEditor.StructuredUnavailable">Structured editor is not available for this file.</sys:String>
     <sys:String x:Key="RemoteEditor.StructuredSaveFailed">Failed to serialize structured parameters.</sys:String>
     <sys:String x:Key="RemoteEditor.StructuredSaveFailedFormat">Failed to serialize structured parameters: {0}</sys:String>
+    <sys:String x:Key="RemoteEditor.StructuredParseFromTextFailed">Current text cannot be represented safely in structured mode. Continue editing in text mode.</sys:String>
+    <sys:String x:Key="RemoteEditor.StructuredModeSynced">Structured mode is now synchronized with current text.</sys:String>
+    <sys:String x:Key="RemoteEditor.TextModeSynced">Text mode now reflects current structured values.</sys:String>
     <sys:String x:Key="RemoteEditor.BinaryRejected">Binary-like file detected, opening as text is blocked.</sys:String>
     <sys:String x:Key="RemoteEditor.EncodingUnknown">Encoding cannot be identified reliably, opened as UTF-8.</sys:String>
     <sys:String x:Key="RemoteEditor.EncodingTip">Detected file encoding (best effort).</sys:String>
+    <sys:String x:Key="RemoteEditor.StateSummaryFormat">Mode: {0}   State: {1}</sys:String>
+    <sys:String x:Key="RemoteEditor.StateSaved">saved</sys:String>
+    <sys:String x:Key="RemoteEditor.StateDirty">unsaved changes</sys:String>
     <sys:String x:Key="RemoteEditor.UnsavedTitle">Unsaved Changes</sys:String>
     <sys:String x:Key="RemoteEditor.UnsavedPrompt">There are unsaved changes. Save before closing?</sys:String>
 

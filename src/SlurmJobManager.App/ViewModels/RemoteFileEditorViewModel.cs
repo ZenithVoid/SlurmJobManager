@@ -19,6 +19,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     private readonly ISshClientService _ssh;
     private readonly AppPreferencesService _prefs;
     private readonly string _homeDirectory;
+    private readonly IAppLogger? _logger;
 
     private string _content = string.Empty;
     private bool _isBusy;
@@ -35,6 +36,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     private bool _isStructuredMode;
     private bool _isStructuredModeAvailable;
     private StructuredParameterFileFormat? _structuredFormat;
+    private string _structuredRoundTripBaseline = string.Empty;
     private TextEncodingDetectionResult _encodingDetection = new()
     {
         Encoding = new System.Text.UTF8Encoding(false),
@@ -66,7 +68,15 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     public string StatusStyleKey { get => _statusStyleKey; private set => SetField(ref _statusStyleKey, value); }
     public string EncodingName { get => _encodingName; private set => SetField(ref _encodingName, value); }
     public bool IsBinaryFile { get => _isBinaryFile; private set => SetField(ref _isBinaryFile, value); }
-    public bool IsDirty { get => _isDirty; private set => SetField(ref _isDirty, value); }
+    public bool IsDirty
+    {
+        get => _isDirty;
+        private set
+        {
+            if (SetField(ref _isDirty, value))
+                OnPropertyChanged(nameof(EditorStateText));
+        }
+    }
     public long FileSizeBytes
     {
         get => _fileSizeBytes;
@@ -98,11 +108,20 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         private set
         {
             if (SetField(ref _isStructuredMode, value))
+            {
                 OnPropertyChanged(nameof(IsTextMode));
+                OnPropertyChanged(nameof(EditorModeText));
+                OnPropertyChanged(nameof(EditorStateText));
+            }
         }
     }
 
     public bool IsTextMode => !IsStructuredMode;
+    public string EditorModeText => IsStructuredMode ? L("RemoteEditor.StructuredMode") : L("RemoteEditor.TextMode");
+    public string EditorStateText => string.Format(
+        L("RemoteEditor.StateSummaryFormat"),
+        EditorModeText,
+        IsDirty ? L("RemoteEditor.StateDirty") : L("RemoteEditor.StateSaved"));
 
     public bool IsStructuredModeAvailable
     {
@@ -117,25 +136,35 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     public ObservableCollection<StructuredParameterItemViewModel> StructuredItems { get; } = new();
 
     public ICommand SaveCommand { get; }
+    public ICommand ReloadCommand { get; }
     public ICommand SwitchToTextModeCommand { get; }
     public ICommand SwitchToStructuredModeCommand { get; }
 
-    public RemoteFileEditorViewModel(ISshClientService ssh, AppPreferencesService prefs, string remotePath, string? homeDirectory = null)
+    public RemoteFileEditorViewModel(ISshClientService ssh, AppPreferencesService prefs, string remotePath, string? homeDirectory = null, IAppLogger? logger = null)
     {
         _ssh           = ssh ?? throw new ArgumentNullException(nameof(ssh));
         _prefs         = prefs ?? throw new ArgumentNullException(nameof(prefs));
         _homeDirectory = RemotePathDisplayHelper.NormalizeRemotePath(homeDirectory);
+        _logger        = logger;
         RemotePath     = remotePath;
         SaveCommand    = new AsyncRelayCommand(SaveCommandAsync, () => !IsBusy);
-        SwitchToTextModeCommand = new RelayCommand(() => SetStructuredMode(false), () => IsStructuredModeAvailable);
-        SwitchToStructuredModeCommand = new RelayCommand(() => SetStructuredMode(true), () => IsStructuredModeAvailable);
+        ReloadCommand = new AsyncRelayCommand(ReloadCommandAsync, () => !IsBusy);
+        SwitchToTextModeCommand = new RelayCommand(SwitchToTextMode, () => IsStructuredModeAvailable);
+        SwitchToStructuredModeCommand = new RelayCommand(SwitchToStructuredMode, () => IsStructuredModeAvailable);
     }
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
+        await LoadInternalAsync(preferStructuredModeAfterLoad: IsStructuredMode, ct);
+    }
+
+    private async Task LoadInternalAsync(bool preferStructuredModeAfterLoad, CancellationToken ct)
+    {
         LoadSucceeded = false;
+        SaveCompleted = false;
         IsBusy = true;
         SetStatus("RemoteEditor.ProbingFile", "InfoTextStyle");
+        _logger?.Info($"Remote editor loading file. Path='{RemotePath}'.");
         try
         {
             FileSizeBytes = await _ssh.GetRemoteFileSizeAsync(RemotePath, ct);
@@ -155,6 +184,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
                 if (confirm != MessageBoxResult.Yes)
                 {
                     SetStatus("RemoteEditor.OpenCancelled", "WarningTextStyle");
+                    _logger?.Warning($"Remote editor open cancelled for very large file. Path='{RemotePath}'.");
                     return;
                 }
             }
@@ -173,9 +203,11 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
             {
                 IsBinaryFile = true;
                 Content = string.Empty;
+                _structuredRoundTripBaseline = string.Empty;
                 StatusMessage = _encodingDetection.WarningMessage
                                 ?? L("RemoteEditor.BinaryRejected");
                 StatusStyleKey = "ErrorTextStyle";
+                _logger?.Warning($"Remote editor blocked binary-like file. Path='{RemotePath}'.");
                 return;
             }
 
@@ -185,8 +217,9 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
             _suppressDirtyTracking = false;
             _lastSavedContent = Content;
             IsDirty = false;
+            _structuredRoundTripBaseline = Content;
 
-            InitializeStructuredEditor();
+            InitializeStructuredEditor(preferStructuredModeAfterLoad);
 
             if (!_encodingDetection.IsReliable)
             {
@@ -204,18 +237,45 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
             }
 
             LoadSucceeded = true;
+            _logger?.Info($"Remote editor loaded file successfully. Path='{RemotePath}', Format='{_structuredFormat?.ToString() ?? "text-only"}'.");
         }
         catch (Exception ex)
         {
             SetStatus($"{L("RemoteEditor.LoadFailed")}{ex.Message}", "ErrorTextStyle", localize: false);
+            _logger?.Error($"Remote editor failed to load file. Path='{RemotePath}'.", ex);
         }
         finally { IsBusy = false; }
     }
 
     public Task<bool> SaveChangesAsync(string? editorText = null, CancellationToken ct = default) => SaveAsync(editorText, ct);
+    public async Task<bool> ReloadAsync(string? editorText = null, bool discardUnsavedChanges = false, CancellationToken ct = default)
+    {
+        if (IsBusy)
+            return false;
+
+        if (editorText != null && IsTextMode)
+            Content = editorText;
+
+        if (IsDirty && !discardUnsavedChanges)
+        {
+            SetStatus("RemoteEditor.ReloadNeedsConfirm", "WarningTextStyle");
+            return false;
+        }
+
+        var preferredMode = IsStructuredMode;
+        await LoadInternalAsync(preferredMode, ct);
+        if (!LoadSucceeded)
+            return false;
+
+        SetStatus("RemoteEditor.Reloaded", "SuccessTextStyle");
+        _logger?.Info($"Remote editor reloaded file. Path='{RemotePath}'.");
+        return true;
+    }
 
     private async Task SaveCommandAsync(CancellationToken ct)
         => await SaveAsync(editorText: null, ct);
+    private async Task ReloadCommandAsync(CancellationToken ct)
+        => await ReloadAsync(editorText: null, discardUnsavedChanges: true, ct);
 
     private async Task<bool> SaveAsync(string? editorText, CancellationToken ct)
     {
@@ -225,20 +285,52 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
             return false;
         }
 
-        if (editorText != null)
-            Content = editorText;
+        if (!LoadSucceeded)
+        {
+            SetStatus("RemoteEditor.SaveBeforeLoadBlocked", "ErrorTextStyle");
+            _logger?.Warning($"Remote editor blocked save before successful load. Path='{RemotePath}'.");
+            return false;
+        }
+
+        string contentToSave;
+        string saveSource;
 
         if (IsStructuredModeAvailable && IsStructuredMode)
         {
             if (!TryBuildStructuredContent(out var structuredContent, out var error))
             {
                 SetStatus(error, "ErrorTextStyle", localize: false);
+                _logger?.Warning($"Remote editor structured serialization failed. Path='{RemotePath}', Error='{error}'.");
                 return false;
             }
 
             _suppressDirtyTracking = true;
             Content = structuredContent;
             _suppressDirtyTracking = false;
+            contentToSave = structuredContent;
+            saveSource = "structured";
+        }
+        else
+        {
+            if (editorText != null)
+                Content = editorText;
+            contentToSave = Content ?? string.Empty;
+            saveSource = "text";
+        }
+
+        if (contentToSave.Length == 0 && FileSizeBytes > 0)
+        {
+            var confirm = MessageBox.Show(
+                string.Format(L("RemoteEditor.EmptyOverwriteConfirm"), FileSizeText),
+                L("RemoteEditor.EmptyOverwriteTitle"),
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes)
+            {
+                SetStatus("RemoteEditor.SaveCancelled", "WarningTextStyle");
+                _logger?.Warning($"Remote editor cancelled empty overwrite save. Path='{RemotePath}'.");
+                return false;
+            }
         }
 
         if (IsVeryLargeFileMode)
@@ -252,31 +344,40 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
             if (confirm != MessageBoxResult.Yes)
             {
                 SetStatus("RemoteEditor.SaveCancelled", "WarningTextStyle");
+                _logger?.Warning($"Remote editor cancelled very large file save. Path='{RemotePath}'.");
                 return false;
             }
         }
 
         IsBusy = true;
         SetStatus(IsLargeFileMode ? "RemoteEditor.SavingLarge" : "RemoteEditor.Saving", "InfoTextStyle");
+        _logger?.Info($"Remote editor saving file. Path='{RemotePath}', Source='{saveSource}', Length={contentToSave.Length}.");
         try
         {
-            var bytes = TextEncodingDetector.Encode(Content, _encodingDetection);
+            var bytes = TextEncodingDetector.Encode(contentToSave, _encodingDetection);
             await _ssh.WriteFileBytesAsync(RemotePath, bytes, ct);
-            SetStatus($"{L("RemoteEditor.Saved")}{DateTime.Now:HH:mm:ss}", "SuccessTextStyle", localize: false);
-            _lastSavedContent = Content;
+            _suppressDirtyTracking = true;
+            Content = contentToSave;
+            _suppressDirtyTracking = false;
+            _lastSavedContent = contentToSave;
+            _structuredRoundTripBaseline = contentToSave;
             IsDirty = false;
+            ReinitializeStructuredStateFromContent(preferCurrentMode: IsStructuredMode);
+            SetStatus($"{L("RemoteEditor.Saved")}{DateTime.Now:HH:mm:ss}", "SuccessTextStyle", localize: false);
             SaveCompleted = true;
+            _logger?.Info($"Remote editor saved file successfully. Path='{RemotePath}', Source='{saveSource}'.");
             return true;
         }
         catch (Exception ex)
         {
             SetStatus($"{L("RemoteEditor.SaveFailed")}{ex.Message}", "ErrorTextStyle", localize: false);
+            _logger?.Error($"Remote editor save failed. Path='{RemotePath}', Source='{saveSource}'.", ex);
             return false;
         }
         finally { IsBusy = false; }
     }
 
-    private void InitializeStructuredEditor()
+    private void InitializeStructuredEditor(bool preferStructuredModeAfterLoad)
     {
         foreach (var item in StructuredItems)
             item.PropertyChanged -= OnStructuredItemPropertyChanged;
@@ -300,7 +401,9 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         }
 
         IsStructuredModeAvailable = StructuredItems.Count > 0;
-        SetStructuredMode(IsStructuredModeAvailable);
+        SetStructuredMode(IsStructuredModeAvailable && preferStructuredModeAfterLoad);
+        if (!preferStructuredModeAfterLoad && IsStructuredModeAvailable)
+            SetStructuredMode(false);
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -318,7 +421,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         try
         {
             var entries = StructuredItems.Select(i => i.ToEntry()).ToList();
-            content = StructuredParameterParser.Serialize(_structuredFormat.Value, entries, _lastSavedContent);
+            content = StructuredParameterParser.Serialize(_structuredFormat.Value, entries, _structuredRoundTripBaseline);
             return true;
         }
         catch (Exception ex)
@@ -378,6 +481,80 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     private void SetStructuredMode(bool enable)
     {
         IsStructuredMode = IsStructuredModeAvailable && enable;
+    }
+
+    private void SwitchToTextMode()
+    {
+        if (!IsStructuredModeAvailable)
+            return;
+
+        if (IsStructuredMode && TryBuildStructuredContent(out var structuredContent, out var error))
+        {
+            _suppressDirtyTracking = true;
+            Content = structuredContent;
+            _suppressDirtyTracking = false;
+            IsDirty = !string.Equals(Content, _lastSavedContent, StringComparison.Ordinal);
+            _structuredRoundTripBaseline = Content;
+        }
+        else if (IsStructuredMode)
+        {
+            SetStatus(error, "ErrorTextStyle", localize: false);
+            return;
+        }
+
+        SetStructuredMode(false);
+        SetStatus("RemoteEditor.TextModeSynced", "InfoTextStyle");
+        _logger?.Info($"Remote editor switched to text mode. Path='{RemotePath}'.");
+    }
+
+    private void SwitchToStructuredMode()
+    {
+        if (!IsStructuredModeAvailable)
+            return;
+
+        if (!TryReparseStructuredFromCurrentText(out var error))
+        {
+            SetStatus(error, "WarningTextStyle", localize: false);
+            _logger?.Warning($"Remote editor failed to switch to structured mode from current text. Path='{RemotePath}', Error='{error}'.");
+            return;
+        }
+
+        SetStructuredMode(true);
+        SetStatus("RemoteEditor.StructuredModeSynced", "InfoTextStyle");
+        _logger?.Info($"Remote editor switched to structured mode. Path='{RemotePath}'.");
+    }
+
+    private bool TryReparseStructuredFromCurrentText(out string error)
+    {
+        error = string.Empty;
+        var text = Content ?? string.Empty;
+        if (!StructuredParameterParser.TryParse(RemotePath, text, out var format, out var entries))
+        {
+            error = L("RemoteEditor.StructuredParseFromTextFailed");
+            return false;
+        }
+
+        foreach (var item in StructuredItems)
+            item.PropertyChanged -= OnStructuredItemPropertyChanged;
+        StructuredItems.Clear();
+        _structuredFormat = format;
+        foreach (var entry in entries)
+        {
+            var item = new StructuredParameterItemViewModel(entry, BrowseRemotePathAsync);
+            item.PropertyChanged += OnStructuredItemPropertyChanged;
+            StructuredItems.Add(item);
+        }
+
+        IsStructuredModeAvailable = StructuredItems.Count > 0;
+        _structuredRoundTripBaseline = text;
+        CommandManager.InvalidateRequerySuggested();
+        return IsStructuredModeAvailable;
+    }
+
+    private void ReinitializeStructuredStateFromContent(bool preferCurrentMode)
+    {
+        var previousMode = preferCurrentMode && IsStructuredMode;
+        InitializeStructuredEditor(previousMode);
     }
 
     private static string L(string key)
