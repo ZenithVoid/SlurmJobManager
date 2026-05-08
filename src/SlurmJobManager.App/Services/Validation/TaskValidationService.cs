@@ -7,7 +7,7 @@ namespace SlurmJobManager.App.Services.Validation;
 
 public sealed class TaskValidationService : ITaskValidationService
 {
-    private static readonly Regex LeadingIntRegex = new(@"^\d+$", RegexOptions.Compiled);
+    private static readonly Regex PositiveIntegerRegex = new(@"^\d+$", RegexOptions.Compiled);
     private readonly ISshClientService _ssh;
 
     public TaskValidationService(ISshClientService ssh)
@@ -83,7 +83,8 @@ public sealed class TaskValidationService : ITaskValidationService
                     TaskValidationSeverity.Error,
                     isBlocking: true,
                     quickFixKind: TaskValidationQuickFixKind.CreateWorkDirectory,
-                    quickFixTextKey: "Task.Validation.FixCreateWorkDir"));
+                    quickFixTextKey: "Task.Validation.FixCreateWorkDir",
+                    detailIsResourceKey: false));
             }
             else
             {
@@ -95,7 +96,8 @@ public sealed class TaskValidationService : ITaskValidationService
                         "Task.Validation.WorkDirNotWritableTitle",
                         string.Format(L("Task.Validation.WorkDirNotWritableDetail"), workDir),
                         TaskValidationSeverity.Error,
-                        isBlocking: true));
+                        isBlocking: true,
+                        detailIsResourceKey: false));
                 }
             }
         }
@@ -119,7 +121,8 @@ public sealed class TaskValidationService : ITaskValidationService
                     "Task.Validation.ProgramMissingTitle",
                     string.Format(L("Task.Validation.ProgramMissingDetail"), appPath),
                     TaskValidationSeverity.Error,
-                    isBlocking: true));
+                    isBlocking: true,
+                    detailIsResourceKey: false));
             }
         }
 
@@ -140,7 +143,8 @@ public sealed class TaskValidationService : ITaskValidationService
                 "Task.Validation.NodesInvalidTitle",
                 string.Format(L("Task.Validation.NodesInvalidDetail"), sbatchOptions.Nodes ?? string.Empty),
                 TaskValidationSeverity.Error,
-                isBlocking: true));
+                isBlocking: true,
+                detailIsResourceKey: false));
         }
 
         if (!string.IsNullOrWhiteSpace(sbatchOptions.CpuCount) && !IsPositiveInteger(sbatchOptions.CpuCount))
@@ -150,7 +154,8 @@ public sealed class TaskValidationService : ITaskValidationService
                 "Task.Validation.CpuInvalidTitle",
                 string.Format(L("Task.Validation.CpuInvalidDetail"), sbatchOptions.CpuCount ?? string.Empty),
                 TaskValidationSeverity.Error,
-                isBlocking: true));
+                isBlocking: true,
+                detailIsResourceKey: false));
         }
 
         if (string.IsNullOrWhiteSpace(sbatchOptions.Account))
@@ -233,7 +238,8 @@ public sealed class TaskValidationService : ITaskValidationService
                         "Task.Validation.ParameterInvalidTitle",
                         string.Format(L("Task.Validation.ParameterInvalidDetail"), paramPath),
                         TaskValidationSeverity.Error,
-                        isBlocking: true));
+                        isBlocking: true,
+                        detailIsResourceKey: false));
                     continue;
                 }
 
@@ -247,7 +253,8 @@ public sealed class TaskValidationService : ITaskValidationService
                             "Task.Validation.ParameterSourceMissingTitle",
                             string.Format(L("Task.Validation.ParameterSourceMissingDetail"), paramPath),
                             TaskValidationSeverity.Error,
-                            isBlocking: true));
+                            isBlocking: true,
+                            detailIsResourceKey: false));
                         continue;
                     }
                 }
@@ -267,7 +274,8 @@ public sealed class TaskValidationService : ITaskValidationService
                     TaskValidationSeverity.Error,
                     isBlocking: true,
                     quickFixKind: TaskValidationQuickFixKind.MaterializeParameterCopies,
-                    quickFixTextKey: "Task.Validation.FixMaterializeParams"));
+                    quickFixTextKey: "Task.Validation.FixMaterializeParams",
+                    detailIsResourceKey: false));
             }
         }
 
@@ -293,7 +301,8 @@ public sealed class TaskValidationService : ITaskValidationService
                 TaskValidationSeverity.Warning,
                 isBlocking: false,
                 quickFixKind: TaskValidationQuickFixKind.RefreshQueueMetadata,
-                quickFixTextKey: "Task.Validation.FixRefreshQueues"));
+                quickFixTextKey: "Task.Validation.FixRefreshQueues",
+                detailIsResourceKey: false));
         }
 
         return new TaskValidationResult
@@ -407,7 +416,7 @@ public sealed class TaskValidationService : ITaskValidationService
     private static bool IsPositiveInteger(string? value)
     {
         var text = value?.Trim() ?? string.Empty;
-        if (!LeadingIntRegex.IsMatch(text))
+        if (!PositiveIntegerRegex.IsMatch(text))
             return false;
         return int.TryParse(text, out var parsed) && parsed > 0;
     }
@@ -439,13 +448,14 @@ public sealed class TaskValidationService : ITaskValidationService
         TaskValidationSeverity severity,
         bool isBlocking,
         TaskValidationQuickFixKind quickFixKind = TaskValidationQuickFixKind.None,
-        string? quickFixTextKey = null)
+        string? quickFixTextKey = null,
+        bool detailIsResourceKey = true)
     {
         return new TaskValidationIssue
         {
             Code = code,
             Title = L(titleKey),
-            Description = detailOrKey.StartsWith("Task.", StringComparison.Ordinal) ? L(detailOrKey) : detailOrKey,
+            Description = detailIsResourceKey ? L(detailOrKey) : detailOrKey,
             Severity = severity,
             IsBlocking = isBlocking,
             QuickFixKind = quickFixKind,

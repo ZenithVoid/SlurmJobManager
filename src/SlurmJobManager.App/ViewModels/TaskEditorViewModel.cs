@@ -2869,7 +2869,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             ? unit!.SbatchTemplate!
             : SbatchTemplate;
         var parameterFiles = unit == null
-            ? Array.Empty<string>()
+            ? new List<string>()
             : unit.ParamFiles
                 .Select(p => p.FilePath)
                 .Concat(unit.Commands.SelectMany(c => c.ParameterFiles))

@@ -79,8 +79,8 @@ public sealed class TaskValidationDialogViewModel : ViewModelBase
                 return L("Task.Validation.SummaryNoIssue");
 
             var blockingCount = Issues.Count(static i => i.IsBlocking);
-            var warningCount = Issues.Count(static i => i.Severity == TaskValidationSeverity.Warning);
-            var infoCount = Issues.Count(static i => i.Severity == TaskValidationSeverity.Info);
+            var warningCount = Issues.Count(static i => i.Source.Severity == TaskValidationSeverity.Warning);
+            var infoCount = Issues.Count(static i => i.Source.Severity == TaskValidationSeverity.Info);
             return string.Format(L("Task.Validation.SummaryWithIssue"), blockingCount, warningCount, infoCount);
         }
     }
