@@ -28,6 +28,7 @@ public sealed class SettingsViewModel : ViewModelBase
     }
 
     private const string GitHubReleasesPage = "https://github.com/ZenithVoid/SlurmJobManager/releases";
+    private const string GitHubRepositoryPage = "https://github.com/ZenithVoid/SlurmJobManager";
     private const int ReleaseScriptSearchMaxDepth = 8;
     private const long SlowConnectionThresholdMs = 5000;
     private static readonly TimeSpan UpdateLaunchGracePeriod = TimeSpan.FromMilliseconds(250);
@@ -186,6 +187,8 @@ public sealed class SettingsViewModel : ViewModelBase
     public ICommand OpenLogDirectoryCommand => new RelayCommand(OpenLogDirectory);
     public ICommand ViewRecentLogCommand => new RelayCommand(ViewRecentLog);
     public ICommand ExportLogsCommand => new RelayCommand(ExportLogs);
+    public ICommand OpenAboutPageCommand => new RelayCommand(OpenAboutPage);
+    public ICommand OpenRepositoryCommand => new RelayCommand(OpenRepository);
     public ICommand GenerateReleasePackageCommand { get; }
     public ICommand OpenReleasePackageOutputDirectoryCommand { get; }
 
@@ -939,6 +942,16 @@ public sealed class SettingsViewModel : ViewModelBase
             _logger?.Error("Failed to export logs.", ex);
             ToastService.Instance.Error(string.Format(L("Settings.ExportLogsFailedFormat"), ex.Message));
         }
+    }
+
+    private void OpenAboutPage()
+    {
+        _main.ActiveTab = "About";
+    }
+
+    private void OpenRepository()
+    {
+        OpenPathOrUrl(GitHubRepositoryPage);
     }
 
     private static string L(string key) => Application.Current?.TryFindResource(key) as string ?? key;
