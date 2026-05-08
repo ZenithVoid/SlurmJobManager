@@ -3157,7 +3157,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         if (!string.IsNullOrWhiteSpace(fallbackDirectory))
             return NormalizeRemotePath(fallbackDirectory);
 
-        return "/gpfs/";
+        return AppPreferencesService.DefaultRemotePickerDirectoryFallback;
     }
 
     /// <summary>

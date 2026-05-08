@@ -11,6 +11,8 @@ namespace SlurmJobManager.App.Services;
 /// </summary>
 public sealed class AppPreferencesService
 {
+    public const string DefaultRemotePickerDirectoryFallback = "/gpfs/";
+
     private static readonly string PrefsPath = LocalDataPaths.PreferencesFilePath;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -158,13 +160,13 @@ public sealed class AppPreferencesService
     private sealed record AppPrefsDto(
         bool AutoConnectOnStartup = false,
         bool AutoRestoreLastTaskOnLogin = false,
-        string? DefaultRemotePickerDirectory = "/gpfs/");
+        string? DefaultRemotePickerDirectory = DefaultRemotePickerDirectoryFallback);
 
     private static string NormalizeRemoteDirectory(string? value)
     {
         var trimmed = (value ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(trimmed))
-            return "/gpfs/";
+            return DefaultRemotePickerDirectoryFallback;
 
         trimmed = trimmed.Replace('\\', '/');
         if (!trimmed.StartsWith("/", StringComparison.Ordinal))

@@ -360,7 +360,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         if (!string.IsNullOrWhiteSpace(configured))
             return configured;
 
-        return "/gpfs/";
+        return AppPreferencesService.DefaultRemotePickerDirectoryFallback;
     }
 
     private bool IsSshConnectedSafe()
@@ -501,9 +501,9 @@ public sealed class StructuredParameterItemViewModel : ViewModelBase
         get
         {
             var lower = Key.ToLowerInvariant();
-            return lower.Contains("dir", StringComparison.Ordinal)
-                   || lower.Contains("directory", StringComparison.Ordinal)
-                   || lower.Contains("folder", StringComparison.Ordinal);
+            return lower.Contains("dir")
+                   || lower.Contains("directory")
+                   || lower.Contains("folder");
         }
     }
 

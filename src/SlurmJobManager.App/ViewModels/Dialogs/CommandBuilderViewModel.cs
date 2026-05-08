@@ -1164,7 +1164,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         if (!string.IsNullOrWhiteSpace(fallbackDirectory))
             return NormalizeRemotePath(fallbackDirectory);
 
-        return "/gpfs/";
+        return AppPreferencesService.DefaultRemotePickerDirectoryFallback;
     }
 
     private static string L(string key, string fallback)

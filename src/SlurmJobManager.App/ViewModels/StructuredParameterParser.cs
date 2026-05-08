@@ -245,7 +245,8 @@ public static class StructuredParameterParser
 
     private static StructuredParameterEntry ParseIniLikeValue(string section, string key, string[] pathSegments, string rawValue)
     {
-        if ((rawValue.StartsWith('"') && rawValue.EndsWith('"')) || (rawValue.StartsWith('\'') && rawValue.EndsWith('\'')))
+        if (rawValue.Length >= 2
+            && ((rawValue.StartsWith('"') && rawValue.EndsWith('"')) || (rawValue.StartsWith('\'') && rawValue.EndsWith('\''))))
             return StructuredParameterEntry.FromString(section, key, pathSegments, UnwrapQuoted(rawValue));
 
         if (bool.TryParse(rawValue, out var asBool))
