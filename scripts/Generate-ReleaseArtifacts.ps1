@@ -68,6 +68,7 @@ function Resolve-PublishedAtUtc {
         return [DateTimeOffset]::UtcNow.ToString("o")
     }
 
+    $parsed = [DateTimeOffset]::MinValue
     if (-not [DateTimeOffset]::TryParse($PublishedAtRaw, [ref]$parsed)) {
         throw "Invalid PublishedAtUtc value '$PublishedAtRaw'. Please use ISO-8601 format."
     }
