@@ -612,13 +612,16 @@
     <sys:String x:Key="CmdBuilder.AddExtraArg">+ 添加参数</sys:String>
     <!-- sbatch -->
     <sys:String x:Key="CmdBuilder.SbatchJobConfig">作业配置（sbatch）</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchJobConfigHint">在此配置 sbatch 作业参数。时间默认 99 天，account 默认 preproc。</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchJobConfigHint">在此配置 sbatch 作业参数。时间可选（未设置则不输出 --time）。</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchJobName">任务名字</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchQueue">选择队列</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchNodes">节点数量</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchCpuCount">CPU 数量（cpus-per-task）</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchTimeLimit">时间限制（Slurm 格式，默认 99-00:00:00）</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchAccount">account</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchTimeLimit">时间限制</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchTimeYears">年</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchTimeMonths">月</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchTimeDays">日</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchAccount">提交账号</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchExclusive">启用独占资源（--exclusive）</sys:String>
     <sys:String x:Key="CmdBuilder.QueueLoadFailed">队列信息加载失败：{0}</sys:String>
     <sys:String x:Key="CmdBuilder.QueueInfoUnavailable">未获取到当前队列的资源信息。</sys:String>
@@ -650,6 +653,11 @@
     <sys:String x:Key="CmdBuilder.ParamNameTraversal">参数文件名不能包含路径穿越片段（如 ..）。</sys:String>
     <sys:String x:Key="CmdBuilder.ParamNameSeparator">参数文件名不能包含路径分隔符。</sys:String>
     <sys:String x:Key="CmdBuilder.ParamNameInvalidChar">参数文件名包含非法字符。</sys:String>
+    <sys:String x:Key="CmdBuilder.MpiDetectingDefault">正在获取远程默认 mpirun 路径…</sys:String>
+    <sys:String x:Key="CmdBuilder.MpiDetectingFromProgram">正在通过程序依赖推断 mpirun 路径…</sys:String>
+    <sys:String x:Key="CmdBuilder.MpiDetected">已推断 mpirun 路径：{0}</sys:String>
+    <sys:String x:Key="CmdBuilder.MpiDetectFailed">未能自动推断 mpirun 路径，请手动填写。</sys:String>
+    <sys:String x:Key="CmdBuilder.MpiDetectException">MPI 路径推断失败：{0}</sys:String>
 
     <!-- ── 远程目录选择器 ─────────────────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.TitleWindow">选择远程目录</sys:String>

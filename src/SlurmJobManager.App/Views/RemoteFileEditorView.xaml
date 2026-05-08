@@ -188,48 +188,48 @@
                                                    FontSize="11" />
                                     </StackPanel>
                                     <Grid Grid.Column="1">
-                                        <TextBox Text="{Binding StringValue, UpdateSourceTrigger=PropertyChanged}">
-                                            <TextBox.Style>
-                                                <Style TargetType="TextBox">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsString}" Value="True">
+                                         <TextBox Text="{Binding StringValue, UpdateSourceTrigger=PropertyChanged}">
+                                             <TextBox.Style>
+                                                 <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                     <Setter Property="Visibility" Value="Collapsed" />
+                                                     <Style.Triggers>
+                                                         <DataTrigger Binding="{Binding IsString}" Value="True">
                                                             <Setter Property="Visibility" Value="Visible" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </TextBox.Style>
                                         </TextBox>
-                                        <CheckBox IsChecked="{Binding BoolValue, Mode=TwoWay}">
-                                            <CheckBox.Style>
-                                                <Style TargetType="CheckBox">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsBoolean}" Value="True">
+                                         <CheckBox IsChecked="{Binding BoolValue, Mode=TwoWay}">
+                                             <CheckBox.Style>
+                                                 <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                                                     <Setter Property="Visibility" Value="Collapsed" />
+                                                     <Style.Triggers>
+                                                         <DataTrigger Binding="{Binding IsBoolean}" Value="True">
                                                             <Setter Property="Visibility" Value="Visible" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </CheckBox.Style>
                                         </CheckBox>
-                                        <TextBox Text="{Binding IntegerValue, UpdateSourceTrigger=LostFocus}">
-                                            <TextBox.Style>
-                                                <Style TargetType="TextBox">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsInteger}" Value="True">
+                                         <TextBox Text="{Binding IntegerValue, UpdateSourceTrigger=LostFocus}">
+                                             <TextBox.Style>
+                                                 <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                     <Setter Property="Visibility" Value="Collapsed" />
+                                                     <Style.Triggers>
+                                                         <DataTrigger Binding="{Binding IsInteger}" Value="True">
                                                             <Setter Property="Visibility" Value="Visible" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </TextBox.Style>
                                         </TextBox>
-                                        <TextBox Text="{Binding FloatingValue, UpdateSourceTrigger=LostFocus}">
-                                            <TextBox.Style>
-                                                <Style TargetType="TextBox">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsFloating}" Value="True">
+                                         <TextBox Text="{Binding FloatingValue, UpdateSourceTrigger=LostFocus}">
+                                             <TextBox.Style>
+                                                 <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                     <Setter Property="Visibility" Value="Collapsed" />
+                                                     <Style.Triggers>
+                                                         <DataTrigger Binding="{Binding IsFloating}" Value="True">
                                                             <Setter Property="Visibility" Value="Visible" />
                                                         </DataTrigger>
                                                     </Style.Triggers>

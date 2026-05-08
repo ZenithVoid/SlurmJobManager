@@ -318,7 +318,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         try
         {
             var entries = StructuredItems.Select(i => i.ToEntry()).ToList();
-            content = StructuredParameterParser.Serialize(_structuredFormat.Value, entries);
+            content = StructuredParameterParser.Serialize(_structuredFormat.Value, entries, _lastSavedContent);
             return true;
         }
         catch (Exception ex)

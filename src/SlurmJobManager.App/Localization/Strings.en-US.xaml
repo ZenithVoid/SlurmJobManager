@@ -612,13 +612,16 @@
     <sys:String x:Key="CmdBuilder.AddExtraArg">+ Add argument</sys:String>
     <!-- sbatch -->
     <sys:String x:Key="CmdBuilder.SbatchJobConfig">Job Configuration (sbatch)</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchJobConfigHint">Configure sbatch job fields here. Time default is 99 days and account default is preproc.</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchJobConfigHint">Configure sbatch job fields here. Time limit is optional and omitted when unset.</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchJobName">Job Name</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchQueue">Select Queue</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchNodes">Nodes</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchCpuCount">CPU count (cpus-per-task)</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchTimeLimit">Time limit (Slurm format, default 99-00:00:00)</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchAccount">Account</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchTimeLimit">Time limit</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchTimeYears">Year(s)</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchTimeMonths">Month(s)</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchTimeDays">Day(s)</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchAccount">Submit account</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchExclusive">Enable exclusive allocation (--exclusive)</sys:String>
     <sys:String x:Key="CmdBuilder.QueueLoadFailed">Failed to load queue metadata: {0}</sys:String>
     <sys:String x:Key="CmdBuilder.QueueInfoUnavailable">Queue metadata is unavailable for the current selection.</sys:String>
@@ -650,6 +653,11 @@
     <sys:String x:Key="CmdBuilder.ParamNameTraversal">Parameter file name cannot contain path traversal fragments like "..".</sys:String>
     <sys:String x:Key="CmdBuilder.ParamNameSeparator">Parameter file name cannot contain path separators.</sys:String>
     <sys:String x:Key="CmdBuilder.ParamNameInvalidChar">Parameter file name contains invalid characters.</sys:String>
+    <sys:String x:Key="CmdBuilder.MpiDetectingDefault">Detecting default remote mpirun path…</sys:String>
+    <sys:String x:Key="CmdBuilder.MpiDetectingFromProgram">Inferring mpirun path from program dependencies…</sys:String>
+    <sys:String x:Key="CmdBuilder.MpiDetected">Inferred mpirun path: {0}</sys:String>
+    <sys:String x:Key="CmdBuilder.MpiDetectFailed">Could not infer mpirun path automatically. Please set it manually.</sys:String>
+    <sys:String x:Key="CmdBuilder.MpiDetectException">Failed to infer MPI path: {0}</sys:String>
 
     <!-- ── Remote directory picker ──────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.TitleWindow">Select Remote Directory</sys:String>

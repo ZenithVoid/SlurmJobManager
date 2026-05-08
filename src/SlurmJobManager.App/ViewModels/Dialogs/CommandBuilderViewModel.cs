@@ -27,7 +27,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private const string RemoteParamDir = "/env/preprocess/out/config";
     private const string InterfaceProbeIp = "10.10.10.202";
     private const string DefaultNodes = "1";
-    private const string DefaultTimeLimit = "99-00:00:00";
+    private const string DefaultTimeLimit = "";
     private const string DefaultAccount = "preproc";
 
     private readonly ISshClientService _ssh;
@@ -51,6 +51,10 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private string _sbatchNodes = DefaultNodes;
     private string _sbatchCpuCount = string.Empty;
     private string _sbatchTimeLimit = DefaultTimeLimit;
+    private int _sbatchTimeYears;
+    private int _sbatchTimeMonths;
+    private int _sbatchTimeDays;
+    private bool _isSyncingTimeSelection;
     private string _sbatchAccount = DefaultAccount;
     private bool _sbatchExclusive;
     private readonly Dictionary<string, QueueMetadata> _queueMetadataMap = new(StringComparer.Ordinal);
@@ -64,6 +68,9 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     public ObservableCollection<string> AllParamFiles    { get; } = new();
     public ObservableCollection<string> FilteredParamFiles { get; } = new();
     public ObservableCollection<string> AvailableQueues { get; } = new();
+    public IReadOnlyList<int> SbatchTimeYearOptions { get; } = Enumerable.Range(0, 11).ToList();
+    public IReadOnlyList<int> SbatchTimeMonthOptions { get; } = Enumerable.Range(0, 13).ToList();
+    public IReadOnlyList<int> SbatchTimeDayOptions { get; } = Enumerable.Range(0, 32).ToList();
 
     // ── Commands list ──────────────────────────────────────────────────────
     /// <summary>Ordered list of commands in the current task unit.</summary>
@@ -185,10 +192,36 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     public string SbatchTimeLimit
     {
         get => _sbatchTimeLimit;
+        set => SetSbatchTimeLimit(value);
+    }
+
+    public int SbatchTimeYears
+    {
+        get => _sbatchTimeYears;
         set
         {
-            if (SetField(ref _sbatchTimeLimit, value))
-                RegenerateSbatch();
+            if (SetField(ref _sbatchTimeYears, Math.Max(0, value)))
+                UpdateTimeLimitFromSelections();
+        }
+    }
+
+    public int SbatchTimeMonths
+    {
+        get => _sbatchTimeMonths;
+        set
+        {
+            if (SetField(ref _sbatchTimeMonths, Math.Max(0, value)))
+                UpdateTimeLimitFromSelections();
+        }
+    }
+
+    public int SbatchTimeDays
+    {
+        get => _sbatchTimeDays;
+        set
+        {
+            if (SetField(ref _sbatchTimeDays, Math.Max(0, value)))
+                UpdateTimeLimitFromSelections();
         }
     }
 
@@ -281,7 +314,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         RemoveCommandCommand   = new RelayCommand<CommandEntryViewModel>(RemoveCommand, c => c != null && Commands.Count > 1);
         MoveUpCommand          = new RelayCommand<CommandEntryViewModel>(MoveUp,   c => c != null && Commands.IndexOf(c) > 0);
         MoveDownCommand        = new RelayCommand<CommandEntryViewModel>(MoveDown, c => c != null && Commands.IndexOf(c) < Commands.Count - 1);
-        ApplySelectedProgramCommand = new RelayCommand(ApplySelectedProgram, () => _selectedCommand != null && !string.IsNullOrWhiteSpace(_selectedAvailableProgram));
+        ApplySelectedProgramCommand = new AsyncRelayCommand(ApplySelectedProgramAsync, () => _selectedCommand != null && !string.IsNullOrWhiteSpace(_selectedAvailableProgram));
         AddParamFileCommand    = new AsyncRelayCommand(AddParamFileAsync, () => CanRunSshCommand() && _selectedCommand != null && !string.IsNullOrWhiteSpace(_selectedAvailableParamFile));
         CreateParamFileCommand = new AsyncRelayCommand(CreateParamFileAsync, () => CanRunSshCommand() && _selectedCommand != null);
         RemoveParamFileCommand = new RelayCommand<string>(RemoveParamFile);
@@ -425,10 +458,11 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         _selectedCommand.RebuildCommandLine();
     }
 
-    private void ApplySelectedProgram()
+    private async Task ApplySelectedProgramAsync(CancellationToken ct)
     {
         if (_selectedCommand == null || string.IsNullOrWhiteSpace(_selectedAvailableProgram)) return;
         _selectedCommand.ProgramPath = _selectedAvailableProgram.Trim();
+        await AutoDetectMpirunForProgramAsync(_selectedCommand, ct, updateStatusWhenMissing: false);
     }
 
     private void RemoveParamFile(string? path)
@@ -495,26 +529,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     {
         if (_selectedCommand == null || string.IsNullOrWhiteSpace(_selectedCommand.ProgramPath)) return;
         if (!IsSshConnectedSafe()) { StatusMessage = "请先建立 SSH 连接。"; return; }
-
-        IsBusy = true;
-        StatusMessage = $"正在通过 ldd 分析 MPI 依赖…";
-        try
-        {
-            var mpirun = await InferMpirunPathAsync(_selectedCommand.ProgramPath, ct);
-            if (!string.IsNullOrEmpty(mpirun))
-            {
-                _selectedCommand.MpirunPath = mpirun;
-                _selectedCommand.RebuildCommandLine();
-                StatusMessage = $"已推断 mpirun 路径：{mpirun}";
-                RegenerateSbatch();
-            }
-            else
-            {
-                StatusMessage = "未能自动推断 mpirun 路径，请手动填写。";
-            }
-        }
-        catch (Exception ex) { StatusMessage = $"MPI 路径推断失败：{ex.Message}"; }
-        finally { IsBusy = false; }
+        await AutoDetectMpirunForProgramAsync(_selectedCommand, ct, updateStatusWhenMissing: true);
     }
 
     /// <summary>
@@ -524,6 +539,9 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     /// </summary>
     private async Task<string> InferMpirunPathAsync(string programPath, CancellationToken ct)
     {
+        if (UseDefaultMpirunForProgram(programPath))
+            return await ResolveDefaultMpirunPathAsync(ct);
+
         // Step 1: ldd
         var (lddOut, _, lddExit) = await _ssh.ExecuteAsync($"ldd {EscapeShell(programPath)} 2>/dev/null", ct);
         if (lddExit == 0 && !string.IsNullOrWhiteSpace(lddOut))
@@ -538,7 +556,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         }
 
         // Step 2: which mpirun
-        var (whichOut, _, whichExit) = await _ssh.ExecuteAsync("which mpirun 2>/dev/null", ct);
+        var (whichOut, _, whichExit) = await _ssh.ExecuteAsync("command -v mpirun 2>/dev/null", ct);
         if (whichExit == 0 && !string.IsNullOrWhiteSpace(whichOut))
         {
             var path = whichOut.Trim();
@@ -546,6 +564,37 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         }
 
         return string.Empty;
+    }
+
+    private async Task<string> ResolveDefaultMpirunPathAsync(CancellationToken ct)
+    {
+        var (stdout, _, _) = await _ssh.ExecuteAsync("MPIRUN_PATH=$(command -v mpirun 2>/dev/null || true); if [ -n \"$MPIRUN_PATH\" ]; then readlink -f \"$MPIRUN_PATH\" 2>/dev/null || echo \"$MPIRUN_PATH\"; fi", ct);
+        var path = stdout.Trim();
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        var (_, _, checkExit) = await _ssh.ExecuteAsync($"test -x {EscapeShell(path)}", ct);
+        return checkExit == 0 ? path : string.Empty;
+    }
+
+    private static bool UseDefaultMpirunForProgram(string programPath)
+    {
+        var trimmed = programPath?.Trim() ?? string.Empty;
+        if (trimmed.Length == 0)
+            return false;
+
+        var extension = GetFileExtension(trimmed);
+        return extension.Equals(".sh", StringComparison.OrdinalIgnoreCase)
+               || extension.Equals(".py", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetFileExtension(string path)
+    {
+        var fileName = GetFileNameFromPath(path);
+        var dotIndex = fileName.LastIndexOf('.');
+        return dotIndex > -1 && dotIndex < fileName.Length - 1
+            ? fileName[dotIndex..]
+            : string.Empty;
     }
 
     private static string ParseMpirunFromLdd(string lddOutput)
@@ -639,6 +688,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         var selectedFile = await BrowseRemoteFileAsync(ct, ResolveProgramPickerStartPath(_selectedCommand.ProgramPath));
         if (string.IsNullOrWhiteSpace(selectedFile)) return;
         _selectedCommand.ProgramPath = selectedFile;
+        await AutoDetectMpirunForProgramAsync(_selectedCommand, ct, updateStatusWhenMissing: false);
     }
 
     private async Task BrowseParamFileAsync(CancellationToken ct)
@@ -712,6 +762,44 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         catch (Exception ex)
         {
             StatusMessage = string.Format(L("CmdBuilder.ParamCreateFailed", "创建参数文件失败：{0}"), ex.Message);
+        }
+    }
+
+    private async Task AutoDetectMpirunForProgramAsync(
+        CommandEntryViewModel command,
+        CancellationToken ct,
+        bool updateStatusWhenMissing)
+    {
+        if (command == null || string.IsNullOrWhiteSpace(command.ProgramPath) || !IsSshConnectedSafe())
+            return;
+
+        IsBusy = true;
+        StatusMessage = UseDefaultMpirunForProgram(command.ProgramPath)
+            ? L("CmdBuilder.MpiDetectingDefault", "正在获取远程默认 mpirun 路径…")
+            : L("CmdBuilder.MpiDetectingFromProgram", "正在通过程序依赖推断 mpirun 路径…");
+        try
+        {
+            var mpirun = await InferMpirunPathAsync(command.ProgramPath, ct);
+            if (!string.IsNullOrWhiteSpace(mpirun))
+            {
+                command.MpirunPath = mpirun;
+                command.RebuildCommandLine();
+                StatusMessage = string.Format(L("CmdBuilder.MpiDetected", "已推断 mpirun 路径：{0}"), mpirun);
+                RegenerateSbatch();
+            }
+            else if (updateStatusWhenMissing)
+            {
+                StatusMessage = L("CmdBuilder.MpiDetectFailed", "未能自动推断 mpirun 路径，请手动填写。");
+            }
+        }
+        catch (Exception ex)
+        {
+            if (updateStatusWhenMissing)
+                StatusMessage = string.Format(L("CmdBuilder.MpiDetectException", "MPI 路径推断失败：{0}"), ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 
@@ -880,7 +968,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             _sbatchPartition = initialSbatchOptions.Partition ?? string.Empty;
             _sbatchNodes = NormalizeNodes(initialSbatchOptions.Nodes);
             _sbatchCpuCount = initialSbatchOptions.CpuCount ?? string.Empty;
-            _sbatchTimeLimit = NormalizeTimeLimit(initialSbatchOptions.TimeLimit);
+            SetSbatchTimeLimit(initialSbatchOptions.TimeLimit, regenerate: false);
             _sbatchAccount = NormalizeAccount(initialSbatchOptions.Account);
             _sbatchExclusive = initialSbatchOptions.Exclusive;
             return;
@@ -888,7 +976,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
         _sbatchNodes = DefaultNodes;
         _sbatchCpuCount = string.Empty;
-        _sbatchTimeLimit = DefaultTimeLimit;
+        SetSbatchTimeLimit(DefaultTimeLimit, regenerate: false);
         _sbatchAccount = DefaultAccount;
         _sbatchExclusive = false;
 
@@ -948,7 +1036,9 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         if (TryReadDirective(lines, "--cpus-per-task", out var cpus))
             _sbatchCpuCount = cpus;
         if (TryReadDirective(lines, "--time", out var timeLimit))
-            _sbatchTimeLimit = timeLimit;
+            SetSbatchTimeLimit(timeLimit, regenerate: false);
+        else
+            SetSbatchTimeLimit(string.Empty, regenerate: false);
         if (TryReadDirective(lines, "--account", out var account))
             _sbatchAccount = account;
 
@@ -1002,7 +1092,8 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         sb.AppendLine("#SBATCH --ntasks=1");
         if (!string.IsNullOrWhiteSpace(cpuCount))
             sb.AppendLine($"#SBATCH --cpus-per-task={cpuCount}");
-        sb.AppendLine($"#SBATCH --time={timeLimit}");
+        if (!string.IsNullOrWhiteSpace(timeLimit))
+            sb.AppendLine($"#SBATCH --time={timeLimit}");
         sb.AppendLine($"#SBATCH --account={account}");
         if (_sbatchExclusive)
             sb.AppendLine("#SBATCH --exclusive");
@@ -1045,7 +1136,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             $"#SBATCH --nodes={nodes}\n" +
             "#SBATCH --ntasks=1\n" +
             (string.IsNullOrWhiteSpace(cpuCount) ? string.Empty : $"#SBATCH --cpus-per-task={cpuCount}\n") +
-            $"#SBATCH --time={timeLimit}\n" +
+            (string.IsNullOrWhiteSpace(timeLimit) ? string.Empty : $"#SBATCH --time={timeLimit}\n") +
             $"#SBATCH --account={account}\n" +
             (_sbatchExclusive ? "#SBATCH --exclusive\n" : string.Empty) +
             $"#SBATCH --output={workDir}/logs/job.out\n" +
@@ -1080,11 +1171,69 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private static string TruncateText(string text, int maxLen)
         => text.Length <= maxLen ? text : text[..maxLen] + "…";
 
+    private void SetSbatchTimeLimit(string? value, bool regenerate = true)
+    {
+        var normalized = NormalizeTimeLimit(value);
+        var changed = SetField(ref _sbatchTimeLimit, normalized);
+        SyncTimeSelectionsFromLimit(normalized);
+        if (changed && regenerate)
+            RegenerateSbatch();
+    }
+
+    private void UpdateTimeLimitFromSelections()
+    {
+        if (_isSyncingTimeSelection)
+            return;
+
+        var totalDays = (_sbatchTimeYears * 365) + (_sbatchTimeMonths * 30) + _sbatchTimeDays;
+        var timeLimit = totalDays > 0
+            ? $"{totalDays}-00:00:00"
+            : string.Empty;
+
+        if (SetField(ref _sbatchTimeLimit, timeLimit))
+            RegenerateSbatch();
+    }
+
+    private void SyncTimeSelectionsFromLimit(string? timeLimit)
+    {
+        _isSyncingTimeSelection = true;
+        try
+        {
+            var totalDays = TryParseTotalDays(timeLimit);
+            SetField(ref _sbatchTimeYears, totalDays / 365);
+            totalDays %= 365;
+            SetField(ref _sbatchTimeMonths, totalDays / 30);
+            totalDays %= 30;
+            SetField(ref _sbatchTimeDays, totalDays);
+        }
+        finally
+        {
+            _isSyncingTimeSelection = false;
+        }
+    }
+
+    private static int TryParseTotalDays(string? raw)
+    {
+        var value = (raw ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(value))
+            return 0;
+
+        var dayDashIndex = value.IndexOf('-', StringComparison.Ordinal);
+        if (dayDashIndex > 0
+            && int.TryParse(value[..dayDashIndex], NumberStyles.Integer, CultureInfo.InvariantCulture, out var dayPart)
+            && dayPart >= 0)
+            return dayPart;
+
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var plainDay) && plainDay >= 0
+            ? plainDay
+            : 0;
+    }
+
     private static string NormalizeNodes(string? value)
         => string.IsNullOrWhiteSpace(value) ? DefaultNodes : value.Trim();
 
     private static string NormalizeTimeLimit(string? value)
-        => string.IsNullOrWhiteSpace(value) ? DefaultTimeLimit : value.Trim();
+        => string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
 
     private static string NormalizeAccount(string? value)
         => string.IsNullOrWhiteSpace(value) ? DefaultAccount : value.Trim();

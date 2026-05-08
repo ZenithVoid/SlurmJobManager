@@ -436,22 +436,26 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <ComboBox Grid.Column="0"
-                                          ItemsSource="{Binding AvailableQueues}"
-                                          SelectedItem="{Binding SbatchPartition, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                          FontFamily="Consolas" FontSize="11" />
+                                           ItemsSource="{Binding AvailableQueues}"
+                                           SelectedItem="{Binding SbatchPartition, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           FontFamily="Consolas"
+                                           FontSize="11"
+                                           MinHeight="32"
+                                           VerticalContentAlignment="Center" />
                                 <TextBlock Grid.Column="1"
-                                           Margin="6,0,0,0"
-                                           VerticalAlignment="Center"
-                                           Foreground="{DynamicResource AccentBlueBrush}"
-                                           FontFamily="Segoe MDL2 Assets"
-                                           FontSize="14"
-                                           Text="&#xE946;"
-                                           Visibility="{Binding HasSelectedQueueMetadata, Converter={StaticResource BoolToVis}}">
+                                            Margin="6,0,0,0"
+                                            VerticalAlignment="Center"
+                                            Foreground="{DynamicResource AccentBlueBrush}"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            Text="i"
+                                            Visibility="{Binding HasSelectedQueueMetadata, Converter={StaticResource BoolToVis}}">
                                     <TextBlock.ToolTip>
                                         <ToolTip Style="{StaticResource AppToolTipStyle}">
                                             <TextBlock Text="{Binding SelectedQueueMetadataSummary}"
-                                                       Foreground="{DynamicResource TextPrimaryBrush}"
-                                                       TextWrapping="Wrap" />
+                                                       FontFamily="Segoe UI"
+                                                        Foreground="{DynamicResource TextPrimaryBrush}"
+                                                        TextWrapping="Wrap" />
                                         </ToolTip>
                                     </TextBlock.ToolTip>
                                 </TextBlock>
@@ -466,8 +470,52 @@
                                      FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
 
                             <TextBlock Text="{DynamicResource CmdBuilder.SbatchTimeLimit}" Style="{StaticResource FieldLabelStyle}" />
-                            <TextBox Text="{Binding SbatchTimeLimit, UpdateSourceTrigger=PropertyChanged}"
-                                     FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0"
+                                          ItemsSource="{Binding SbatchTimeYearOptions}"
+                                          SelectedItem="{Binding SbatchTimeYears, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          FontFamily="Consolas"
+                                          FontSize="11"
+                                          MinHeight="32"
+                                          VerticalContentAlignment="Center" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{DynamicResource CmdBuilder.SbatchTimeYears}"
+                                           VerticalAlignment="Center"
+                                           Margin="6,0,8,0"
+                                           Style="{StaticResource FieldLabelStyle}" />
+                                <ComboBox Grid.Column="2"
+                                          ItemsSource="{Binding SbatchTimeMonthOptions}"
+                                          SelectedItem="{Binding SbatchTimeMonths, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          FontFamily="Consolas"
+                                          FontSize="11"
+                                          MinHeight="32"
+                                          VerticalContentAlignment="Center" />
+                                <TextBlock Grid.Column="3"
+                                           Text="{DynamicResource CmdBuilder.SbatchTimeMonths}"
+                                           VerticalAlignment="Center"
+                                           Margin="6,0,8,0"
+                                           Style="{StaticResource FieldLabelStyle}" />
+                                <ComboBox Grid.Column="4"
+                                          ItemsSource="{Binding SbatchTimeDayOptions}"
+                                          SelectedItem="{Binding SbatchTimeDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          FontFamily="Consolas"
+                                          FontSize="11"
+                                          MinHeight="32"
+                                          VerticalContentAlignment="Center" />
+                                <TextBlock Grid.Column="5"
+                                           Text="{DynamicResource CmdBuilder.SbatchTimeDays}"
+                                           VerticalAlignment="Center"
+                                           Margin="6,0,0,0"
+                                           Style="{StaticResource FieldLabelStyle}" />
+                            </Grid>
 
                             <TextBlock Text="{DynamicResource CmdBuilder.SbatchAccount}" Style="{StaticResource FieldLabelStyle}" />
                             <TextBox Text="{Binding SbatchAccount, UpdateSourceTrigger=PropertyChanged}"

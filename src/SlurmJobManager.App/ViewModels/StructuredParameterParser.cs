@@ -68,12 +68,12 @@ public static class StructuredParameterParser
         return false;
     }
 
-    public static string Serialize(StructuredParameterFileFormat format, IReadOnlyList<StructuredParameterEntry> entries)
+    public static string Serialize(StructuredParameterFileFormat format, IReadOnlyList<StructuredParameterEntry> entries, string? originalContent = null)
         => format switch
         {
             StructuredParameterFileFormat.Json => SerializeJson(entries),
-            StructuredParameterFileFormat.Toml => SerializeToml(entries),
-            StructuredParameterFileFormat.Ini => SerializeIni(entries),
+            StructuredParameterFileFormat.Toml => SerializeToml(entries, originalContent),
+            StructuredParameterFileFormat.Ini => SerializeIni(entries, originalContent),
             _ => throw new NotSupportedException($"Unsupported structured format: {format}"),
         };
 
@@ -190,7 +190,7 @@ public static class StructuredParameterParser
         => TryParseIniLike(content, treatHashAsComment: true, dottedSections: true, out entries);
 
     private static bool TryParseIni(string content, out List<StructuredParameterEntry> entries)
-        => TryParseIniLike(content, treatHashAsComment: false, dottedSections: false, out entries);
+        => TryParseIniLike(content, treatHashAsComment: true, dottedSections: false, out entries);
 
     private static bool TryParseIniLike(string content, bool treatHashAsComment, bool dottedSections, out List<StructuredParameterEntry> entries)
     {
@@ -222,6 +222,10 @@ public static class StructuredParameterParser
             var rawValue = line[(idx + 1)..].Trim();
             if (string.IsNullOrWhiteSpace(key))
                 return false;
+
+            rawValue = StripInlineComment(rawValue, treatHashAsComment);
+            if (rawValue.Length == 0)
+                rawValue = string.Empty;
 
             var pathSegments = BuildIniLikePathSegments(section, key, dottedSections);
             entries.Add(ParseIniLikeValue(section, key, pathSegments, rawValue));
@@ -301,11 +305,19 @@ public static class StructuredParameterParser
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
-    private static string SerializeToml(IReadOnlyList<StructuredParameterEntry> entries)
-        => SerializeIniLike(entries, useTomlSyntax: true);
+    private static string SerializeToml(IReadOnlyList<StructuredParameterEntry> entries, string? originalContent)
+    {
+        if (TrySerializeIniLikePreservingComments(entries, originalContent, useTomlSyntax: true, out var preserved))
+            return preserved;
+        return SerializeIniLike(entries, useTomlSyntax: true);
+    }
 
-    private static string SerializeIni(IReadOnlyList<StructuredParameterEntry> entries)
-        => SerializeIniLike(entries, useTomlSyntax: false);
+    private static string SerializeIni(IReadOnlyList<StructuredParameterEntry> entries, string? originalContent)
+    {
+        if (TrySerializeIniLikePreservingComments(entries, originalContent, useTomlSyntax: false, out var preserved))
+            return preserved;
+        return SerializeIniLike(entries, useTomlSyntax: false);
+    }
 
     private static string SerializeIniLike(IReadOnlyList<StructuredParameterEntry> entries, bool useTomlSyntax)
     {
@@ -346,6 +358,126 @@ public static class StructuredParameterParser
 
     private static string BuildSection(IEnumerable<string> path)
         => string.Join('.', path);
+
+    private static string StripInlineComment(string value, bool treatHashAsComment)
+    {
+        if (string.IsNullOrEmpty(value))
+            return value;
+
+        var split = SplitValueAndComment(value, treatHashAsComment);
+        return split.Value.TrimEnd();
+    }
+
+    private static bool TrySerializeIniLikePreservingComments(
+        IReadOnlyList<StructuredParameterEntry> entries,
+        string? originalContent,
+        bool useTomlSyntax,
+        out string output)
+    {
+        output = string.Empty;
+        if (string.IsNullOrWhiteSpace(originalContent))
+            return false;
+
+        var section = string.Empty;
+        var lines = originalContent.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var map = entries.ToDictionary(entry => BuildEntryKey(entry.Section, entry.Key), StringComparer.Ordinal);
+        var sb = new StringBuilder();
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            var trimmed = line.Trim();
+            if (trimmed.StartsWith("[", StringComparison.Ordinal) && trimmed.EndsWith("]", StringComparison.Ordinal) && trimmed.Length > 2)
+            {
+                section = trimmed[1..^1].Trim();
+                AppendLine(sb, line, i < lines.Length - 1);
+                continue;
+            }
+
+            if (trimmed.Length == 0 || trimmed.StartsWith(';') || trimmed.StartsWith('#'))
+            {
+                AppendLine(sb, line, i < lines.Length - 1);
+                continue;
+            }
+
+            var equalsIndex = line.IndexOf('=');
+            if (equalsIndex <= 0)
+            {
+                AppendLine(sb, line, i < lines.Length - 1);
+                continue;
+            }
+
+            var keyPart = line[..equalsIndex];
+            var key = keyPart.Trim();
+            if (string.IsNullOrWhiteSpace(key) || !map.TryGetValue(BuildEntryKey(section, key), out var entry))
+            {
+                AppendLine(sb, line, i < lines.Length - 1);
+                continue;
+            }
+
+            var rightPart = line[(equalsIndex + 1)..];
+            var split = SplitValueAndComment(rightPart, treatHashAsComment: true);
+            var formattedValue = FormatIniLikeValue(entry, useTomlSyntax);
+            var leadingWhitespace = rightPart[..(rightPart.Length - rightPart.TrimStart().Length)];
+            var replacement = keyPart + "=" + leadingWhitespace + formattedValue + split.Comment;
+            AppendLine(sb, replacement, i < lines.Length - 1);
+        }
+
+        output = sb.ToString();
+        return true;
+    }
+
+    private static string BuildEntryKey(string section, string key)
+        => $"{section ?? string.Empty}\u001f{key}";
+
+    private static (string Value, string Comment) SplitValueAndComment(string raw, bool treatHashAsComment)
+    {
+        if (string.IsNullOrEmpty(raw))
+            return (string.Empty, string.Empty);
+
+        var quote = '\0';
+        for (var i = 0; i < raw.Length; i++)
+        {
+            var ch = raw[i];
+            if (quote == '\0')
+            {
+                if (ch is '\'' or '"')
+                {
+                    quote = ch;
+                    continue;
+                }
+
+                if (ch == ';' || (treatHashAsComment && ch == '#'))
+                {
+                    return (raw[..i], raw[i..]);
+                }
+            }
+            else if (ch == quote && (i == 0 || raw[i - 1] != '\\'))
+            {
+                quote = '\0';
+            }
+        }
+
+        return (raw, string.Empty);
+    }
+
+    private static string FormatIniLikeValue(StructuredParameterEntry entry, bool useTomlSyntax)
+        => entry.ValueKind switch
+        {
+            StructuredParameterValueKind.String => QuoteAndEscape(entry.StringValue),
+            StructuredParameterValueKind.Boolean => entry.BoolValue ? "true" : "false",
+            StructuredParameterValueKind.Integer => entry.IntegerValue.ToString(CultureInfo.InvariantCulture),
+            StructuredParameterValueKind.Floating => entry.FloatingValue.ToString(CultureInfo.InvariantCulture),
+            StructuredParameterValueKind.Null => useTomlSyntax ? QuoteAndEscape(string.Empty) : string.Empty,
+            _ => QuoteAndEscape(entry.StringValue),
+        };
+
+    private static void AppendLine(StringBuilder sb, string line, bool includeLineBreak)
+    {
+        sb.Append(line);
+        if (includeLineBreak)
+            sb.Append('\n');
+    }
 
     private static string UnwrapQuoted(string value)
     {
