@@ -1936,7 +1936,6 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         var dlgVm = new CommandBuilderViewModel(
             _ssh,
-            _prefs,
             taskId:         TaskId,
             remoteWorkDir:  effectiveWorkDir,
             initialCommands: unit.Commands.Select(c => c.ToModel()),
@@ -2412,7 +2411,6 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         TimeLimit = source?.TimeLimit ?? "99-00:00:00",
         Account = source?.Account ?? "preproc",
         Exclusive = source?.Exclusive ?? false,
-        ModulePurge = source?.ModulePurge ?? false,
     };
 
     // ── Persistence (workspace + legacy) ────────────────────────────────────

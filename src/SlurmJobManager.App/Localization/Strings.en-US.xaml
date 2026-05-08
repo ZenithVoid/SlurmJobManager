@@ -539,15 +539,20 @@
     <sys:String x:Key="CmdBuilder.AddExtraArg">+ Add argument</sys:String>
     <!-- sbatch -->
     <sys:String x:Key="CmdBuilder.SbatchJobConfig">Job Configuration (sbatch)</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchJobConfigHint">Configure sbatch job fields here. Time default is 99 days, account default is preproc, and module purge is off by default.</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchJobConfigHint">Configure sbatch job fields here. Time default is 99 days and account default is preproc.</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchJobName">Job Name</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchPartition">Partition / CU</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchQueue">Select Queue</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchNodes">Nodes</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchCpuCount">CPU count (cpus-per-task)</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchTimeLimit">Time limit (Slurm format, default 99-00:00:00)</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchAccount">Account</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchExclusive">Enable exclusive allocation (--exclusive)</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchModulePurge">Run module purge before commands</sys:String>
+    <sys:String x:Key="CmdBuilder.QueueLoadFailed">Failed to load queue metadata: {0}</sys:String>
+    <sys:String x:Key="CmdBuilder.QueueInfoUnavailable">Queue metadata is unavailable for the current selection.</sys:String>
+    <sys:String x:Key="CmdBuilder.QueueInfoUnknown">Unknown</sys:String>
+    <sys:String x:Key="CmdBuilder.QueueInfoGpuYes">GPU available</sys:String>
+    <sys:String x:Key="CmdBuilder.QueueInfoGpuNo">No GPU</sys:String>
+    <sys:String x:Key="CmdBuilder.QueueInfoTooltipFormat">Queue: {0}&#10;GPU: {1}&#10;Memory: {2}&#10;CPU cores: {3}</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchScript">sbatch Script (editable)</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchHint">This script will be used on submission. Click Regenerate to refresh it from the current command list.</sys:String>
     <sys:String x:Key="CmdBuilder.RegenSbatch">⟳ Regenerate</sys:String>

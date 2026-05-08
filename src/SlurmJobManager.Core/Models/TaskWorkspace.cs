@@ -61,7 +61,6 @@ public class SbatchJobOptions
     public string TimeLimit { get; set; } = "99-00:00:00";
     public string Account { get; set; } = "preproc";
     public bool Exclusive { get; set; }
-    public bool ModulePurge { get; set; }
 }
 
 /// <summary>A single program (executable) entry within a <see cref="TaskUnit"/>.</summary>

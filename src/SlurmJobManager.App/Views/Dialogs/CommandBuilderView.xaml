@@ -429,9 +429,33 @@
                             <TextBox Text="{Binding SbatchJobName, UpdateSourceTrigger=PropertyChanged}"
                                      FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
 
-                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchPartition}" Style="{StaticResource FieldLabelStyle}" />
-                            <TextBox Text="{Binding SbatchPartition, UpdateSourceTrigger=PropertyChanged}"
-                                     FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
+                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchQueue}" Style="{StaticResource FieldLabelStyle}" />
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0"
+                                          ItemsSource="{Binding AvailableQueues}"
+                                          SelectedItem="{Binding SbatchPartition, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          FontFamily="Consolas" FontSize="11" />
+                                <TextBlock Grid.Column="1"
+                                           Margin="6,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource AccentBlueBrush}"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="14"
+                                           Text="&#xE946;"
+                                           Visibility="{Binding HasSelectedQueueMetadata, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock.ToolTip>
+                                        <ToolTip Style="{StaticResource AppToolTipStyle}">
+                                            <TextBlock Text="{Binding SelectedQueueMetadataSummary}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       TextWrapping="Wrap" />
+                                        </ToolTip>
+                                    </TextBlock.ToolTip>
+                                </TextBlock>
+                            </Grid>
 
                             <TextBlock Text="{DynamicResource CmdBuilder.SbatchNodes}" Style="{StaticResource FieldLabelStyle}" />
                             <TextBox Text="{Binding SbatchNodes, UpdateSourceTrigger=PropertyChanged}"
@@ -449,12 +473,21 @@
                             <TextBox Text="{Binding SbatchAccount, UpdateSourceTrigger=PropertyChanged}"
                                      FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
 
-                            <CheckBox Content="{DynamicResource CmdBuilder.SbatchExclusive}"
-                                      IsChecked="{Binding SbatchExclusive, Mode=TwoWay}"
-                                      Margin="0,0,0,2" />
-                            <CheckBox Content="{DynamicResource CmdBuilder.SbatchModulePurge}"
-                                      IsChecked="{Binding SbatchModulePurge, Mode=TwoWay}"
-                                      Margin="0,0,0,8" />
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{DynamicResource CmdBuilder.SbatchExclusive}"
+                                           VerticalAlignment="Center"
+                                           Style="{StaticResource FieldLabelStyle}"
+                                           Margin="0" />
+                                <CheckBox Grid.Column="1"
+                                          IsChecked="{Binding SbatchExclusive, Mode=TwoWay}"
+                                          Margin="8,0,0,0"
+                                          VerticalAlignment="Center" />
+                            </Grid>
 
                             <TextBlock Text="{DynamicResource CmdBuilder.SbatchScript}"
                                        Style="{StaticResource SectionHeaderStyle}" />

@@ -1,9 +1,9 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
-using SlurmJobManager.App.Services;
 using SlurmJobManager.App.ViewModels;
 using SlurmJobManager.App.Views;
 using SlurmJobManager.App.Views.Dialogs;
@@ -28,8 +28,6 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private const string DefaultAccount = "preproc";
 
     private readonly ISshClientService _ssh;
-    private readonly AppPreferencesService _prefs;
-
     // ── Context passed from TaskEditorViewModel ────────────────────────────
     private readonly string _taskId;
     private readonly string _remoteWorkDir;
@@ -51,7 +49,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private string _sbatchTimeLimit = DefaultTimeLimit;
     private string _sbatchAccount = DefaultAccount;
     private bool _sbatchExclusive;
-    private bool _sbatchModulePurge;
+    private readonly Dictionary<string, QueueMetadata> _queueMetadataMap = new(StringComparer.Ordinal);
 
     // ── Result ─────────────────────────────────────────────────────────────
     public bool Confirmed { get; private set; }
@@ -61,6 +59,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     public ObservableCollection<string> FilteredPrograms { get; } = new();
     public ObservableCollection<string> AllParamFiles    { get; } = new();
     public ObservableCollection<string> FilteredParamFiles { get; } = new();
+    public ObservableCollection<string> AvailableQueues { get; } = new();
 
     // ── Commands list ──────────────────────────────────────────────────────
     /// <summary>Ordered list of commands in the current task unit.</summary>
@@ -148,7 +147,11 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         set
         {
             if (SetField(ref _sbatchPartition, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedQueueMetadata));
+                OnPropertyChanged(nameof(SelectedQueueMetadataSummary));
                 RegenerateSbatch();
+            }
         }
     }
 
@@ -204,16 +207,8 @@ public sealed class CommandBuilderViewModel : ViewModelBase
                 RegenerateSbatch();
         }
     }
-
-    public bool SbatchModulePurge
-    {
-        get => _sbatchModulePurge;
-        set
-        {
-            if (SetField(ref _sbatchModulePurge, value))
-                RegenerateSbatch();
-        }
-    }
+    public bool HasSelectedQueueMetadata => GetSelectedQueueMetadata() != null;
+    public string SelectedQueueMetadataSummary => BuildSelectedQueueMetadataSummary();
 
     // ── Commands ───────────────────────────────────────────────────────────
     public ICommand RefreshCommand          { get; }
@@ -239,7 +234,6 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
     public CommandBuilderViewModel(
         ISshClientService ssh,
-        AppPreferencesService prefs,
         string taskId = "",
         string remoteWorkDir = "",
         IEnumerable<CommandEntry>? initialCommands = null,
@@ -247,7 +241,6 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         SbatchJobOptions? initialSbatchOptions = null)
     {
         _ssh           = ssh           ?? throw new ArgumentNullException(nameof(ssh));
-        _prefs         = prefs         ?? throw new ArgumentNullException(nameof(prefs));
         _taskId        = taskId;
         _remoteWorkDir = remoteWorkDir;
 
@@ -339,6 +332,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
                 System.Diagnostics.Debug.WriteLine($"[CommandBuilderViewModel] ListFiles({RemoteParamDir}): {ex.Message}");
             }
 
+            await LoadQueueMetadataAsync(ct);
             StatusMessage = string.Empty;
         }
         catch (Exception ex) { StatusMessage = $"刷新失败：{ex.Message}"; }
@@ -636,7 +630,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private async Task BrowseProgramPathAsync(CancellationToken ct)
     {
         if (_selectedCommand == null) return;
-        var selectedFile = await BrowseRemoteFileAsync(ct);
+        var selectedFile = await BrowseRemoteFileAsync(ct, ResolveProgramPickerStartPath(_selectedCommand.ProgramPath));
         if (string.IsNullOrWhiteSpace(selectedFile)) return;
         _selectedCommand.ProgramPath = selectedFile;
     }
@@ -644,7 +638,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private async Task BrowseParamFileAsync(CancellationToken ct)
     {
         if (_selectedCommand == null) return;
-        var selectedFile = await BrowseRemoteFileAsync(ct);
+        var selectedFile = await BrowseRemoteFileAsync(ct, await ResolveHomeDirectoryAsync(ct));
         if (string.IsNullOrWhiteSpace(selectedFile)) return;
 
         var workCopy = await MaterializeParameterFileToWorkDirAsync(selectedFile, ct);
@@ -715,7 +709,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         }
     }
 
-    private async Task<string?> BrowseRemoteFileAsync(CancellationToken ct)
+    private async Task<string?> BrowseRemoteFileAsync(CancellationToken ct, string? startPath = null)
     {
         if (!IsSshConnectedSafe())
         {
@@ -724,7 +718,8 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         }
 
         var homeDir = await ResolveHomeDirectoryAsync(ct);
-        var vm = new RemoteFilePickerViewModel(_ssh, ResolveRemotePickerStartDirectory(homeDir));
+        var initialPath = string.IsNullOrWhiteSpace(startPath) ? homeDir : NormalizeRemotePath(startPath);
+        var vm = new RemoteFilePickerViewModel(_ssh, initialPath, restrictToHomeScope: false);
         var win = new RemoteFilePickerView { DataContext = vm };
         if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
 
@@ -882,7 +877,6 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             _sbatchTimeLimit = NormalizeTimeLimit(initialSbatchOptions.TimeLimit);
             _sbatchAccount = NormalizeAccount(initialSbatchOptions.Account);
             _sbatchExclusive = initialSbatchOptions.Exclusive;
-            _sbatchModulePurge = initialSbatchOptions.ModulePurge;
             return;
         }
 
@@ -891,7 +885,6 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         _sbatchTimeLimit = DefaultTimeLimit;
         _sbatchAccount = DefaultAccount;
         _sbatchExclusive = false;
-        _sbatchModulePurge = false;
 
         var defaultJobName = string.IsNullOrWhiteSpace(taskId) ? "job" : taskId.Trim();
         _sbatchJobName = defaultJobName;
@@ -933,7 +926,6 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         TimeLimit = NormalizeTimeLimit(_sbatchTimeLimit),
         Account = NormalizeAccount(_sbatchAccount),
         Exclusive = _sbatchExclusive,
-        ModulePurge = _sbatchModulePurge,
     };
 
     // ── sbatch generation ──────────────────────────────────────────────────
@@ -955,7 +947,6 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             _sbatchAccount = account;
 
         _sbatchExclusive = lines.Any(line => line.Trim().Equals("#SBATCH --exclusive", StringComparison.OrdinalIgnoreCase));
-        _sbatchModulePurge = lines.Any(line => line.Trim().Equals("module purge", StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool TryReadDirective(IEnumerable<string> lines, string directiveName, out string value)
@@ -1013,8 +1004,6 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         sb.AppendLine($"#SBATCH --error={stderr}");
         sb.AppendLine($"#SBATCH --chdir={workDir}");
         sb.AppendLine();
-        if (_sbatchModulePurge)
-            sb.AppendLine("module purge");
         sb.AppendLine($"cd {workDir}");
         sb.AppendLine($"IFACE_NAME=$(ip route get {InterfaceProbeIp} | awk '{{print $3}}')");
         sb.AppendLine();
@@ -1056,7 +1045,6 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             $"#SBATCH --output={workDir}/logs/job.out\n" +
             $"#SBATCH --error={workDir}/logs/job.err\n" +
             $"#SBATCH --chdir={workDir}\n\n" +
-            (_sbatchModulePurge ? "module purge\n" : string.Empty) +
             $"cd {workDir}\n" +
             $"IFACE_NAME=$(ip route get {InterfaceProbeIp} | awk '{{print $3}}')\n\n" +
             $"echo \"Starting job {jobName} at $(date)\"\n\n" +
@@ -1155,16 +1143,146 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         }
     }
 
-    private string ResolveRemotePickerStartDirectory(string? fallbackDirectory = null)
+    private static string ResolveProgramPickerStartPath(string? currentProgramPath)
     {
-        var configured = _prefs.DefaultRemotePickerDirectory;
-        if (!string.IsNullOrWhiteSpace(configured))
-            return NormalizeRemotePath(configured);
+        if (string.IsNullOrWhiteSpace(currentProgramPath))
+            return string.Empty;
 
-        if (!string.IsNullOrWhiteSpace(fallbackDirectory))
-            return NormalizeRemotePath(fallbackDirectory);
+        var normalized = NormalizeRemotePath(currentProgramPath);
+        var idx = normalized.LastIndexOf('/');
+        if (idx <= 0)
+            return "/";
+        return normalized[..idx];
+    }
 
-        return AppPreferencesService.DefaultRemotePickerDirectoryFallback;
+    private async Task LoadQueueMetadataAsync(CancellationToken ct)
+    {
+        if (!IsSshConnectedSafe())
+            return;
+
+        try
+        {
+            var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync("sinfo --noheader --Format=\"%P|%G|%m|%c\"", ct);
+            if (exitCode != 0)
+            {
+                if (!string.IsNullOrWhiteSpace(stderr))
+                    StatusMessage = string.Format(L("CmdBuilder.QueueLoadFailed", "队列信息加载失败：{0}"), stderr.Trim());
+                return;
+            }
+
+            var parsed = ParseQueueMetadata(stdout);
+            AvailableQueues.Clear();
+            _queueMetadataMap.Clear();
+            foreach (var item in parsed.OrderBy(q => q.Name, StringComparer.Ordinal))
+            {
+                AvailableQueues.Add(item.Name);
+                _queueMetadataMap[item.Name] = item;
+            }
+
+            if (!string.IsNullOrWhiteSpace(_sbatchPartition)
+                && !AvailableQueues.Contains(_sbatchPartition, StringComparer.Ordinal))
+            {
+                AvailableQueues.Add(_sbatchPartition);
+            }
+
+            OnPropertyChanged(nameof(HasSelectedQueueMetadata));
+            OnPropertyChanged(nameof(SelectedQueueMetadataSummary));
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = string.Format(L("CmdBuilder.QueueLoadFailed", "队列信息加载失败：{0}"), ex.Message);
+        }
+    }
+
+    private static List<QueueMetadata> ParseQueueMetadata(string raw)
+    {
+        var map = new Dictionary<string, QueueMetadata>(StringComparer.Ordinal);
+        foreach (var line in raw.Replace("\r\n", "\n").Split('\n'))
+        {
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var parts = line.Split('|');
+            if (parts.Length < 4)
+                continue;
+
+            var name = parts[0].Trim().TrimEnd('*');
+            if (string.IsNullOrWhiteSpace(name))
+                continue;
+
+            var gres = parts[1].Trim();
+            var memoryText = parts[2].Trim();
+            var cpuText = parts[3].Trim();
+            var hasGpu = gres.Contains("gpu", StringComparison.OrdinalIgnoreCase);
+            var memoryMb = TryParseLeadingInt(memoryText);
+            var cpuCores = TryParseLeadingInt(cpuText);
+
+            if (!map.TryGetValue(name, out var meta))
+            {
+                meta = new QueueMetadata(name);
+                map[name] = meta;
+            }
+
+            meta.HasGpu |= hasGpu;
+            if (memoryMb.HasValue && (!meta.MemoryMb.HasValue || memoryMb.Value > meta.MemoryMb.Value))
+                meta.MemoryMb = memoryMb.Value;
+            if (cpuCores.HasValue && (!meta.CpuCores.HasValue || cpuCores.Value > meta.CpuCores.Value))
+                meta.CpuCores = cpuCores.Value;
+        }
+
+        return map.Values.ToList();
+    }
+
+    private QueueMetadata? GetSelectedQueueMetadata()
+    {
+        var key = _sbatchPartition?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(key))
+            return null;
+        return _queueMetadataMap.GetValueOrDefault(key);
+    }
+
+    private string BuildSelectedQueueMetadataSummary()
+    {
+        var meta = GetSelectedQueueMetadata();
+        if (meta == null)
+            return L("CmdBuilder.QueueInfoUnavailable", "未获取到当前队列的资源信息。");
+
+        var gpuText = meta.HasGpu
+            ? L("CmdBuilder.QueueInfoGpuYes", "有 GPU")
+            : L("CmdBuilder.QueueInfoGpuNo", "无 GPU");
+        var memoryText = meta.MemoryMb.HasValue
+            ? string.Format(CultureInfo.InvariantCulture, "{0} MB", meta.MemoryMb.Value)
+            : L("CmdBuilder.QueueInfoUnknown", "未知");
+        var cpuText = meta.CpuCores.HasValue
+            ? meta.CpuCores.Value.ToString(CultureInfo.InvariantCulture)
+            : L("CmdBuilder.QueueInfoUnknown", "未知");
+
+        return string.Format(
+            L("CmdBuilder.QueueInfoTooltipFormat", "队列：{0}\nGPU：{1}\n内存：{2}\nCPU 核心：{3}"),
+            meta.Name,
+            gpuText,
+            memoryText,
+            cpuText);
+    }
+
+    private static int? TryParseLeadingInt(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+        var m = Regex.Match(value, @"\d+");
+        if (!m.Success)
+            return null;
+        return int.TryParse(m.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+    }
+
+    private sealed class QueueMetadata(string name)
+    {
+        public string Name { get; } = name;
+        public bool HasGpu { get; set; }
+        public int? MemoryMb { get; set; }
+        public int? CpuCores { get; set; }
     }
 
     private static string L(string key, string fallback)

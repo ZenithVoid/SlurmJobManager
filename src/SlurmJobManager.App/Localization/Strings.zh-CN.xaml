@@ -539,15 +539,20 @@
     <sys:String x:Key="CmdBuilder.AddExtraArg">+ 添加参数</sys:String>
     <!-- sbatch -->
     <sys:String x:Key="CmdBuilder.SbatchJobConfig">作业配置（sbatch）</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchJobConfigHint">在此配置 sbatch 作业参数。时间默认 99 天，account 默认 preproc，module purge 默认关闭。</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchJobConfigHint">在此配置 sbatch 作业参数。时间默认 99 天，account 默认 preproc。</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchJobName">任务名字</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchPartition">partition / cu</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchQueue">选择队列</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchNodes">节点数量</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchCpuCount">CPU 数量（cpus-per-task）</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchTimeLimit">时间限制（Slurm 格式，默认 99-00:00:00）</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchAccount">account</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchExclusive">启用独占资源（--exclusive）</sys:String>
-    <sys:String x:Key="CmdBuilder.SbatchModulePurge">在命令前执行 module purge</sys:String>
+    <sys:String x:Key="CmdBuilder.QueueLoadFailed">队列信息加载失败：{0}</sys:String>
+    <sys:String x:Key="CmdBuilder.QueueInfoUnavailable">未获取到当前队列的资源信息。</sys:String>
+    <sys:String x:Key="CmdBuilder.QueueInfoUnknown">未知</sys:String>
+    <sys:String x:Key="CmdBuilder.QueueInfoGpuYes">有 GPU</sys:String>
+    <sys:String x:Key="CmdBuilder.QueueInfoGpuNo">无 GPU</sys:String>
+    <sys:String x:Key="CmdBuilder.QueueInfoTooltipFormat">队列：{0}&#10;GPU：{1}&#10;内存：{2}&#10;CPU 核心：{3}</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchScript">sbatch 脚本（可编辑）</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchHint">此脚本将在提交时使用。点击"重新生成"可用当前命令列表刷新内容。</sys:String>
     <sys:String x:Key="CmdBuilder.RegenSbatch">⟳ 重新生成</sys:String>
