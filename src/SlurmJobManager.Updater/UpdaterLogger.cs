@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace SlurmJobManager.Updater;
 
 internal sealed class UpdaterLogger : IDisposable

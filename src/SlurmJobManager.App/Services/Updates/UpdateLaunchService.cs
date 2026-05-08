@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using SlurmJobManager.Core.Models;
 using SlurmJobManager.Core.Services;
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.IO.Compression;
 using SlurmJobManager.Core.Models;
 
