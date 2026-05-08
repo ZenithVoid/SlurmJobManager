@@ -214,6 +214,7 @@
     <sys:String x:Key="Settings.ProxyPortInvalid">代理端口必须是 1 到 65535 之间的整数。</sys:String>
     <sys:String x:Key="Settings.ProxyConfigInvalid">自定义代理配置无效，请填写非空主机并设置有效端口（1-65535）。</sys:String>
     <sys:String x:Key="Settings.CheckUpdateButton">检查更新</sys:String>
+    <sys:String x:Key="Settings.TestUpdateConnectivityButton">测试连接</sys:String>
     <sys:String x:Key="Settings.OpenUpdateSourceButton">打开更新源</sys:String>
     <sys:String x:Key="Settings.OpenUpdateTargetButton">打开最新目标</sys:String>
     <sys:String x:Key="Settings.StartUpdateButton">开始更新</sys:String>
@@ -237,6 +238,15 @@
     <sys:String x:Key="Settings.UpdateLaunchFailedFormat">启动更新器失败：{0}</sys:String>
     <sys:String x:Key="Settings.UpdateLaunchInvalidTargetFormat">更新目标无效：{0}</sys:String>
     <sys:String x:Key="Settings.UpdatePackageAutoSelectedFormat">检测到多个更新包，已使用版本匹配最佳的文件：{0}</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionTestStatusLabel">连接测试状态：</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionTargetLabel">测试目标：</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionProxyLabel">生效代理策略：</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionDurationLabel">耗时：</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionTestNotRun">尚未测试。</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionTesting">正在测试连接…</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionTestFailedFormat">连接测试失败：{0}</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionTestFallbackSuggestion">请检查更新源与代理设置后重试。</sys:String>
+    <sys:String x:Key="Settings.UpdateConnectionSlowWarning">响应较慢，可能存在网络或代理延迟。</sys:String>
     <sys:String x:Key="Settings.ReleasePackagingSection">发布打包</sys:String>
     <sys:String x:Key="Settings.ReleasePackagingPublishDirLabel">发布输出目录：</sys:String>
     <sys:String x:Key="Settings.ReleasePackagingOutputDirLabel">发布产物目录：</sys:String>
