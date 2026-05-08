@@ -186,6 +186,7 @@
     <sys:String x:Key="Settings.CheckUpdateButton">Check Updates</sys:String>
     <sys:String x:Key="Settings.OpenUpdateSourceButton">Open Source</sys:String>
     <sys:String x:Key="Settings.OpenUpdateTargetButton">Open Latest Target</sys:String>
+    <sys:String x:Key="Settings.StartUpdateButton">Start Update</sys:String>
     <sys:String x:Key="Settings.UpdateStatusLabel">Status: </sys:String>
     <sys:String x:Key="Settings.UpdateLatestVersionLabel">Latest version: </sys:String>
     <sys:String x:Key="Settings.UpdateResultSourceLabel">Result source: </sys:String>
@@ -201,6 +202,11 @@
     <sys:String x:Key="Settings.UpdateOpenTargetFailed">Failed to open update target.</sys:String>
     <sys:String x:Key="Settings.UpdateOpenTargetFailedFormat">Failed to open update target: {0}</sys:String>
     <sys:String x:Key="Settings.UpdateFolderPathEmpty">Please configure an internal update folder path first.</sys:String>
+    <sys:String x:Key="Settings.UpdateLaunchSuccess">Updater started. The app will now close for update.</sys:String>
+    <sys:String x:Key="Settings.UpdateLaunchingAndClosing">Updater started. Closing main app to continue update…</sys:String>
+    <sys:String x:Key="Settings.UpdateLaunchFailedFormat">Failed to launch updater: {0}</sys:String>
+    <sys:String x:Key="Settings.UpdateLaunchInvalidTargetFormat">Update target is invalid: {0}</sys:String>
+    <sys:String x:Key="Settings.UpdatePackageAutoSelectedFormat">Multiple packages found; using latest: {0}</sys:String>
     <sys:String x:Key="Settings.About">About</sys:String>
     <sys:String x:Key="Settings.AppName">Slurm Job Manager</sys:String>
     <sys:String x:Key="Settings.AppDesc">A modern WPF application for submitting, monitoring, and debugging Slurm HPC jobs over SSH.</sys:String>

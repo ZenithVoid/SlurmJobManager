@@ -15,11 +15,13 @@ namespace SlurmJobManager.App.ViewModels;
 public sealed class SettingsViewModel : ViewModelBase
 {
     private const string GitHubReleasesPage = "https://github.com/ZenithVoid/SlurmJobManager/releases";
+    private static readonly TimeSpan UpdateLaunchGracePeriod = TimeSpan.FromMilliseconds(250);
 
     private readonly MainViewModel _main;
     private readonly AppPreferencesService _prefs;
     private readonly IUpdateCheckService _updateCheckService;
     private readonly IApplicationVersionService _versionService;
+    private readonly IUpdateLaunchService _updateLaunchService;
 
     private string _updateStatusMessage;
     private string _latestVersionDisplay = "-";
@@ -37,17 +39,20 @@ public sealed class SettingsViewModel : ViewModelBase
         MainViewModel main,
         AppPreferencesService prefs,
         IUpdateCheckService updateCheckService,
-        IApplicationVersionService versionService)
+        IApplicationVersionService versionService,
+        IUpdateLaunchService updateLaunchService)
     {
         _main = main ?? throw new ArgumentNullException(nameof(main));
         _prefs = prefs ?? throw new ArgumentNullException(nameof(prefs));
         _updateCheckService = updateCheckService ?? throw new ArgumentNullException(nameof(updateCheckService));
         _versionService = versionService ?? throw new ArgumentNullException(nameof(versionService));
+        _updateLaunchService = updateLaunchService ?? throw new ArgumentNullException(nameof(updateLaunchService));
 
         _updateStatusMessage = L("Settings.UpdateNotCheckedYet");
         _updateSourceDisplay = L("Settings.UpdateSourceUnknown");
 
         CheckForUpdatesCommand = new AsyncRelayCommand(() => CheckForUpdatesAsync(showToasts: true), () => !IsCheckingUpdates);
+        LaunchUpdateCommand = new AsyncRelayCommand(LaunchUpdateAsync, CanLaunchUpdate);
         OpenUpdateTargetCommand = new RelayCommand(OpenUpdateTarget, CanOpenUpdateTarget);
         OpenUpdateSourceCommand = new RelayCommand(OpenConfiguredUpdateSource);
     }
@@ -260,6 +265,7 @@ public sealed class SettingsViewModel : ViewModelBase
     }
 
     public ICommand CheckForUpdatesCommand { get; }
+    public ICommand LaunchUpdateCommand { get; }
     public ICommand OpenUpdateTargetCommand { get; }
     public ICommand OpenUpdateSourceCommand { get; }
 
@@ -359,6 +365,50 @@ public sealed class SettingsViewModel : ViewModelBase
     private bool CanOpenUpdateTarget()
         => !IsCheckingUpdates && !string.IsNullOrWhiteSpace(_lastOpenTarget);
 
+    private bool CanLaunchUpdate()
+        => !IsCheckingUpdates && HasUpdate && !string.IsNullOrWhiteSpace(_lastOpenTarget);
+
+    private async Task LaunchUpdateAsync()
+    {
+        if (!TryResolveLocalUpdatePackage(_lastOpenTarget, out var packagePath, out var packageError, out var selectionMessage))
+        {
+            var message = string.Format(L("Settings.UpdateLaunchInvalidTargetFormat"), packageError ?? L("Settings.UnknownError"));
+            UpdateStatusMessage = message;
+            ToastService.Instance.Error(message);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectionMessage))
+            ToastService.Instance.Info(selectionMessage);
+
+        if (!_updateLaunchService.TryCreateLaunchRequest(
+                packagePath!,
+                restartMainApplication: true,
+                restartArguments: null,
+                out var request,
+                out var createError))
+        {
+            var message = string.Format(L("Settings.UpdateLaunchFailedFormat"), createError ?? L("Settings.UnknownError"));
+            UpdateStatusMessage = message;
+            ToastService.Instance.Error(message);
+            return;
+        }
+
+        var launchResult = _updateLaunchService.LaunchUpdater(request!);
+        if (!launchResult.IsSuccess)
+        {
+            var message = string.Format(L("Settings.UpdateLaunchFailedFormat"), launchResult.ErrorMessage ?? L("Settings.UnknownError"));
+            UpdateStatusMessage = message;
+            ToastService.Instance.Error(message);
+            return;
+        }
+
+        UpdateStatusMessage = L("Settings.UpdateLaunchingAndClosing");
+        ToastService.Instance.Success(L("Settings.UpdateLaunchSuccess"));
+        await Task.Delay(UpdateLaunchGracePeriod);
+        Application.Current?.Dispatcher.BeginInvoke(() => Application.Current?.MainWindow?.Close());
+    }
+
     private void OpenUpdateTarget()
     {
         if (string.IsNullOrWhiteSpace(_lastOpenTarget))
@@ -443,4 +493,64 @@ public sealed class SettingsViewModel : ViewModelBase
     }
 
     private static string L(string key) => Application.Current?.TryFindResource(key) as string ?? key;
+
+    private static bool TryResolveLocalUpdatePackage(
+        string? openTarget,
+        out string? packagePath,
+        out string? errorMessage,
+        out string? selectionMessage)
+    {
+        packagePath = null;
+        errorMessage = null;
+        selectionMessage = null;
+
+        if (string.IsNullOrWhiteSpace(openTarget))
+        {
+            errorMessage = "No update target is available.";
+            return false;
+        }
+
+        var target = openTarget.Trim();
+        if (Uri.TryCreate(target, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            errorMessage = "The update target is a remote URL. Download the package locally first.";
+            return false;
+        }
+
+        if (File.Exists(target))
+        {
+            packagePath = target;
+            return true;
+        }
+
+        if (!Directory.Exists(target))
+        {
+            errorMessage = $"Update target does not exist: {target}";
+            return false;
+        }
+
+        var candidates = Directory
+            .EnumerateFiles(target)
+            .Where(path =>
+            {
+                var ext = Path.GetExtension(path);
+                return string.Equals(ext, ".zip", StringComparison.OrdinalIgnoreCase)
+                       || string.Equals(ext, ".exe", StringComparison.OrdinalIgnoreCase)
+                       || string.Equals(ext, ".msi", StringComparison.OrdinalIgnoreCase);
+            })
+            .OrderByDescending(File.GetLastWriteTimeUtc)
+            .ToList();
+
+        if (candidates.Count == 0)
+        {
+            errorMessage = "No supported update package (.zip/.exe/.msi) was found in the update target directory.";
+            return false;
+        }
+
+        packagePath = candidates[0];
+        if (candidates.Count > 1)
+            selectionMessage = string.Format(L("Settings.UpdatePackageAutoSelectedFormat"), Path.GetFileName(packagePath));
+        return true;
+    }
 }

@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlurmJobManager.Infrastruct
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlurmJobManager.App", "src\SlurmJobManager.App\SlurmJobManager.App.csproj", "{7100D867-5E66-451C-A910-23F62E50564A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlurmJobManager.Updater", "src\SlurmJobManager.Updater\SlurmJobManager.Updater.csproj", "{8C1659CA-B0D6-4F0E-8D15-6765B57E4FCE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{7100D867-5E66-451C-A910-23F62E50564A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7100D867-5E66-451C-A910-23F62E50564A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7100D867-5E66-451C-A910-23F62E50564A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C1659CA-B0D6-4F0E-8D15-6765B57E4FCE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C1659CA-B0D6-4F0E-8D15-6765B57E4FCE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C1659CA-B0D6-4F0E-8D15-6765B57E4FCE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C1659CA-B0D6-4F0E-8D15-6765B57E4FCE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
