@@ -126,6 +126,26 @@
 
     <!-- ── 设置视图 ─────────────────────────────────────────────────────── -->
     <sys:String x:Key="Settings.Title">设置</sys:String>
+    <sys:String x:Key="Settings.GroupGeneralTitle">常规</sys:String>
+    <sys:String x:Key="Settings.GroupGeneralDesc">集中管理基础行为、启动偏好、界面语言与监控刷新节奏。</sys:String>
+    <sys:String x:Key="Settings.GroupPathsTitle">路径与工作流</sys:String>
+    <sys:String x:Key="Settings.GroupPathsDesc">管理默认工作路径与任务流程依赖的本地存储位置。</sys:String>
+    <sys:String x:Key="Settings.GroupNetworkTitle">网络与代理</sys:String>
+    <sys:String x:Key="Settings.GroupNetworkDesc">控制更新链路代理策略，并提供连通性诊断入口。</sys:String>
+    <sys:String x:Key="Settings.NetworkActionsLabel">网络操作：</sys:String>
+    <sys:String x:Key="Settings.GroupUpdatesTitle">更新</sys:String>
+    <sys:String x:Key="Settings.GroupUpdatesDesc">配置更新来源、更新策略，并查看更新结果状态。</sys:String>
+    <sys:String x:Key="Settings.UpdateActionsLabel">更新操作：</sys:String>
+    <sys:String x:Key="Settings.GroupLogsTitle">日志</sys:String>
+    <sys:String x:Key="Settings.GroupLogsDesc">快速定位、查看与导出运行日志，用于排查问题。</sys:String>
+    <sys:String x:Key="Settings.LogDirectoryLabel">日志目录：</sys:String>
+    <sys:String x:Key="Settings.GroupAboutTitle">关于与帮助</sys:String>
+    <sys:String x:Key="Settings.GroupAboutDesc">集中提供产品简介，以及关于页和仓库等帮助入口。</sys:String>
+    <sys:String x:Key="Settings.AboutActionsLabel">关于/帮助操作：</sys:String>
+    <sys:String x:Key="Settings.OpenAboutPageButton">打开关于页面</sys:String>
+    <sys:String x:Key="Settings.OpenRepositoryButton">打开项目仓库</sys:String>
+    <sys:String x:Key="Settings.GroupAdvancedTitle">高级</sys:String>
+    <sys:String x:Key="Settings.GroupAdvancedDesc">面向授权环境的发布打包与进阶工具。</sys:String>
     <sys:String x:Key="Settings.SshConnection">SSH 连接</sys:String>
     <sys:String x:Key="Settings.StartupBehavior">启动行为</sys:String>
     <sys:String x:Key="Settings.AutoConnectLabel">启动程序时自动连接已保存配置</sys:String>

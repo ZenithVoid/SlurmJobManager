@@ -126,6 +126,26 @@
 
     <!-- ── Settings view ────────────────────────────────────────────────── -->
     <sys:String x:Key="Settings.Title">Settings</sys:String>
+    <sys:String x:Key="Settings.GroupGeneralTitle">General</sys:String>
+    <sys:String x:Key="Settings.GroupGeneralDesc">Core behavior, startup preferences, UI language, and monitoring cadence.</sys:String>
+    <sys:String x:Key="Settings.GroupPathsTitle">Paths &amp; Workflow</sys:String>
+    <sys:String x:Key="Settings.GroupPathsDesc">Default working locations and local storage paths used by task workflows.</sys:String>
+    <sys:String x:Key="Settings.GroupNetworkTitle">Network &amp; Proxy</sys:String>
+    <sys:String x:Key="Settings.GroupNetworkDesc">Proxy policy for update networking and connectivity diagnostics.</sys:String>
+    <sys:String x:Key="Settings.NetworkActionsLabel">Network actions:</sys:String>
+    <sys:String x:Key="Settings.GroupUpdatesTitle">Updates</sys:String>
+    <sys:String x:Key="Settings.GroupUpdatesDesc">Update source selection, update policy, and update status overview.</sys:String>
+    <sys:String x:Key="Settings.UpdateActionsLabel">Update actions:</sys:String>
+    <sys:String x:Key="Settings.GroupLogsTitle">Logs</sys:String>
+    <sys:String x:Key="Settings.GroupLogsDesc">Open, review, and export runtime logs for troubleshooting.</sys:String>
+    <sys:String x:Key="Settings.LogDirectoryLabel">Log directory:</sys:String>
+    <sys:String x:Key="Settings.GroupAboutTitle">About &amp; Help</sys:String>
+    <sys:String x:Key="Settings.GroupAboutDesc">Product summary and quick links to documentation and repository resources.</sys:String>
+    <sys:String x:Key="Settings.AboutActionsLabel">About/help actions:</sys:String>
+    <sys:String x:Key="Settings.OpenAboutPageButton">Open About Page</sys:String>
+    <sys:String x:Key="Settings.OpenRepositoryButton">Open Repository</sys:String>
+    <sys:String x:Key="Settings.GroupAdvancedTitle">Advanced</sys:String>
+    <sys:String x:Key="Settings.GroupAdvancedDesc">Privileged release-packaging tools for authorized environments.</sys:String>
     <sys:String x:Key="Settings.SshConnection">SSH Connection</sys:String>
     <sys:String x:Key="Settings.StartupBehavior">Startup Behavior</sys:String>
     <sys:String x:Key="Settings.AutoConnectLabel">Auto-connect saved profile on startup</sys:String>

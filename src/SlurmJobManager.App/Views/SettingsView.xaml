@@ -8,7 +8,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    d:DesignHeight="800" d:DesignWidth="700"
+    d:DesignHeight="800"
+    d:DesignWidth="700"
     Background="{DynamicResource BgBaseBrush}">
     <UserControl.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
@@ -44,337 +45,459 @@
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0"
-                  b:SmoothScrollBehavior.IsEnabled="True">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0" b:SmoothScrollBehavior.IsEnabled="True">
         <StackPanel Margin="24,20,24,20">
+            <TextBlock Text="{DynamicResource Settings.Title}" Style="{StaticResource PageTitleStyle}" />
+            <TextBlock
+                Margin="0,4,0,16"
+                Text="{DynamicResource Settings.AutoSaveHint}"
+                Style="{StaticResource MutedTextStyle}"
+                TextWrapping="Wrap" />
 
-            <!-- Page title -->
-            <TextBlock Text="{DynamicResource Settings.Title}"
-                       Style="{StaticResource PageTitleStyle}" />
-
-            <!-- ── Connection Configuration ─────────────────────────────── -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.SshConnection}"
-                               Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock Text="{DynamicResource Settings.GroupGeneralTitle}" Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock
+                        Margin="0,0,0,10"
+                        Text="{DynamicResource Settings.GroupGeneralDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock Margin="0,0,0,4" Text="{DynamicResource Settings.SshConnection}" Style="{StaticResource FieldLabelStyle}" />
                     <views:ConnectionView DataContext="{Binding Connection, Mode=OneWay}" />
-                </StackPanel>
-            </Border>
 
-            <!-- ── Startup Behavior ──────────────────────────────────────── -->
-            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.StartupBehavior}"
-                               Style="{StaticResource SectionHeaderStyle}" />
-
+                    <TextBlock Margin="0,10,0,2" Text="{DynamicResource Settings.StartupBehavior}" Style="{StaticResource FieldLabelStyle}" />
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <CheckBox x:Name="AutoConnectCheckBox"
-                                  IsChecked="{Binding AutoConnectOnStartup, Mode=TwoWay}"
-                                  Margin="0,0,10,0" />
-                        <Label Target="{Binding ElementName=AutoConnectCheckBox}"
-                               Content="{DynamicResource Settings.AutoConnectLabel}"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               VerticalAlignment="Center"
-                               Cursor="Hand"
-                               Padding="0" />
+                        <CheckBox
+                            x:Name="AutoConnectCheckBox"
+                            Margin="0,0,10,0"
+                            IsChecked="{Binding AutoConnectOnStartup, Mode=TwoWay}" />
+                        <Label
+                            Padding="0"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"
+                            Target="{Binding ElementName=AutoConnectCheckBox}"
+                            Content="{DynamicResource Settings.AutoConnectLabel}"
+                            Foreground="{DynamicResource TextPrimaryBrush}" />
                     </StackPanel>
-                     <TextBlock Text="{DynamicResource Settings.AutoConnectDesc}"
-                                Style="{StaticResource MutedTextStyle}"
-                                TextWrapping="Wrap" />
-                    <TextBlock Text="{DynamicResource Settings.AutoConnectEffect}"
-                               Style="{StaticResource MutedTextStyle}"
-                               Margin="0,6,0,0"
-                               TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.AutoConnectDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        Text="{DynamicResource Settings.AutoConnectEffect}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
 
                     <StackPanel Orientation="Horizontal" Margin="0,10,0,4">
-                        <CheckBox x:Name="AutoRestoreLastTaskCheckBox"
-                                  IsChecked="{Binding AutoRestoreLastTaskOnLogin, Mode=TwoWay}"
-                                  Margin="0,0,10,0" />
-                        <Label Target="{Binding ElementName=AutoRestoreLastTaskCheckBox}"
-                               Content="{DynamicResource Settings.AutoRestoreLastTaskLabel}"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               VerticalAlignment="Center"
-                               Cursor="Hand"
-                               Padding="0" />
+                        <CheckBox
+                            x:Name="AutoRestoreLastTaskCheckBox"
+                            Margin="0,0,10,0"
+                            IsChecked="{Binding AutoRestoreLastTaskOnLogin, Mode=TwoWay}" />
+                        <Label
+                            Padding="0"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"
+                            Target="{Binding ElementName=AutoRestoreLastTaskCheckBox}"
+                            Content="{DynamicResource Settings.AutoRestoreLastTaskLabel}"
+                            Foreground="{DynamicResource TextPrimaryBrush}" />
                     </StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.AutoRestoreLastTaskDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap" />
-                    <TextBlock Text="{DynamicResource Settings.AutoRestoreLastTaskEffect}"
-                               Style="{StaticResource MutedTextStyle}"
-                               Margin="0,6,0,0"
-                               TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.AutoRestoreLastTaskDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        Text="{DynamicResource Settings.AutoRestoreLastTaskEffect}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
 
-                    <TextBlock Text="{DynamicResource Settings.AutoSaveHint}"
-                               Style="{StaticResource MutedTextStyle}"
-                               Margin="0,2,0,0"
-                               TextWrapping="Wrap" />
-
-                    <TextBlock Text="{DynamicResource Settings.DefaultRemotePickerDirectoryLabel}"
-                               Style="{StaticResource FieldLabelStyle}"
-                               Margin="0,10,0,2" />
-                    <TextBox Text="{Binding DefaultRemotePickerDirectory, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                             ToolTip="{DynamicResource Settings.DefaultRemotePickerDirectoryDesc}" />
-                    <TextBlock Text="{DynamicResource Settings.DefaultRemotePickerDirectoryDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               Margin="0,4,0,0"
-                               TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-
-            <!-- ── Theme ────────────────────────────────────────────────── -->
-            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.Appearance}"
-                               Style="{StaticResource SectionHeaderStyle}" />
-
+                    <TextBlock Margin="0,10,0,2" Text="{DynamicResource Settings.Appearance}" Style="{StaticResource FieldLabelStyle}" />
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <TextBlock Text="{DynamicResource Settings.Theme}"
-                                   Style="{StaticResource FieldLabelStyle}"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,12,0" />
-                        <Button Content="{Binding ThemeLabel, Mode=OneWay}"
-                                Command="{Binding ToggleThemeCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="12,6" />
+                        <TextBlock
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            Text="{DynamicResource Settings.Theme}"
+                            Style="{StaticResource FieldLabelStyle}" />
+                        <Button
+                            Padding="12,6"
+                            Command="{Binding ToggleThemeCommand}"
+                            Content="{Binding ThemeLabel, Mode=OneWay}"
+                            Style="{StaticResource NeutralButtonStyle}" />
                     </StackPanel>
-                     <TextBlock Text="{DynamicResource Settings.ThemeDesc}"
-                                Style="{StaticResource MutedTextStyle}"
-                                TextWrapping="Wrap" />
-                    <TextBlock Text="{DynamicResource Settings.ThemeEffect}"
-                               Style="{StaticResource MutedTextStyle}"
-                               Margin="0,6,0,0"
-                               TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
+                    <TextBlock Text="{DynamicResource Settings.ThemeDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        Text="{DynamicResource Settings.ThemeEffect}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
 
-            <!-- ── Language ─────────────────────────────────────────────── -->
-            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.Language}"
-                               Style="{StaticResource SectionHeaderStyle}" />
-
-                     <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                        <TextBlock Text="{DynamicResource Settings.LanguageLabel}"
-                                   Style="{StaticResource FieldLabelStyle}"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,12,0" />
-                        <Button Content="{DynamicResource Settings.LangZhCN}"
-                                Command="{Binding SwitchLocaleCommand}"
-                                CommandParameter="zh-CN"
-                                Style="{StaticResource LocaleZhButtonStyle}"
-                                Padding="10,5" Margin="0,0,6,0" />
-                        <Button Content="{DynamicResource Settings.LangEnUS}"
-                                Command="{Binding SwitchLocaleCommand}"
-                                CommandParameter="en-US"
-                                 Style="{StaticResource LocaleEnButtonStyle}"
-                                 Padding="10,5" />
-                     </StackPanel>
-                    <Border Background="{DynamicResource BgPanelBrush}"
-                            BorderBrush="{DynamicResource BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Padding="10,8"
-                            Margin="0,0,0,6">
-                        <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
-                                   TextWrapping="Wrap">
+                    <TextBlock Margin="0,10,0,2" Text="{DynamicResource Settings.Language}" Style="{StaticResource FieldLabelStyle}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            Text="{DynamicResource Settings.LanguageLabel}"
+                            Style="{StaticResource FieldLabelStyle}" />
+                        <Button
+                            Margin="0,0,6,0"
+                            Padding="10,5"
+                            Command="{Binding SwitchLocaleCommand}"
+                            CommandParameter="zh-CN"
+                            Content="{DynamicResource Settings.LangZhCN}"
+                            Style="{StaticResource LocaleZhButtonStyle}" />
+                        <Button
+                            Padding="10,5"
+                            Command="{Binding SwitchLocaleCommand}"
+                            CommandParameter="en-US"
+                            Content="{DynamicResource Settings.LangEnUS}"
+                            Style="{StaticResource LocaleEnButtonStyle}" />
+                    </StackPanel>
+                    <Border
+                        Margin="0,0,0,6"
+                        Padding="10,8"
+                        Background="{DynamicResource BgPanelBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6">
+                        <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
                             <Run Text="{DynamicResource Settings.CurrentLanguage}" />
                             <Run Text="{Binding CurrentLocaleDisplayName, Mode=OneWay}" />
                         </TextBlock>
                     </Border>
-                    <TextBlock Text="{DynamicResource Settings.LanguageEffect}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
+                    <TextBlock Text="{DynamicResource Settings.LanguageEffect}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
 
-            <!-- ── Polling & Performance ────────────────────────────────── -->
-            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.PollingPerf}"
-                               Style="{StaticResource SectionHeaderStyle}" />
-
-                    <!-- Poll interval -->
-                    <TextBlock Text="{DynamicResource Settings.PollIntervalLabel}"
-                               Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Margin="0,10,0,2" Text="{DynamicResource Settings.PollingPerf}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="{DynamicResource Settings.PollIntervalLabel}" Style="{StaticResource FieldLabelStyle}" />
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                        <Slider Minimum="2" Maximum="60"
-                                Value="{Binding PollIntervalSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                Width="200" VerticalAlignment="Center"
-                                Margin="0,0,10,0" />
-                        <TextBlock Text="{Binding PollIntervalSeconds}"
-                                   Foreground="{DynamicResource TextPrimaryBrush}"
-                                   VerticalAlignment="Center"
-                                   MinWidth="28" />
-                        <TextBlock Text="{DynamicResource Units.SecondShort}"
-                                    Style="{StaticResource MutedTextStyle}"
-                                    VerticalAlignment="Center" />
+                        <Slider
+                            Width="200"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Center"
+                            Maximum="60"
+                            Minimum="2"
+                            Value="{Binding PollIntervalSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock
+                            MinWidth="28"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource TextPrimaryBrush}"
+                            Text="{Binding PollIntervalSeconds}" />
+                        <TextBlock VerticalAlignment="Center" Text="{DynamicResource Units.SecondShort}" Style="{StaticResource MutedTextStyle}" />
                     </StackPanel>
-                     <TextBlock Text="{DynamicResource Settings.PollIntervalDesc}"
-                                Style="{StaticResource MutedTextStyle}"
-                                TextWrapping="Wrap" />
-                    <TextBlock Text="{DynamicResource Settings.PollIntervalEffect}"
-                               Style="{StaticResource MutedTextStyle}"
-                               Margin="0,6,0,0"
-                               TextWrapping="Wrap" />
-                    <TextBlock Text="{DynamicResource Settings.HistoryQueryRangeDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               Margin="0,2,0,0"
-                               TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.PollIntervalDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        Text="{DynamicResource Settings.PollIntervalEffect}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,2,0,0"
+                        Text="{DynamicResource Settings.HistoryQueryRangeDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
-            <!-- ── Update Check ───────────────────────────────────────────── -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.UpdateSection}"
-                               Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock Text="{DynamicResource Settings.GroupPathsTitle}" Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock
+                        Margin="0,0,0,10"
+                        Text="{DynamicResource Settings.GroupPathsDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
 
-                    <TextBlock Text="{DynamicResource Settings.UpdateCurrentVersionLabel}"
-                               Style="{StaticResource FieldLabelStyle}" />
-                    <TextBlock Text="{Binding CurrentAppVersion, Mode=OneWay}"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               Margin="0,0,0,8" />
+                    <TextBlock Text="{DynamicResource Settings.DefaultRemotePickerDirectoryLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox
+                        Text="{Binding DefaultRemotePickerDirectory, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                        ToolTip="{DynamicResource Settings.DefaultRemotePickerDirectoryDesc}" />
+                    <TextBlock
+                        Margin="0,4,0,8"
+                        Text="{DynamicResource Settings.DefaultRemotePickerDirectoryDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
 
-                    <TextBlock Text="{DynamicResource Settings.UpdateSourceLabel}"
-                               Style="{StaticResource FieldLabelStyle}" />
-                    <ComboBox SelectedIndex="{Binding SelectedUpdateSourceIndex, Mode=TwoWay}"
-                              Margin="0,0,0,6">
-                        <ComboBoxItem Content="{DynamicResource Settings.UpdateSourceGitHub}" />
-                        <ComboBoxItem Content="{DynamicResource Settings.UpdateSourceFolder}" />
-                    </ComboBox>
-                    <TextBlock Text="{DynamicResource Settings.UpdateSourceDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap"
-                               Margin="0,0,0,8" />
+                    <TextBlock Text="{DynamicResource Settings.LocalDataRootLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox
+                        Margin="0,0,0,8"
+                        IsReadOnly="True"
+                        Text="{Binding LocalDataDirectory, Mode=OneWay}"
+                        ToolTip="{Binding LocalDataDirectory, Mode=OneWay}" />
 
-                    <TextBlock Text="{DynamicResource Settings.UpdateFolderPathLabel}"
-                               Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox Text="{Binding UpdateFolderPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                             IsEnabled="{Binding IsFolderUpdateSource, Mode=OneWay}"
-                             Margin="0,0,0,4" />
-                    <TextBlock Text="{DynamicResource Settings.UpdateFolderPathDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap"
-                               Margin="0,0,0,8" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button
+                            Margin="0,0,6,0"
+                            Padding="10,5"
+                            Command="{Binding OpenDataDirectoryCommand}"
+                            Content="{DynamicResource Settings.OpenDataDirectory}"
+                            Style="{StaticResource NeutralButtonStyle}" />
+                        <Button
+                            Padding="10,5"
+                            Command="{Binding CopyDataDirectoryCommand}"
+                            Content="{DynamicResource Settings.CopyDataDirectory}"
+                            Style="{StaticResource NeutralButtonStyle}" />
+                    </StackPanel>
+
+                    <TextBlock Text="{DynamicResource Settings.LocalDataDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        Foreground="{DynamicResource TextPrimaryBrush}"
+                        TextWrapping="Wrap"
+                        ToolTip="{Binding TasksDirectory, Mode=OneWay}">
+                        <Run Text="• " />
+                        <Run Text="{DynamicResource Settings.LocalDataTasks}" />
+                        <Run Text="{Binding TasksDirectory, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock
+                        Margin="0,2,0,0"
+                        Foreground="{DynamicResource TextPrimaryBrush}"
+                        TextWrapping="Wrap"
+                        ToolTip="{Binding BlueprintsDirectory, Mode=OneWay}">
+                        <Run Text="• " />
+                        <Run Text="{DynamicResource Settings.LocalDataBlueprints}" />
+                        <Run Text="{Binding BlueprintsDirectory, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock
+                        Margin="0,2,0,0"
+                        Foreground="{DynamicResource TextPrimaryBrush}"
+                        TextWrapping="Wrap"
+                        ToolTip="{Binding LogsDirectory, Mode=OneWay}">
+                        <Run Text="• " />
+                        <Run Text="{DynamicResource Settings.LocalDataLogs}" />
+                        <Run Text="{Binding LogsDirectory, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock
+                        Margin="0,2,0,0"
+                        Foreground="{DynamicResource TextPrimaryBrush}"
+                        TextWrapping="Wrap"
+                        ToolTip="{Binding RecentConnectionsFilePath, Mode=OneWay}">
+                        <Run Text="• " />
+                        <Run Text="{DynamicResource Settings.LocalDataRecentConnections}" />
+                        <Run Text="{Binding RecentConnectionsFilePath, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock
+                        Margin="0,2,0,0"
+                        Foreground="{DynamicResource TextPrimaryBrush}"
+                        TextWrapping="Wrap"
+                        ToolTip="{Binding PreferencesFilePath, Mode=OneWay}">
+                        <Run Text="• " />
+                        <Run Text="{DynamicResource Settings.LocalDataPreferences}" />
+                        <Run Text="{Binding PreferencesFilePath, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock
+                        Margin="0,2,0,0"
+                        Foreground="{DynamicResource TextPrimaryBrush}"
+                        TextWrapping="Wrap"
+                        ToolTip="{Binding LastTaskContextsFilePath, Mode=OneWay}">
+                        <Run Text="• " />
+                        <Run Text="{DynamicResource Settings.LocalDataLastTaskContexts}" />
+                        <Run Text="{Binding LastTaskContextsFilePath, Mode=OneWay}" />
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.GroupNetworkTitle}" Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock
+                        Margin="0,0,0,10"
+                        Text="{DynamicResource Settings.GroupNetworkDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <CheckBox x:Name="AutoCheckUpdatesCheckBox"
-                                  IsChecked="{Binding AutoCheckForUpdatesOnStartup, Mode=TwoWay}"
-                                  Margin="0,0,10,0" />
-                        <Label Target="{Binding ElementName=AutoCheckUpdatesCheckBox}"
-                               Content="{DynamicResource Settings.AutoCheckUpdateLabel}"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               VerticalAlignment="Center"
-                               Cursor="Hand"
-                               Padding="0" />
+                        <CheckBox
+                            x:Name="UseProxyForUpdatesCheckBox"
+                            Margin="0,0,10,0"
+                            IsChecked="{Binding UseProxyForUpdates, Mode=TwoWay}" />
+                        <Label
+                            Padding="0"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"
+                            Target="{Binding ElementName=UseProxyForUpdatesCheckBox}"
+                            Content="{DynamicResource Settings.UpdateUseProxyLabel}"
+                            Foreground="{DynamicResource TextPrimaryBrush}" />
                     </StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.AutoCheckUpdateDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,0,0,8"
+                        Text="{DynamicResource Settings.UpdateUseProxyDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
 
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
-                        <CheckBox x:Name="IncludePrereleaseCheckBox"
-                                  IsChecked="{Binding IncludePrereleaseUpdates, Mode=TwoWay}"
-                                  IsEnabled="{Binding IsGitHubUpdateSource, Mode=OneWay}"
-                                  Margin="0,0,10,0" />
-                        <Label Target="{Binding ElementName=IncludePrereleaseCheckBox}"
-                               Content="{DynamicResource Settings.IncludePrereleaseLabel}"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               VerticalAlignment="Center"
-                               Cursor="Hand"
-                               Padding="0" />
-                    </StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.IncludePrereleaseDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap" />
-
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
-                        <CheckBox x:Name="UseProxyForUpdatesCheckBox"
-                                  IsChecked="{Binding UseProxyForUpdates, Mode=TwoWay}"
-                                  Margin="0,0,10,0" />
-                        <Label Target="{Binding ElementName=UseProxyForUpdatesCheckBox}"
-                               Content="{DynamicResource Settings.UpdateUseProxyLabel}"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               VerticalAlignment="Center"
-                               Cursor="Hand"
-                               Padding="0" />
-                    </StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.UpdateUseProxyDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap"
-                               Margin="0,0,0,8" />
-
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeLabel}"
-                               Style="{StaticResource FieldLabelStyle}" />
-                    <ComboBox SelectedIndex="{Binding SelectedUpdateProxyModeIndex, Mode=TwoWay}"
-                              Margin="0,0,0,4">
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <ComboBox SelectedIndex="{Binding SelectedUpdateProxyModeIndex, Mode=TwoWay}" Margin="0,0,0,4">
                         <ComboBoxItem Content="{DynamicResource Settings.UpdateProxyModeNoProxy}" />
                         <ComboBoxItem Content="{DynamicResource Settings.UpdateProxyModeSystem}" />
                         <ComboBoxItem Content="{DynamicResource Settings.UpdateProxyModeCustom}" />
                     </ComboBox>
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeNoProxyDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap" />
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeSystemDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap" />
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeCustomDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap"
-                               Margin="0,0,0,8" />
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeNoProxyDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeSystemDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,0,0,8"
+                        Text="{DynamicResource Settings.UpdateProxyModeCustomDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
 
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyHostLabel}"
-                               Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox Text="{Binding UpdateCustomProxyHost, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                             IsEnabled="{Binding IsCustomUpdateProxyMode, Mode=OneWay}"
-                             Margin="0,0,0,4" />
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyHostDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap"
-                               Margin="0,0,0,8" />
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyHostLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox
+                        Margin="0,0,0,4"
+                        IsEnabled="{Binding IsCustomUpdateProxyMode, Mode=OneWay}"
+                        Text="{Binding UpdateCustomProxyHost, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                    <TextBlock
+                        Margin="0,0,0,8"
+                        Text="{DynamicResource Settings.UpdateProxyHostDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
 
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyPortLabel}"
-                               Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox Text="{Binding UpdateCustomProxyPortText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                             IsEnabled="{Binding IsCustomUpdateProxyMode, Mode=OneWay}"
-                             Margin="0,0,0,4" />
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyPortDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyPortLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox
+                        Margin="0,0,0,4"
+                        IsEnabled="{Binding IsCustomUpdateProxyMode, Mode=OneWay}"
+                        Text="{Binding UpdateCustomProxyPortText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyPortDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
 
-                    <StackPanel Orientation="Horizontal" Margin="0,10,0,8">
-                        <Button Content="{DynamicResource Settings.CheckUpdateButton}"
-                                Command="{Binding CheckForUpdatesCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="10,5"
-                                Margin="0,0,6,0" />
-                        <Button Content="{DynamicResource Settings.TestUpdateConnectivityButton}"
-                                Command="{Binding TestUpdateConnectivityCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="10,5"
-                                Margin="0,0,6,0" />
-                        <Button Content="{DynamicResource Settings.OpenUpdateSourceButton}"
-                                Command="{Binding OpenUpdateSourceCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="10,5"
-                                Margin="0,0,6,0" />
-                        <Button Content="{DynamicResource Settings.OpenUpdateTargetButton}"
-                                Command="{Binding OpenUpdateTargetCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="10,5"
-                                Margin="0,0,6,0" />
-                        <Button Content="{DynamicResource Settings.StartUpdateButton}"
-                                Command="{Binding LaunchUpdateCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="10,5" />
+                    <TextBlock Margin="0,10,0,4" Text="{DynamicResource Settings.NetworkActionsLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button
+                            Margin="0,0,6,0"
+                            Padding="10,5"
+                            Command="{Binding TestUpdateConnectivityCommand}"
+                            Content="{DynamicResource Settings.TestUpdateConnectivityButton}"
+                            Style="{StaticResource NeutralButtonStyle}" />
+                        <Button
+                            Padding="10,5"
+                            Command="{Binding OpenUpdateSourceCommand}"
+                            Content="{DynamicResource Settings.OpenUpdateSourceButton}"
+                            Style="{StaticResource NeutralButtonStyle}" />
                     </StackPanel>
 
-                    <Border Background="{DynamicResource BgPanelBrush}"
-                            BorderBrush="{DynamicResource BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Padding="10,8">
+                    <Border
+                        Padding="10,8"
+                        Background="{DynamicResource BgPanelBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Settings.UpdateConnectionTestStatusLabel}" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Text="{Binding UpdateConnectionTestStatusMessage, Mode=OneWay}"
+                                Style="{StaticResource UpdateConnectionTestStatusStyle}"
+                                TextWrapping="Wrap" />
+                            <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                <Run Text="{DynamicResource Settings.UpdateConnectionTargetLabel}" />
+                                <Run Text="{Binding UpdateConnectionTestTarget, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                <Run Text="{DynamicResource Settings.UpdateConnectionProxyLabel}" />
+                                <Run Text="{Binding UpdateConnectionTestProxyPolicy, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                <Run Text="{DynamicResource Settings.UpdateConnectionDurationLabel}" />
+                                <Run Text="{Binding UpdateConnectionTestDuration, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                Foreground="{DynamicResource AccentRedBrush}"
+                                Text="{Binding UpdateConnectionTestErrorSummary, Mode=OneWay}"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Text="{Binding UpdateConnectionTestSuggestion, Mode=OneWay}"
+                                Style="{StaticResource MutedTextStyle}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.GroupUpdatesTitle}" Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock
+                        Margin="0,0,0,10"
+                        Text="{DynamicResource Settings.GroupUpdatesDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock Text="{DynamicResource Settings.UpdateCurrentVersionLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Margin="0,0,0,8" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding CurrentAppVersion, Mode=OneWay}" />
+
+                    <TextBlock Text="{DynamicResource Settings.UpdateSourceLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <ComboBox SelectedIndex="{Binding SelectedUpdateSourceIndex, Mode=TwoWay}" Margin="0,0,0,6">
+                        <ComboBoxItem Content="{DynamicResource Settings.UpdateSourceGitHub}" />
+                        <ComboBoxItem Content="{DynamicResource Settings.UpdateSourceFolder}" />
+                    </ComboBox>
+                    <TextBlock
+                        Margin="0,0,0,8"
+                        Text="{DynamicResource Settings.UpdateSourceDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock Text="{DynamicResource Settings.UpdateFolderPathLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox
+                        Margin="0,0,0,4"
+                        IsEnabled="{Binding IsFolderUpdateSource, Mode=OneWay}"
+                        Text="{Binding UpdateFolderPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                    <TextBlock
+                        Margin="0,0,0,8"
+                        Text="{DynamicResource Settings.UpdateFolderPathDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <CheckBox
+                            x:Name="AutoCheckUpdatesCheckBox"
+                            Margin="0,0,10,0"
+                            IsChecked="{Binding AutoCheckForUpdatesOnStartup, Mode=TwoWay}" />
+                        <Label
+                            Padding="0"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"
+                            Target="{Binding ElementName=AutoCheckUpdatesCheckBox}"
+                            Content="{DynamicResource Settings.AutoCheckUpdateLabel}"
+                            Foreground="{DynamicResource TextPrimaryBrush}" />
+                    </StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.AutoCheckUpdateDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                        <CheckBox
+                            x:Name="IncludePrereleaseCheckBox"
+                            Margin="0,0,10,0"
+                            IsChecked="{Binding IncludePrereleaseUpdates, Mode=TwoWay}"
+                            IsEnabled="{Binding IsGitHubUpdateSource, Mode=OneWay}" />
+                        <Label
+                            Padding="0"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"
+                            Target="{Binding ElementName=IncludePrereleaseCheckBox}"
+                            Content="{DynamicResource Settings.IncludePrereleaseLabel}"
+                            Foreground="{DynamicResource TextPrimaryBrush}" />
+                    </StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.IncludePrereleaseDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+
+                    <TextBlock Margin="0,10,0,4" Text="{DynamicResource Settings.UpdateActionsLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button
+                            Margin="0,0,6,0"
+                            Padding="10,5"
+                            Command="{Binding CheckForUpdatesCommand}"
+                            Content="{DynamicResource Settings.CheckUpdateButton}"
+                            Style="{StaticResource NeutralButtonStyle}" />
+                        <Button
+                            Margin="0,0,6,0"
+                            Padding="10,5"
+                            Command="{Binding OpenUpdateTargetCommand}"
+                            Content="{DynamicResource Settings.OpenUpdateTargetButton}"
+                            Style="{StaticResource NeutralButtonStyle}" />
+                        <Button
+                            Padding="10,5"
+                            Command="{Binding LaunchUpdateCommand}"
+                            Content="{DynamicResource Settings.StartUpdateButton}"
+                            Style="{StaticResource NeutralButtonStyle}" />
+                    </StackPanel>
+
+                    <Border
+                        Padding="10,8"
+                        Background="{DynamicResource BgPanelBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6">
                         <StackPanel>
                             <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
                                 <Run Text="{DynamicResource Settings.UpdateStatusLabel}" />
@@ -400,204 +523,142 @@
                                 <Run Text="{DynamicResource Settings.UpdateLastCheckedLabel}" />
                                 <Run Text="{Binding LastCheckedAtDisplay, Mode=OneWay}" />
                             </TextBlock>
-                            <TextBlock Text="{Binding ReleaseNotes, Mode=OneWay}"
-                                       Style="{StaticResource MutedTextStyle}"
-                                       Margin="0,6,0,0"
-                                       TextWrapping="Wrap" />
-                            <TextBlock Text="{DynamicResource Settings.UpdateConnectionTestStatusLabel}"
-                                       Style="{StaticResource FieldLabelStyle}"
-                                       Margin="0,8,0,0" />
-                            <TextBlock Text="{Binding UpdateConnectionTestStatusMessage, Mode=OneWay}"
-                                       Style="{StaticResource UpdateConnectionTestStatusStyle}"
-                                       Margin="0,2,0,0"
-                                       TextWrapping="Wrap" />
-                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0">
-                                <Run Text="{DynamicResource Settings.UpdateConnectionTargetLabel}" />
-                                <Run Text="{Binding UpdateConnectionTestTarget, Mode=OneWay}" />
-                            </TextBlock>
-                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0">
-                                <Run Text="{DynamicResource Settings.UpdateConnectionProxyLabel}" />
-                                <Run Text="{Binding UpdateConnectionTestProxyPolicy, Mode=OneWay}" />
-                            </TextBlock>
-                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0">
-                                <Run Text="{DynamicResource Settings.UpdateConnectionDurationLabel}" />
-                                <Run Text="{Binding UpdateConnectionTestDuration, Mode=OneWay}" />
-                            </TextBlock>
-                            <TextBlock Foreground="{DynamicResource AccentRedBrush}"
-                                       Text="{Binding UpdateConnectionTestErrorSummary, Mode=OneWay}"
-                                       Margin="0,4,0,0"
-                                       TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding UpdateConnectionTestSuggestion, Mode=OneWay}"
-                                       Style="{StaticResource MutedTextStyle}"
-                                       Margin="0,2,0,0"
-                                       TextWrapping="Wrap" />
+                            <TextBlock
+                                Margin="0,6,0,0"
+                                Text="{Binding ReleaseNotes, Mode=OneWay}"
+                                Style="{StaticResource MutedTextStyle}"
+                                TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
             </Border>
 
-            <!-- ── Release Packaging (certificate-gated) ───────────────────── -->
-            <Border Style="{StaticResource CardStyle}"
-                    Margin="0,0,0,16"
-                    Visibility="{Binding IsReleasePackagingAuthorized, Mode=OneWay, Converter={StaticResource BoolToVis}}">
-                <StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.ReleasePackagingSection}"
-                               Style="{StaticResource SectionHeaderStyle}" />
-
-                    <TextBlock Text="{DynamicResource Settings.ReleasePackagingPublishDirLabel}"
-                               Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox Text="{Binding ReleasePackagingPublishDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,0,8" />
-
-                    <TextBlock Text="{DynamicResource Settings.ReleasePackagingOutputDirLabel}"
-                               Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox Text="{Binding ReleasePackagingOutputDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,0,8" />
-
-                    <TextBlock Text="{DynamicResource Settings.ReleasePackagingNotesLabel}"
-                               Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox Text="{Binding ReleasePackagingNotes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,0,8"
-                             TextWrapping="Wrap"
-                             AcceptsReturn="True"
-                             MinHeight="68" />
-
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <Button Content="{DynamicResource Settings.ReleasePackagingGenerateButton}"
-                                Command="{Binding GenerateReleasePackageCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="10,5"
-                                Margin="0,0,6,0" />
-                        <Button Content="{DynamicResource Settings.ReleasePackagingOpenOutputButton}"
-                                Command="{Binding OpenReleasePackageOutputDirectoryCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="10,5" />
-                    </StackPanel>
-
-                    <TextBlock Text="{DynamicResource Settings.ReleasePackagingDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding ReleasePackagingStatusMessage, Mode=OneWay}"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               Margin="0,6,0,0"
-                               TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-
-            <!-- ── Local Data ─────────────────────────────────────────────── -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.LocalData}"
-                               Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock Text="{DynamicResource Settings.GroupLogsTitle}" Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock
+                        Margin="0,0,0,10"
+                        Text="{DynamicResource Settings.GroupLogsDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
 
-                    <TextBlock Text="{DynamicResource Settings.LocalDataRootLabel}"
-                               Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="{DynamicResource Settings.LogDirectoryLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox
+                        Margin="0,0,0,8"
+                        IsReadOnly="True"
+                        Text="{Binding LogsDirectory, Mode=OneWay}"
+                        ToolTip="{Binding LogsDirectory, Mode=OneWay}" />
 
-                    <TextBox Text="{Binding LocalDataDirectory, Mode=OneWay}"
-                             IsReadOnly="True"
-                             Margin="0,0,0,8"
-                             ToolTip="{Binding LocalDataDirectory, Mode=OneWay}" />
-
+                    <TextBlock Text="{DynamicResource Settings.LogActionsLabel}" Style="{StaticResource FieldLabelStyle}" />
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <Button Content="{DynamicResource Settings.OpenDataDirectory}"
-                                Command="{Binding OpenDataDirectoryCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="10,5"
-                                Margin="0,0,6,0" />
-                        <Button Content="{DynamicResource Settings.CopyDataDirectory}"
-                                Command="{Binding CopyDataDirectoryCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="10,5" />
+                        <Button
+                            Margin="0,0,6,0"
+                            Padding="10,5"
+                            Command="{Binding OpenLogDirectoryCommand}"
+                            Content="{DynamicResource Settings.OpenLogsDirectory}"
+                            Style="{StaticResource NeutralButtonStyle}" />
+                        <Button
+                            Margin="0,0,6,0"
+                            Padding="10,5"
+                            Command="{Binding ViewRecentLogCommand}"
+                            Content="{DynamicResource Settings.ViewRecentLog}"
+                            Style="{StaticResource NeutralButtonStyle}" />
+                        <Button
+                            Padding="10,5"
+                            Command="{Binding ExportLogsCommand}"
+                            Content="{DynamicResource Settings.ExportLogs}"
+                            Style="{StaticResource NeutralButtonStyle}" />
                     </StackPanel>
-
-                    <TextBlock Text="{DynamicResource Settings.LogActionsLabel}"
-                               Style="{StaticResource FieldLabelStyle}" />
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <Button Content="{DynamicResource Settings.OpenLogsDirectory}"
-                                Command="{Binding OpenLogDirectoryCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="10,5"
-                                Margin="0,0,6,0" />
-                        <Button Content="{DynamicResource Settings.ViewRecentLog}"
-                                Command="{Binding ViewRecentLogCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="10,5"
-                                Margin="0,0,6,0" />
-                        <Button Content="{DynamicResource Settings.ExportLogs}"
-                                Command="{Binding ExportLogsCommand}"
-                                Style="{StaticResource NeutralButtonStyle}"
-                                Padding="10,5" />
-                    </StackPanel>
-
-                    <TextBlock Text="{DynamicResource Settings.LocalDataDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap" />
-                    <TextBlock Margin="0,6,0,0"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               TextWrapping="Wrap"
-                               ToolTip="{Binding TasksDirectory, Mode=OneWay}">
-                        <Run Text="• " />
-                        <Run Text="{DynamicResource Settings.LocalDataTasks}" />
-                        <Run Text="{Binding TasksDirectory, Mode=OneWay}" />
-                    </TextBlock>
-                    <TextBlock Margin="0,2,0,0"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               TextWrapping="Wrap"
-                               ToolTip="{Binding BlueprintsDirectory, Mode=OneWay}">
-                        <Run Text="• " />
-                        <Run Text="{DynamicResource Settings.LocalDataBlueprints}" />
-                        <Run Text="{Binding BlueprintsDirectory, Mode=OneWay}" />
-                    </TextBlock>
-                    <TextBlock Margin="0,2,0,0"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               TextWrapping="Wrap"
-                               ToolTip="{Binding LogsDirectory, Mode=OneWay}">
-                        <Run Text="• " />
-                        <Run Text="{DynamicResource Settings.LocalDataLogs}" />
-                        <Run Text="{Binding LogsDirectory, Mode=OneWay}" />
-                    </TextBlock>
-                    <TextBlock Margin="0,2,0,0"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               TextWrapping="Wrap"
-                               ToolTip="{Binding RecentConnectionsFilePath, Mode=OneWay}">
-                        <Run Text="• " />
-                        <Run Text="{DynamicResource Settings.LocalDataRecentConnections}" />
-                        <Run Text="{Binding RecentConnectionsFilePath, Mode=OneWay}" />
-                    </TextBlock>
-                    <TextBlock Margin="0,2,0,0"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               TextWrapping="Wrap"
-                               ToolTip="{Binding PreferencesFilePath, Mode=OneWay}">
-                        <Run Text="• " />
-                        <Run Text="{DynamicResource Settings.LocalDataPreferences}" />
-                        <Run Text="{Binding PreferencesFilePath, Mode=OneWay}" />
-                    </TextBlock>
-                    <TextBlock Margin="0,2,0,0"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               TextWrapping="Wrap"
-                               ToolTip="{Binding LastTaskContextsFilePath, Mode=OneWay}">
-                        <Run Text="• " />
-                        <Run Text="{DynamicResource Settings.LocalDataLastTaskContexts}" />
-                        <Run Text="{Binding LastTaskContextsFilePath, Mode=OneWay}" />
-                    </TextBlock>
                 </StackPanel>
             </Border>
 
-            <!-- ── About ─────────────────────────────────────────────────── -->
-            <Border Style="{StaticResource CardStyle}">
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="{DynamicResource Settings.About}"
-                               Style="{StaticResource SectionHeaderStyle}" />
-                    <TextBlock Text="{DynamicResource Settings.AppName}"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               FontWeight="SemiBold" FontSize="14"
-                               Margin="0,0,0,4" />
-                    <TextBlock Text="{DynamicResource Settings.AppDesc}"
-                               Style="{StaticResource MutedTextStyle}"
-                               TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.GroupAboutTitle}" Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock
+                        Margin="0,0,0,10"
+                        Text="{DynamicResource Settings.GroupAboutDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock
+                        Margin="0,0,0,4"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource TextPrimaryBrush}"
+                        Text="{DynamicResource Settings.AppName}" />
+                    <TextBlock Text="{DynamicResource Settings.AppDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+
+                    <TextBlock Margin="0,10,0,4" Text="{DynamicResource Settings.AboutActionsLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button
+                            Margin="0,0,6,0"
+                            Padding="10,5"
+                            Command="{Binding OpenAboutPageCommand}"
+                            Content="{DynamicResource Settings.OpenAboutPageButton}"
+                            Style="{StaticResource NeutralButtonStyle}" />
+                        <Button
+                            Padding="10,5"
+                            Command="{Binding OpenRepositoryCommand}"
+                            Content="{DynamicResource Settings.OpenRepositoryButton}"
+                            Style="{StaticResource NeutralButtonStyle}" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
+            <Border
+                Margin="0,0,0,16"
+                Style="{StaticResource CardStyle}"
+                Visibility="{Binding IsReleasePackagingAuthorized, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.GroupAdvancedTitle}" Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock
+                        Margin="0,0,0,10"
+                        Text="{DynamicResource Settings.GroupAdvancedDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock Text="{DynamicResource Settings.ReleasePackagingSection}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Margin="0,8,0,0" Text="{DynamicResource Settings.ReleasePackagingPublishDirLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox
+                        Margin="0,0,0,8"
+                        Text="{Binding ReleasePackagingPublishDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Text="{DynamicResource Settings.ReleasePackagingOutputDirLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox
+                        Margin="0,0,0,8"
+                        Text="{Binding ReleasePackagingOutputDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Text="{DynamicResource Settings.ReleasePackagingNotesLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox
+                        Margin="0,0,0,8"
+                        MinHeight="68"
+                        AcceptsReturn="True"
+                        Text="{Binding ReleasePackagingNotes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button
+                            Margin="0,0,6,0"
+                            Padding="10,5"
+                            Command="{Binding GenerateReleasePackageCommand}"
+                            Content="{DynamicResource Settings.ReleasePackagingGenerateButton}"
+                            Style="{StaticResource NeutralButtonStyle}" />
+                        <Button
+                            Padding="10,5"
+                            Command="{Binding OpenReleasePackageOutputDirectoryCommand}"
+                            Content="{DynamicResource Settings.ReleasePackagingOpenOutputButton}"
+                            Style="{StaticResource NeutralButtonStyle}" />
+                    </StackPanel>
+
+                    <TextBlock Text="{DynamicResource Settings.ReleasePackagingDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        Foreground="{DynamicResource TextPrimaryBrush}"
+                        Text="{Binding ReleasePackagingStatusMessage, Mode=OneWay}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
