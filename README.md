@@ -12,6 +12,28 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 
 ---
 
+## 发布产物自动生成（zip + latest.json）
+
+可使用脚本将 `dotnet publish` 输出自动打包为标准更新产物：
+
+1. 先发布主程序（示例）：
+
+   `dotnet publish --nologo ./src/SlurmJobManager.App/SlurmJobManager.App.csproj -c Release -r win-x64`
+
+2. 生成更新产物（zip + latest.json）：
+
+   `pwsh ./scripts/Generate-ReleaseArtifacts.ps1 -PublishDirectory <publish-output-dir> -OutputDirectory <release-output-dir> -RuntimeIdentifier win-x64 -Notes "release notes"`
+
+脚本输出目录包含：
+- `SlurmJobManager-<version>-<rid>.zip`
+- `latest.json`
+
+可选参数：
+- `-GenerateLegacyVersionJson`：额外生成兼容文件 `version.json`
+- `-PublishedAtUtc`：手动指定发布时间（ISO-8601）
+
+---
+
 ## 本次修复说明（UI可用性修复）
 
 ### 1. 自定义应用内标题栏
