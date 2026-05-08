@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.App.Services;
 using SlurmJobManager.App.Services.Updates;
+using SlurmJobManager.Core.Services;
 
 namespace SlurmJobManager.App.ViewModels;
 
@@ -34,10 +35,7 @@ public sealed class AboutViewModel : ViewModelBase
         CurrentVersionDisplay = FormatVersion(versionService.CurrentVersionDisplay);
         RepositoryAddress = RepositoryUrl;
         LicenseDisplay = "Apache License 2.0";
-        LogsDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "SlurmJobManager",
-            "logs");
+        LogsDirectory = LocalDataPaths.LogsDirectory;
 
         OpenRepositoryCommand = new RelayCommand(() => OpenPathOrUrl(RepositoryAddress));
         OpenLogsDirectoryCommand = new RelayCommand(OpenLogsDirectory);
