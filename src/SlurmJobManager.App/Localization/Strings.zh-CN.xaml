@@ -188,12 +188,12 @@
     <sys:String x:Key="Settings.UpdateSection">检查更新</sys:String>
     <sys:String x:Key="Settings.UpdateCurrentVersionLabel">当前版本：</sys:String>
     <sys:String x:Key="Settings.UpdateSourceLabel">更新源：</sys:String>
-    <sys:String x:Key="Settings.UpdateSourceDesc">GitHub 模式使用 Releases API；内网目录模式读取配置目录下的 &quot;version.json&quot;。</sys:String>
+    <sys:String x:Key="Settings.UpdateSourceDesc">GitHub 模式使用 Releases API；内网目录模式读取配置目录下的 &quot;latest.json&quot;（兼容回退到 &quot;version.json&quot;）。</sys:String>
     <sys:String x:Key="Settings.UpdateSourceGitHub">GitHub</sys:String>
     <sys:String x:Key="Settings.UpdateSourceFolder">内网目录</sys:String>
     <sys:String x:Key="Settings.UpdateSourceUnknown">未知</sys:String>
     <sys:String x:Key="Settings.UpdateFolderPathLabel">内网更新目录路径：</sys:String>
-    <sys:String x:Key="Settings.UpdateFolderPathDesc">内网目录模式要求元数据文件：&lt;目录&gt;/version.json，至少包含 { &quot;version&quot;: &quot;x.y.z&quot; }。可选字段：title、notes、publishedAt、package。建议更新包命名：SlurmJobManager-x.y.z-setup.exe 或 SlurmJobManager-x.y.z-win-x64.zip。</sys:String>
+    <sys:String x:Key="Settings.UpdateFolderPathDesc">内网目录模式要求元数据文件：&lt;目录&gt;/latest.json，至少包含 { &quot;version&quot;: &quot;x.y.z&quot; }。建议包含 packageType、fileName/relativePath、sha256、size、notes、publishedAt。仍兼容旧版 &lt;目录&gt;/version.json。</sys:String>
     <sys:String x:Key="Settings.AutoCheckUpdateLabel">启动时自动检查更新</sys:String>
     <sys:String x:Key="Settings.AutoCheckUpdateDesc">在应用启动后后台执行，不阻塞主界面。</sys:String>
     <sys:String x:Key="Settings.IncludePrereleaseLabel">包含预发布版本（仅 GitHub）</sys:String>

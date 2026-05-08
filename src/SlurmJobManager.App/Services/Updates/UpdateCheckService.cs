@@ -13,6 +13,8 @@ public sealed class UpdateCheckService : IUpdateCheckService
     private const string GitHubRepo = "SlurmJobManager";
     private const string GitHubReleasesApi = $"https://api.github.com/repos/{GitHubOwner}/{GitHubRepo}/releases?per_page=20";
     private const string GitHubReleasesPage = $"https://github.com/{GitHubOwner}/{GitHubRepo}/releases";
+    private const string LatestManifestFileName = "latest.json";
+    private const string LegacyManifestFileName = "version.json";
     private readonly IApplicationVersionService _versionService;
     private readonly IAppLogger? _logger;
     private readonly HttpClient _httpClient;
@@ -114,36 +116,19 @@ public sealed class UpdateCheckService : IUpdateCheckService
             if (!Directory.Exists(path))
                 return Task.FromResult(BuildFailure(UpdateSourceType.Folder, "Update folder does not exist.", path));
 
-            var versionFilePath = Path.Combine(path, "version.json");
-            if (!File.Exists(versionFilePath))
-                return Task.FromResult(BuildFailure(UpdateSourceType.Folder, "version.json was not found in the update folder.", path));
+            if (!TryLoadFolderManifest(path, out var manifest, out var manifestError))
+                return Task.FromResult(BuildFailure(UpdateSourceType.Folder, manifestError ?? "Failed to load update manifest.", path));
 
-            var json = File.ReadAllText(versionFilePath);
-            using var document = JsonDocument.Parse(json);
-            var root = document.RootElement;
-            if (!root.TryGetProperty("version", out var versionElement))
-                return Task.FromResult(BuildFailure(UpdateSourceType.Folder, "version.json is missing required field: version.", path));
+            var target = ResolveFolderTarget(path, manifest!.Package, manifest.RemoteVersion);
 
-            var versionText = versionElement.GetString();
-            if (!VersionTextParser.TryParse(versionText, out var remoteVersion))
-                return Task.FromResult(BuildFailure(UpdateSourceType.Folder, "version.json contains an invalid version.", path));
-
-            var title = TryGetString(root, "title");
-            var notes = TryGetString(root, "notes");
-            var publishedAtRaw = TryGetString(root, "publishedAt");
-            _ = DateTimeOffset.TryParse(publishedAtRaw, out var publishedAt);
-
-            var package = TryGetString(root, "package");
-            var target = ResolveFolderTarget(path, package, remoteVersion);
-
-            _logger?.Info($"Folder update check resolved version '{versionText}' from '{path}'.");
+            _logger?.Info($"Folder update check resolved version '{manifest.VersionText}' from '{path}'.");
             return Task.FromResult(BuildSuccess(
                 UpdateSourceType.Folder,
-                remoteVersion,
-                versionText,
-                title,
-                publishedAt,
-                notes,
+                manifest.RemoteVersion,
+                manifest.VersionText,
+                manifest.Title,
+                manifest.PublishedAt ?? default,
+                manifest.Notes,
                 target));
         }
         catch (Exception ex)
@@ -169,6 +154,101 @@ public sealed class UpdateCheckService : IUpdateCheckService
             return inferredPackage;
 
         return folderPath;
+    }
+
+    private static bool TryLoadFolderManifest(string folderPath, out FolderManifest? manifest, out string? error)
+    {
+        manifest = null;
+        error = null;
+
+        var latestPath = Path.Combine(folderPath, LatestManifestFileName);
+        if (File.Exists(latestPath))
+            return TryParseManifestFile(latestPath, isLatestFormat: true, out manifest, out error);
+
+        var legacyPath = Path.Combine(folderPath, LegacyManifestFileName);
+        if (File.Exists(legacyPath))
+            return TryParseManifestFile(legacyPath, isLatestFormat: false, out manifest, out error);
+
+        error = $"{LatestManifestFileName} or {LegacyManifestFileName} was not found in the update folder.";
+        return false;
+    }
+
+    private static bool TryParseManifestFile(string manifestPath, bool isLatestFormat, out FolderManifest? manifest, out string? error)
+    {
+        manifest = null;
+        error = null;
+
+        try
+        {
+            var json = File.ReadAllText(manifestPath);
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            var fileName = Path.GetFileName(manifestPath);
+
+            var versionText = TryGetString(root, "version");
+            if (string.IsNullOrWhiteSpace(versionText))
+            {
+                error = $"{fileName} is missing required field: version.";
+                return false;
+            }
+
+            if (!VersionTextParser.TryParse(versionText, out var remoteVersion))
+            {
+                error = $"{fileName} contains an invalid version.";
+                return false;
+            }
+
+            var title = TryGetString(root, "title");
+            var notes = TryGetString(root, "notes");
+            var publishedAtRaw = TryGetString(root, "publishedAt");
+            DateTimeOffset? publishedAt = DateTimeOffset.TryParse(publishedAtRaw, out var parsedPublishedAt)
+                ? parsedPublishedAt
+                : null;
+            var package = isLatestFormat
+                ? ResolveLatestManifestPackage(root)
+                : TryGetString(root, "package");
+
+            manifest = new FolderManifest(versionText, remoteVersion, title, notes, publishedAt, package);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to parse manifest '{Path.GetFileName(manifestPath)}': {ex.Message}";
+            return false;
+        }
+    }
+
+    private static string? ResolveLatestManifestPackage(JsonElement root)
+    {
+        var direct = TryGetString(root, "package")
+                     ?? TryGetString(root, "relativePath")
+                     ?? TryGetString(root, "fileName");
+        if (!string.IsNullOrWhiteSpace(direct))
+            return direct;
+
+        if (!root.TryGetProperty("packages", out var packages) || packages.ValueKind != JsonValueKind.Array)
+            return null;
+
+        string? fallback = null;
+        foreach (var package in packages.EnumerateArray())
+        {
+            if (package.ValueKind != JsonValueKind.Object)
+                continue;
+
+            var candidate = TryGetString(package, "relativePath")
+                            ?? TryGetString(package, "fileName")
+                            ?? TryGetString(package, "package");
+            if (string.IsNullOrWhiteSpace(candidate))
+                continue;
+
+            var packageType = TryGetString(package, "packageType");
+            if (string.Equals(packageType, "zip", StringComparison.OrdinalIgnoreCase))
+                return candidate;
+
+            fallback ??= candidate;
+        }
+
+        return fallback;
     }
 
     private UpdateCheckResult BuildSuccess(
@@ -216,6 +296,14 @@ public sealed class UpdateCheckService : IUpdateCheckService
             return null;
         return value.GetString();
     }
+
+    private sealed record FolderManifest(
+        string VersionText,
+        Version RemoteVersion,
+        string? Title,
+        string? Notes,
+        DateTimeOffset? PublishedAt,
+        string? Package);
 
     private static HttpClient BuildHttpClient(Version currentVersion)
     {
