@@ -1936,6 +1936,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         var dlgVm = new CommandBuilderViewModel(
             _ssh,
+            _prefs,
             taskId:         TaskId,
             remoteWorkDir:  effectiveWorkDir,
             initialCommands: unit.Commands.Select(c => c.ToModel()),

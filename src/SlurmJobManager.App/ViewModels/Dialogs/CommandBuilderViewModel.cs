@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
+using SlurmJobManager.App.Services;
 using SlurmJobManager.App.ViewModels;
 using SlurmJobManager.App.Views;
 using SlurmJobManager.App.Views.Dialogs;
@@ -21,6 +22,8 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 {
     // ── Remote source directories ───────────────────────────────────────────
     private static readonly string[] AppSourceDirs = { "/env/preprocess/out", "/env/preprocess/bin" };
+    private static readonly Regex LeadingIntRegex = new(@"\d+", RegexOptions.Compiled);
+    private static readonly Regex GpuGresRegex = new(@"\bgpu(?::|\b)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private const string RemoteParamDir = "/env/preprocess/out/config";
     private const string InterfaceProbeIp = "10.10.10.202";
     private const string DefaultNodes = "1";
@@ -28,6 +31,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private const string DefaultAccount = "preproc";
 
     private readonly ISshClientService _ssh;
+    private readonly AppPreferencesService _prefs;
     // ── Context passed from TaskEditorViewModel ────────────────────────────
     private readonly string _taskId;
     private readonly string _remoteWorkDir;
@@ -234,6 +238,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
     public CommandBuilderViewModel(
         ISshClientService ssh,
+        AppPreferencesService prefs,
         string taskId = "",
         string remoteWorkDir = "",
         IEnumerable<CommandEntry>? initialCommands = null,
@@ -241,6 +246,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         SbatchJobOptions? initialSbatchOptions = null)
     {
         _ssh           = ssh           ?? throw new ArgumentNullException(nameof(ssh));
+        _prefs         = prefs         ?? throw new ArgumentNullException(nameof(prefs));
         _taskId        = taskId;
         _remoteWorkDir = remoteWorkDir;
 
@@ -1162,7 +1168,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
         try
         {
-            var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync("sinfo --noheader --Format=\"%P|%G|%m|%c\"", ct);
+            var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync("sinfo --noheader --format=\"%P|%G|%m|%c\"", ct);
             if (exitCode != 0)
             {
                 if (!string.IsNullOrWhiteSpace(stderr))
@@ -1213,7 +1219,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             var gres = parts[1].Trim();
             var memoryText = parts[2].Trim();
             var cpuText = parts[3].Trim();
-            var hasGpu = gres.Contains("gpu", StringComparison.OrdinalIgnoreCase);
+            var hasGpu = GpuGresRegex.IsMatch(gres);
             var memoryMb = TryParseLeadingInt(memoryText);
             var cpuCores = TryParseLeadingInt(cpuText);
 
@@ -1269,7 +1275,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     {
         if (string.IsNullOrWhiteSpace(value))
             return null;
-        var m = Regex.Match(value, @"\d+");
+        var m = LeadingIntRegex.Match(value);
         if (!m.Success)
             return null;
         return int.TryParse(m.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
