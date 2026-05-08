@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SlurmJobManager.Core\SlurmJobManager.Core.csproj" />
     <ProjectReference Include="..\SlurmJobManager.Infrastructure\SlurmJobManager.Infrastructure.csproj" />
+    <ProjectReference Include="..\SlurmJobManager.Updater\SlurmJobManager.Updater.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,4 +24,16 @@
   <ItemGroup>
     <Resource Include="Assets\AppIcon\server-palm.ico" />
   </ItemGroup>
+
+  <Target Name="CopyUpdaterArtifacts" AfterTargets="Build">
+    <MSBuild Projects="..\SlurmJobManager.Updater\SlurmJobManager.Updater.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)" />
+    <ItemGroup>
+      <UpdaterBuildOutput Include="..\SlurmJobManager.Updater\bin\$(Configuration)\net8.0-windows\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(UpdaterBuildOutput)"
+          DestinationFiles="@(UpdaterBuildOutput->'$(OutDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>

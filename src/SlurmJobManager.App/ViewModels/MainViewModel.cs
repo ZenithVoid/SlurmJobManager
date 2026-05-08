@@ -132,7 +132,8 @@ public sealed class MainViewModel : ViewModelBase
         ConsoleViewModel    console,
         AppPreferencesService prefs,
         IUpdateCheckService updateCheckService,
-        IApplicationVersionService versionService)
+        IApplicationVersionService versionService,
+        IUpdateLaunchService updateLaunchService)
     {
         Connection = connection ?? throw new ArgumentNullException(nameof(connection));
         TaskEditor = taskEditor ?? throw new ArgumentNullException(nameof(taskEditor));
@@ -158,7 +159,7 @@ public sealed class MainViewModel : ViewModelBase
         _activeNavItem = NavItems[0];
 
         Dashboard = new DashboardViewModel(connection, monitor, tab => ActiveTab = tab);
-        Settings  = new SettingsViewModel(this, prefs, updateCheckService, versionService);
+        Settings  = new SettingsViewModel(this, prefs, updateCheckService, versionService, updateLaunchService);
         TaskEditor.SetOpenInConsoleHandler(OpenConsoleAtDirectoryAsync);
         Monitor.SetDiagnosticNavigationHandlers(
             row => row != null && TaskEditor.LastJobId.HasValue && TaskEditor.LastJobId.Value == row.JobId

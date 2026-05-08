@@ -287,6 +287,11 @@
                         <Button Content="{DynamicResource Settings.OpenUpdateTargetButton}"
                                 Command="{Binding OpenUpdateTargetCommand}"
                                 Style="{StaticResource NeutralButtonStyle}"
+                                Padding="10,5"
+                                Margin="0,0,6,0" />
+                        <Button Content="{DynamicResource Settings.StartUpdateButton}"
+                                Command="{Binding LaunchUpdateCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
                                 Padding="10,5" />
                     </StackPanel>
 

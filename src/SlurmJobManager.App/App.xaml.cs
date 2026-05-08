@@ -45,6 +45,7 @@ public partial class App : Application
         var prefs = new AppPreferencesService();
         IApplicationVersionService versionService = new ApplicationVersionService();
         IUpdateCheckService updateCheckService = new UpdateCheckService(versionService);
+        IUpdateLaunchService updateLaunchService = new UpdateLaunchService();
 
         // Infrastructure services (one SSH client shared across all consumers)
         var ssh      = new SshClientService(settings);
@@ -79,7 +80,7 @@ public partial class App : Application
             _ = HandleConnectionEstablishedAsync(connectionVm, taskEditorVm, prefs, username);
         };
 
-        _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm, prefs, updateCheckService, versionService);
+        _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm, prefs, updateCheckService, versionService, updateLaunchService);
 
         // Default locale: zh-CN (loaded regardless of system language)
         _mainVm.ApplyLocale("zh-CN");

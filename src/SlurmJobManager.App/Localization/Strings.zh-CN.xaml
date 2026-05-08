@@ -186,6 +186,7 @@
     <sys:String x:Key="Settings.CheckUpdateButton">检查更新</sys:String>
     <sys:String x:Key="Settings.OpenUpdateSourceButton">打开更新源</sys:String>
     <sys:String x:Key="Settings.OpenUpdateTargetButton">打开最新目标</sys:String>
+    <sys:String x:Key="Settings.StartUpdateButton">开始更新</sys:String>
     <sys:String x:Key="Settings.UpdateStatusLabel">状态：</sys:String>
     <sys:String x:Key="Settings.UpdateLatestVersionLabel">最新版本：</sys:String>
     <sys:String x:Key="Settings.UpdateResultSourceLabel">结果来源：</sys:String>
@@ -201,6 +202,10 @@
     <sys:String x:Key="Settings.UpdateOpenTargetFailed">打开更新目标失败。</sys:String>
     <sys:String x:Key="Settings.UpdateOpenTargetFailedFormat">打开更新目标失败：{0}</sys:String>
     <sys:String x:Key="Settings.UpdateFolderPathEmpty">请先配置内网更新目录路径。</sys:String>
+    <sys:String x:Key="Settings.UpdateLaunchSuccess">更新器已启动，应用将关闭并执行更新。</sys:String>
+    <sys:String x:Key="Settings.UpdateLaunchingAndClosing">更新器已启动，正在关闭主程序以继续更新…</sys:String>
+    <sys:String x:Key="Settings.UpdateLaunchFailedFormat">启动更新器失败：{0}</sys:String>
+    <sys:String x:Key="Settings.UpdateLaunchInvalidTargetFormat">更新目标无效：{0}</sys:String>
     <sys:String x:Key="Settings.About">关于</sys:String>
     <sys:String x:Key="Settings.AppName">Slurm 作业管理器</sys:String>
     <sys:String x:Key="Settings.AppDesc">一款用于通过 SSH 提交、监控和调试 Slurm HPC 作业的现代 WPF 应用。</sys:String>
