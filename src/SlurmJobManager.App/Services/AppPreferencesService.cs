@@ -228,6 +228,106 @@ public sealed class AppPreferencesService
         return LastSaveSucceeded;
     }
 
+    public UpdateProxyMode UpdateProxyMode
+    {
+        get => ParseUpdateProxyMode(_dto.UpdateProxyMode);
+        set
+        {
+            var serialized = value.ToString();
+            if (string.Equals(_dto.UpdateProxyMode, serialized, StringComparison.Ordinal))
+                return;
+
+            _dto = _dto with { UpdateProxyMode = serialized };
+            Save();
+        }
+    }
+
+    public bool TrySetUpdateProxyMode(UpdateProxyMode value, out string? error)
+    {
+        var serialized = value.ToString();
+        if (!string.Equals(_dto.UpdateProxyMode, serialized, StringComparison.Ordinal))
+        {
+            _dto = _dto with { UpdateProxyMode = serialized };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
+    public string UpdateCustomProxyHost
+        => (_dto.UpdateCustomProxyHost ?? string.Empty).Trim();
+
+    public bool TrySetUpdateCustomProxyHost(string? value, out string? error)
+    {
+        var normalized = (value ?? string.Empty).Trim();
+        if (!string.Equals(_dto.UpdateCustomProxyHost, normalized, StringComparison.Ordinal))
+        {
+            _dto = _dto with { UpdateCustomProxyHost = normalized };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
+    public int? UpdateCustomProxyPort => _dto.UpdateCustomProxyPort;
+
+    public bool TrySetUpdateCustomProxyPort(int? value, out string? error)
+    {
+        if (_dto.UpdateCustomProxyPort != value)
+        {
+            _dto = _dto with { UpdateCustomProxyPort = value };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
+    public bool UseProxyForUpdates
+    {
+        get => _dto.UseProxyForUpdates;
+        set
+        {
+            if (_dto.UseProxyForUpdates == value) return;
+            _dto = _dto with { UseProxyForUpdates = value };
+            Save();
+        }
+    }
+
+    public bool TrySetUseProxyForUpdates(bool value, out string? error)
+    {
+        if (_dto.UseProxyForUpdates != value)
+        {
+            _dto = _dto with { UseProxyForUpdates = value };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
     // ── Persistence ──────────────────────────────────────────────────────────
 
     private AppPrefsDto Load()
@@ -273,7 +373,11 @@ public sealed class AppPreferencesService
         string UpdateSourceType = nameof(UpdateSourceType.GitHub),
         string? UpdateFolderPath = "",
         bool AutoCheckForUpdatesOnStartup = false,
-        bool IncludePrereleaseUpdates = false);
+        bool IncludePrereleaseUpdates = false,
+        string UpdateProxyMode = nameof(UpdateProxyMode.NoProxy),
+        string? UpdateCustomProxyHost = "",
+        int? UpdateCustomProxyPort = null,
+        bool UseProxyForUpdates = false);
 
     private static string NormalizeRemoteDirectory(string? value)
     {
@@ -301,4 +405,9 @@ public sealed class AppPreferencesService
         => Enum.TryParse<UpdateSourceType>(value, ignoreCase: true, out var parsed)
             ? parsed
             : UpdateSourceType.GitHub;
+
+    private static UpdateProxyMode ParseUpdateProxyMode(string? value)
+        => Enum.TryParse<UpdateProxyMode>(value, ignoreCase: true, out var parsed)
+            ? parsed
+            : UpdateProxyMode.NoProxy;
 }

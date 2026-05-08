@@ -49,6 +49,7 @@ public sealed class SettingsViewModel : ViewModelBase
     private string _releasePackagingNotes = string.Empty;
     private string _releasePackagingStatusMessage;
     private bool _isGeneratingReleasePackage;
+    private string _updateCustomProxyPortText;
 
     public SettingsViewModel(
         MainViewModel main,
@@ -73,6 +74,7 @@ public sealed class SettingsViewModel : ViewModelBase
         _updateSourceDisplay = L("Settings.UpdateSourceUnknown");
         _releasePackagingStatusMessage = L("Settings.ReleasePackagingReady");
         _releasePackagingOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        _updateCustomProxyPortText = _prefs.UpdateCustomProxyPort?.ToString() ?? string.Empty;
 
         CheckForUpdatesCommand = new AsyncRelayCommand(() => CheckForUpdatesAsync(showToasts: true), () => !IsCheckingUpdates);
         LaunchUpdateCommand = new AsyncRelayCommand(LaunchUpdateAsync, CanLaunchUpdate);
@@ -275,6 +277,94 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
+    public bool UseProxyForUpdates
+    {
+        get => _prefs.UseProxyForUpdates;
+        set
+        {
+            if (_prefs.TrySetUseProxyForUpdates(value, out var saveError))
+                ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+            else
+                ToastService.Instance.Error(string.Format(L("Settings.AutoSaveFailedFormat"), saveError ?? L("Settings.UnknownError")));
+            OnPropertyChanged();
+        }
+    }
+
+    public int SelectedUpdateProxyModeIndex
+    {
+        get => _prefs.UpdateProxyMode switch
+        {
+            UpdateProxyMode.SystemProxy => 1,
+            UpdateProxyMode.CustomProxy => 2,
+            _ => 0,
+        };
+        set
+        {
+            var newMode = value switch
+            {
+                1 => UpdateProxyMode.SystemProxy,
+                2 => UpdateProxyMode.CustomProxy,
+                _ => UpdateProxyMode.NoProxy,
+            };
+
+            if (_prefs.TrySetUpdateProxyMode(newMode, out var saveError))
+                ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+            else
+                ToastService.Instance.Error(string.Format(L("Settings.AutoSaveFailedFormat"), saveError ?? L("Settings.UnknownError")));
+
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsCustomUpdateProxyMode));
+        }
+    }
+
+    public bool IsCustomUpdateProxyMode => _prefs.UpdateProxyMode == UpdateProxyMode.CustomProxy;
+
+    public string UpdateCustomProxyHost
+    {
+        get => _prefs.UpdateCustomProxyHost;
+        set
+        {
+            if (_prefs.TrySetUpdateCustomProxyHost(value, out var saveError))
+                ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+            else
+                ToastService.Instance.Error(string.Format(L("Settings.AutoSaveFailedFormat"), saveError ?? L("Settings.UnknownError")));
+            OnPropertyChanged();
+        }
+    }
+
+    public string UpdateCustomProxyPortText
+    {
+        get => _updateCustomProxyPortText;
+        set
+        {
+            var normalized = (value ?? string.Empty).Trim();
+            _updateCustomProxyPortText = normalized;
+
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                if (_prefs.TrySetUpdateCustomProxyPort(null, out var emptySaveError))
+                    ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+                else
+                    ToastService.Instance.Error(string.Format(L("Settings.AutoSaveFailedFormat"), emptySaveError ?? L("Settings.UnknownError")));
+                OnPropertyChanged();
+                return;
+            }
+
+            if (!int.TryParse(normalized, out var port) || port < 1 || port > 65535)
+            {
+                ToastService.Instance.Error(L("Settings.ProxyPortInvalid"));
+                OnPropertyChanged();
+                return;
+            }
+
+            if (_prefs.TrySetUpdateCustomProxyPort(port, out var saveError))
+                ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+            else
+                ToastService.Instance.Error(string.Format(L("Settings.AutoSaveFailedFormat"), saveError ?? L("Settings.UnknownError")));
+            OnPropertyChanged();
+        }
+    }
+
     public bool IsCheckingUpdates
     {
         get => _isCheckingUpdates;
@@ -363,7 +453,22 @@ public sealed class SettingsViewModel : ViewModelBase
 
     private async Task CheckForUpdatesAsync(bool showToasts)
     {
-        _logger?.Info($"Update check requested. Source={_prefs.UpdateSourceType}, IncludePrerelease={_prefs.IncludePrereleaseUpdates}");
+        if (_prefs.UseProxyForUpdates && _prefs.UpdateProxyMode == UpdateProxyMode.CustomProxy)
+        {
+            if (!UpdateProxyValidation.TryValidateCustomProxy(
+                    _prefs.UpdateCustomProxyHost,
+                    _prefs.UpdateCustomProxyPort,
+                    out _))
+            {
+                UpdateStatusMessage = L("Settings.ProxyConfigInvalid");
+                if (showToasts)
+                    ToastService.Instance.Error(UpdateStatusMessage);
+                return;
+            }
+        }
+
+        _logger?.Info(
+            $"Update check requested. Source={_prefs.UpdateSourceType}, IncludePrerelease={_prefs.IncludePrereleaseUpdates}, UseProxyForUpdates={_prefs.UseProxyForUpdates}, ProxyMode={_prefs.UpdateProxyMode}");
         try
         {
             IsCheckingUpdates = true;
@@ -373,7 +478,11 @@ public sealed class SettingsViewModel : ViewModelBase
             var result = await _updateCheckService.CheckForUpdatesAsync(new UpdateCheckRequest(
                 _prefs.UpdateSourceType,
                 _prefs.IncludePrereleaseUpdates,
-                _prefs.UpdateFolderPath));
+                _prefs.UpdateFolderPath,
+                _prefs.UseProxyForUpdates,
+                _prefs.UpdateProxyMode,
+                _prefs.UpdateCustomProxyHost,
+                _prefs.UpdateCustomProxyPort));
 
             ApplyUpdateResult(result, showToasts);
         }
