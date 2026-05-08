@@ -1186,7 +1186,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             return;
 
         // Slurm time here is intentionally normalized to whole-day granularity for the Year/Month/Day picker UI.
-        // We map year/month to fixed day lengths to keep behavior stable and predictable in script generation.
+        // We map year/month with fixed factors (1 year = 365 days, 1 month = 30 days) to keep script generation stable.
         var totalDays = (_sbatchTimeYears * 365) + (_sbatchTimeMonths * 30) + _sbatchTimeDays;
         var timeLimit = totalDays > 0
             ? $"{totalDays}-00:00:00"
