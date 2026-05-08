@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -17,31 +18,33 @@ public sealed class UpdateCheckService : IUpdateCheckService
     private const string LegacyManifestFileName = "version.json";
     private readonly IApplicationVersionService _versionService;
     private readonly IAppLogger? _logger;
-    private readonly HttpClient _httpClient;
 
     public UpdateCheckService(IApplicationVersionService versionService, IAppLogger? logger = null)
     {
         _versionService = versionService ?? throw new ArgumentNullException(nameof(versionService));
         _logger = logger;
-        _httpClient = BuildHttpClient(_versionService.CurrentVersion);
     }
 
     public async Task<UpdateCheckResult> CheckForUpdatesAsync(UpdateCheckRequest request, CancellationToken cancellationToken = default)
     {
-        _logger?.Info($"UpdateCheckService started. Source={request.SourceType}, IncludePrerelease={request.IncludePrerelease}");
+        _logger?.Info(
+            $"UpdateCheckService started. Source={request.SourceType}, IncludePrerelease={request.IncludePrerelease}, ProxyEnabled={request.UseProxyForUpdates}, ProxyMode={request.ProxyMode}");
         return request.SourceType switch
         {
-            UpdateSourceType.GitHub => await CheckGitHubAsync(request.IncludePrerelease, cancellationToken),
+            UpdateSourceType.GitHub => await CheckGitHubAsync(request, cancellationToken),
             UpdateSourceType.Folder => await CheckFolderAsync(request.FolderPath),
             _ => BuildFailure(UpdateSourceType.GitHub, "Unsupported update source type."),
         };
     }
 
-    private async Task<UpdateCheckResult> CheckGitHubAsync(bool includePrerelease, CancellationToken cancellationToken)
+    private async Task<UpdateCheckResult> CheckGitHubAsync(UpdateCheckRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            using var response = await _httpClient.GetAsync(GitHubReleasesApi, cancellationToken);
+            using var client = BuildHttpClient(_versionService.CurrentVersion, request, out var proxyLog);
+            _logger?.Info($"GitHub update check proxy policy: {proxyLog}");
+
+            using var response = await client.GetAsync(GitHubReleasesApi, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 _logger?.Warning($"GitHub update check returned HTTP {(int)response.StatusCode}.");
@@ -62,7 +65,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
                     continue;
 
                 var isPrerelease = release.TryGetProperty("prerelease", out var prereleaseElement) && prereleaseElement.ValueKind == JsonValueKind.True;
-                if (!includePrerelease && isPrerelease)
+                if (!request.IncludePrerelease && isPrerelease)
                     continue;
 
                 var tag = TryGetString(release, "tag_name");
@@ -88,7 +91,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
 
             return BuildFailure(
                 UpdateSourceType.GitHub,
-                includePrerelease
+                request.IncludePrerelease
                     ? "No parseable GitHub release version was found."
                     : "No stable GitHub release was found.",
                 GitHubReleasesPage);
@@ -305,11 +308,62 @@ public sealed class UpdateCheckService : IUpdateCheckService
         DateTimeOffset? PublishedAt,
         string? Package);
 
-    private static HttpClient BuildHttpClient(Version currentVersion)
+    private static HttpClient BuildHttpClient(Version currentVersion, UpdateCheckRequest request, out string proxyLog)
     {
-        var client = new HttpClient();
+        var handler = new HttpClientHandler();
+        proxyLog = "disabled";
+
+        if (!request.UseProxyForUpdates)
+        {
+            handler.UseProxy = false;
+            handler.Proxy = null;
+            proxyLog = "disabled-by-setting";
+        }
+        else
+        {
+            switch (request.ProxyMode)
+            {
+                case UpdateProxyMode.NoProxy:
+                    handler.UseProxy = false;
+                    handler.Proxy = null;
+                    proxyLog = "no-proxy (system proxy ignored)";
+                    break;
+                case UpdateProxyMode.SystemProxy:
+                    handler.UseProxy = true;
+                    handler.Proxy = null;
+                    proxyLog = "system-proxy";
+                    break;
+                case UpdateProxyMode.CustomProxy:
+                    var host = (request.CustomProxyHost ?? string.Empty).Trim();
+                    if (string.IsNullOrWhiteSpace(host))
+                        throw new InvalidOperationException("Custom proxy host cannot be empty.");
+                    if (request.CustomProxyPort is null || request.CustomProxyPort < 1 || request.CustomProxyPort > 65535)
+                        throw new InvalidOperationException("Custom proxy port must be between 1 and 65535.");
+
+                    var proxyUri = BuildCustomProxyUri(host, request.CustomProxyPort.Value);
+                    handler.UseProxy = true;
+                    handler.Proxy = new WebProxy(proxyUri);
+                    proxyLog = $"custom-proxy ({proxyUri.Host}:{proxyUri.Port})";
+                    break;
+                default:
+                    handler.UseProxy = false;
+                    handler.Proxy = null;
+                    proxyLog = "disabled-by-unknown-mode";
+                    break;
+            }
+        }
+
+        var client = new HttpClient(handler, disposeHandler: true);
         client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("SlurmJobManager", currentVersion.ToString(3)));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return client;
+    }
+
+    private static Uri BuildCustomProxyUri(string host, int port)
+    {
+        if (Uri.TryCreate(host, UriKind.Absolute, out var absolute))
+            return new UriBuilder(absolute.Scheme, absolute.Host, port).Uri;
+
+        return new UriBuilder(Uri.UriSchemeHttp, host, port).Uri;
     }
 }

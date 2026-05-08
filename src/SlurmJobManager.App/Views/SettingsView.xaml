@@ -275,6 +275,60 @@
                                Style="{StaticResource MutedTextStyle}"
                                TextWrapping="Wrap" />
 
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                        <CheckBox x:Name="UseProxyForUpdatesCheckBox"
+                                  IsChecked="{Binding UseProxyForUpdates, Mode=TwoWay}"
+                                  Margin="0,0,10,0" />
+                        <Label Target="{Binding ElementName=UseProxyForUpdatesCheckBox}"
+                               Content="{DynamicResource Settings.UpdateUseProxyLabel}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               VerticalAlignment="Center"
+                               Cursor="Hand"
+                               Padding="0" />
+                    </StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.UpdateUseProxyDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,8" />
+
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeLabel}"
+                               Style="{StaticResource FieldLabelStyle}" />
+                    <ComboBox SelectedIndex="{Binding SelectedUpdateProxyModeIndex, Mode=TwoWay}"
+                              Margin="0,0,0,4">
+                        <ComboBoxItem Content="{DynamicResource Settings.UpdateProxyModeNoProxy}" />
+                        <ComboBoxItem Content="{DynamicResource Settings.UpdateProxyModeSystem}" />
+                        <ComboBoxItem Content="{DynamicResource Settings.UpdateProxyModeCustom}" />
+                    </ComboBox>
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeNoProxyDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeSystemDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeCustomDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,8" />
+
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyHostLabel}"
+                               Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding UpdateCustomProxyHost, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                             IsEnabled="{Binding IsCustomUpdateProxyMode, Mode=OneWay}"
+                             Margin="0,0,0,4" />
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyHostDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,8" />
+
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyPortLabel}"
+                               Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding UpdateCustomProxyPortText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                             IsEnabled="{Binding IsCustomUpdateProxyMode, Mode=OneWay}"
+                             Margin="0,0,0,4" />
+                    <TextBlock Text="{DynamicResource Settings.UpdateProxyPortDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap" />
+
                     <StackPanel Orientation="Horizontal" Margin="0,10,0,8">
                         <Button Content="{DynamicResource Settings.CheckUpdateButton}"
                                 Command="{Binding CheckForUpdatesCommand}"
