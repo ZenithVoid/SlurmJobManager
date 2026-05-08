@@ -21,6 +21,7 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
     private string _searchText = string.Empty;
     private string _editName = string.Empty;
     private string _statusMessage = string.Empty;
+    private string _statusStyleKey = "InfoTextStyle";
     private bool _isBusy;
     private int _selectionLoadVersion;
 
@@ -85,6 +86,12 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
     {
         get => _statusMessage;
         set => SetField(ref _statusMessage, value);
+    }
+
+    public string StatusStyleKey
+    {
+        get => _statusStyleKey;
+        private set => SetField(ref _statusStyleKey, value);
     }
 
     public bool IsBusy
@@ -167,18 +174,18 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
                 SelectedBlueprint = null;
                 SelectedBlueprintRecord = null;
                 EditName = string.Empty;
-                StatusMessage = L("Task.BlueprintListEmpty");
+                SetStatus("Task.BlueprintListEmpty", "WarningTextStyle");
                 return;
             }
 
             SelectedBlueprint = Blueprints.FirstOrDefault(x => string.Equals(x.BlueprintId, selectedId, StringComparison.OrdinalIgnoreCase))
                 ?? FilteredBlueprints.Cast<TaskBlueprintSummary>().FirstOrDefault()
                 ?? Blueprints[0];
-            StatusMessage = string.Empty;
+            SetStatus(string.Empty, "InfoTextStyle");
         }
         catch (Exception ex)
         {
-            StatusMessage = string.Format(L("Task.BlueprintListFailed"), ex.Message);
+            SetStatus(string.Format(L("Task.BlueprintListFailed"), ex.Message), "ErrorTextStyle", localize: false);
         }
         finally
         {
@@ -190,14 +197,14 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
     {
         if (SelectedBlueprint == null)
         {
-            StatusMessage = L("Task.BlueprintSelectRequired");
+            SetStatus("Task.BlueprintSelectRequired", "WarningTextStyle");
             return;
         }
 
         var nextName = EditName.Trim();
         if (string.IsNullOrWhiteSpace(nextName))
         {
-            StatusMessage = L("Task.BlueprintNameRequired");
+            SetStatus("Task.BlueprintNameRequired", "WarningTextStyle");
             return;
         }
 
@@ -207,7 +214,7 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
             var record = await _blueprintService.LoadAsync(SelectedBlueprint.BlueprintId, _scope, ct);
             if (record == null)
             {
-                StatusMessage = L("Task.BlueprintLoadMissing");
+                SetStatus("Task.BlueprintLoadMissing", "WarningTextStyle");
                 await RefreshAsync(ct);
                 return;
             }
@@ -215,17 +222,17 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
             record.Name = nextName;
             record.UpdatedAt = DateTime.UtcNow;
             await _blueprintService.SaveAsync(record, _scope, overwriteByName: false, ct);
-            StatusMessage = string.Format(L("Task.BlueprintRenameSucceeded"), nextName);
             await RefreshAsync(ct);
             SelectedBlueprint = Blueprints.FirstOrDefault(x => string.Equals(x.BlueprintId, record.BlueprintId, StringComparison.OrdinalIgnoreCase));
+            SetStatus(string.Format(L("Task.BlueprintRenameSucceeded"), nextName), "SuccessTextStyle", localize: false);
         }
         catch (InvalidOperationException)
         {
-            StatusMessage = string.Format(L("Task.BlueprintRenameConflict"), nextName);
+            SetStatus(string.Format(L("Task.BlueprintRenameConflict"), nextName), "WarningTextStyle", localize: false);
         }
         catch (Exception ex)
         {
-            StatusMessage = string.Format(L("Task.BlueprintRenameFailed"), ex.Message);
+            SetStatus(string.Format(L("Task.BlueprintRenameFailed"), ex.Message), "ErrorTextStyle", localize: false);
         }
         finally
         {
@@ -237,7 +244,7 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
     {
         if (SelectedBlueprint == null)
         {
-            StatusMessage = L("Task.BlueprintSelectRequired");
+            SetStatus("Task.BlueprintSelectRequired", "WarningTextStyle");
             return;
         }
 
@@ -247,7 +254,7 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
             var source = await _blueprintService.LoadAsync(SelectedBlueprint.BlueprintId, _scope, ct);
             if (source == null)
             {
-                StatusMessage = L("Task.BlueprintLoadMissing");
+                SetStatus("Task.BlueprintLoadMissing", "WarningTextStyle");
                 await RefreshAsync(ct);
                 return;
             }
@@ -263,18 +270,18 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
             clone.UpdatedAt = DateTime.UtcNow;
 
             await _blueprintService.SaveAsync(clone, _scope, overwriteByName: false, ct);
-            StatusMessage = string.Format(L("Task.BlueprintDuplicateSucceeded"), clone.Name);
             await RefreshAsync(ct);
             SelectedBlueprint = Blueprints.FirstOrDefault(x => string.Equals(x.BlueprintId, clone.BlueprintId, StringComparison.OrdinalIgnoreCase));
             EditName = clone.Name;
+            SetStatus(string.Format(L("Task.BlueprintDuplicateSucceeded"), clone.Name), "SuccessTextStyle", localize: false);
         }
         catch (InvalidOperationException)
         {
-            StatusMessage = string.Format(L("Task.BlueprintDuplicateConflict"), EditName.Trim());
+            SetStatus(string.Format(L("Task.BlueprintDuplicateConflict"), EditName.Trim()), "WarningTextStyle", localize: false);
         }
         catch (Exception ex)
         {
-            StatusMessage = string.Format(L("Task.BlueprintDuplicateFailed"), ex.Message);
+            SetStatus(string.Format(L("Task.BlueprintDuplicateFailed"), ex.Message), "ErrorTextStyle", localize: false);
         }
         finally
         {
@@ -303,16 +310,16 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
             var success = await _blueprintService.DeleteAsync(SelectedBlueprint.BlueprintId, _scope, ct);
             if (!success)
             {
-                StatusMessage = L("Task.BlueprintDeleteFailed");
+                SetStatus("Task.BlueprintDeleteFailed", "ErrorTextStyle");
                 return;
             }
 
-            StatusMessage = L("Task.BlueprintDeleteSucceeded");
             await RefreshAsync(ct);
+            SetStatus("Task.BlueprintDeleteSucceeded", "SuccessTextStyle");
         }
         catch (Exception ex)
         {
-            StatusMessage = string.Format(L("Task.BlueprintDeleteFailedDetail"), ex.Message);
+            SetStatus(string.Format(L("Task.BlueprintDeleteFailedDetail"), ex.Message), "ErrorTextStyle", localize: false);
         }
         finally
         {
@@ -324,17 +331,17 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
     {
         if (SelectedBlueprint == null)
         {
-            StatusMessage = L("Task.BlueprintSelectRequired");
+            SetStatus("Task.BlueprintSelectRequired", "WarningTextStyle");
             return;
         }
 
         IsBusy = true;
         try
         {
-            var blueprint = await _blueprintService.LoadAsync(SelectedBlueprint.BlueprintId, _scope, ct);
+                var blueprint = await _blueprintService.LoadAsync(SelectedBlueprint.BlueprintId, _scope, ct);
             if (blueprint == null)
             {
-                StatusMessage = L("Task.BlueprintLoadMissing");
+                SetStatus("Task.BlueprintLoadMissing", "WarningTextStyle");
                 return;
             }
 
@@ -344,7 +351,7 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = string.Format(L("Task.BlueprintLoadFailed"), ex.Message);
+            SetStatus(string.Format(L("Task.BlueprintLoadFailed"), ex.Message), "ErrorTextStyle", localize: false);
         }
         finally
         {
@@ -510,4 +517,12 @@ public sealed class TaskBlueprintCreateViewModel : ViewModelBase
 
     private static string L(string key)
         => Application.Current?.TryFindResource(key) as string ?? key;
+
+    private void SetStatus(string messageOrKey, string styleKey, bool localize = true)
+    {
+        StatusStyleKey = styleKey;
+        StatusMessage = string.IsNullOrEmpty(messageOrKey)
+            ? string.Empty
+            : (localize ? L(messageOrKey) : messageOrKey);
+    }
 }

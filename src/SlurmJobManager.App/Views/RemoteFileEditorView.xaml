@@ -132,6 +132,7 @@
             <StackPanel Grid.Row="1"
                         Orientation="Horizontal"
                         Margin="0,0,0,6"
+                        IsEnabled="{Binding CanReload}"
                         Visibility="{Binding IsStructuredModeAvailable, Converter={StaticResource BoolToVis}}">
                 <Button Content="{DynamicResource RemoteEditor.StructuredMode}"
                         Command="{Binding SwitchToStructuredModeCommand}"
@@ -321,16 +322,18 @@
 
                 <TextBlock Grid.Column="0"
                            Text="{DynamicResource RemoteEditor.Saving}"
-                           Foreground="{DynamicResource TextMutedBrush}"
-                           FontSize="11" VerticalAlignment="Center"
+                           Style="{StaticResource BusyTextStyle}"
+                           VerticalAlignment="Center"
                            Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
 
                 <Button Grid.Column="1" Content="{DynamicResource RemoteEditor.Save}"
+                        IsEnabled="{Binding CanSave}"
                         Click="BtnSave_Click"
                         Style="{StaticResource AccentButtonStyle}"
                         Padding="12,5" Margin="0,0,6,0" />
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <Button Content="{DynamicResource RemoteEditor.Reload}"
+                            IsEnabled="{Binding CanReload}"
                             Style="{StaticResource NeutralButtonStyle}"
                             Padding="12,5"
                             Margin="0,0,6,0"

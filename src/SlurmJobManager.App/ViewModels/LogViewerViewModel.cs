@@ -44,9 +44,39 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
 
     public string RemoteFilePath { get => _remoteFilePath; set => SetField(ref _remoteFilePath, value); }
     public int ChunkSize         { get => _chunkSize;       set => SetField(ref _chunkSize, value); }
-    public bool IsBusy           { get => _isBusy;          private set { if (SetField(ref _isBusy, value)) OnPropertyChanged(nameof(IsEmpty)); } }
-    public bool IsAtStart        { get => _isAtStart;       private set => SetField(ref _isAtStart, value); }
-    public bool IsAtEnd          { get => _isAtEnd;         private set => SetField(ref _isAtEnd, value); }
+    public bool IsBusy
+    {
+        get => _isBusy;
+        private set
+        {
+            if (!SetField(ref _isBusy, value))
+                return;
+            OnPropertyChanged(nameof(IsEmpty));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    public bool IsAtStart
+    {
+        get => _isAtStart;
+        private set
+        {
+            if (!SetField(ref _isAtStart, value))
+                return;
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    public bool IsAtEnd
+    {
+        get => _isAtEnd;
+        private set
+        {
+            if (!SetField(ref _isAtEnd, value))
+                return;
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
     public long StartLine        { get => _startLine;       private set => SetField(ref _startLine, value); }
     public long EndLine          { get => _endLine;         private set => SetField(ref _endLine, value); }
     public long TotalLines       { get => _totalLines;      private set => SetField(ref _totalLines, value); }
@@ -100,7 +130,7 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
         LoadLatestCommand = new AsyncRelayCommand(LoadLatestAsync, () => !IsBusy);
         LoadOlderCommand  = new AsyncRelayCommand(LoadOlderAsync,  () => !IsBusy && !IsAtStart);
         LoadNewerCommand  = new AsyncRelayCommand(LoadNewerAsync,  () => !IsBusy && !IsAtEnd);
-        ClearCacheCommand = new RelayCommand(ClearCache);
+        ClearCacheCommand = new RelayCommand(ClearCache, () => !IsBusy && _chunkCache.Count > 0);
         CancelLoadCommand = new RelayCommand(CancelLoad, () => IsBusy);
     }
 
@@ -241,6 +271,8 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
             else
                 _chunkCache.RemoveAt(0);
         }
+
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private void ClearCache()
@@ -259,6 +291,7 @@ public sealed class LogViewerViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(CacheText));
             OnPropertyChanged(nameof(IsEmpty));
         });
+        CommandManager.InvalidateRequerySuggested();
     }
 
     // ── Rendering ────────────────────────────────────────────────────────────
