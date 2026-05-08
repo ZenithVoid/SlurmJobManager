@@ -2066,22 +2066,31 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         var dialogVm = new TaskBlueprintCreateViewModel(_blueprints, scope)
         {
-            NewTaskId = string.IsNullOrWhiteSpace(TaskId)
-                ? $"task_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}"
-                : $"{TaskId}_new",
+            SearchText = string.Empty,
         };
         await dialogVm.LoadAsync(ct);
 
         var dialog = new TaskBlueprintCreateView { DataContext = dialogVm };
         if (Application.Current.MainWindow is { } mainWin) dialog.Owner = mainWin;
 
-        if (dialog.ShowDialog() != true || !dialogVm.Confirmed || dialogVm.SelectedBlueprintRecord == null)
+        if (dialog.ShowDialog() != true || !dialogVm.Confirmed || !dialogVm.ApplyRequested || dialogVm.AppliedBlueprintRecord == null)
+            return;
+
+        var targetTaskId = ResolveApplyTargetTaskId(dialogVm.AppliedBlueprintRecord);
+        var applyConfirm = new ConfirmationDialogViewModel(
+            title: L("Task.BlueprintApplyCurrentTitle"),
+            message: string.Format(L("Task.BlueprintApplyCurrentConfirm"), dialogVm.AppliedBlueprintRecord.Name),
+            details: string.Format(L("Task.BlueprintApplyCurrentDetails"), targetTaskId),
+            confirmButtonText: L("Task.BlueprintApplyAction"),
+            cancelButtonText: L("Btn.Cancel"),
+            isWarning: true);
+        if (!ShowConfirmationDialog(applyConfirm))
             return;
 
         try
         {
-            var warnings = ApplyBlueprintToEditor(dialogVm.SelectedBlueprintRecord, dialogVm.NewTaskId.Trim());
-            var successMessage = string.Format(L("Task.BlueprintCreateSucceeded"), dialogVm.NewTaskId.Trim());
+            var warnings = ApplyBlueprintToEditor(dialogVm.AppliedBlueprintRecord, targetTaskId);
+            var successMessage = string.Format(L("Task.BlueprintApplySucceeded"), dialogVm.AppliedBlueprintRecord.Name);
             if (warnings.Count == 0)
             {
                 SetStatus(successMessage, "SuccessTextStyle", localize: false);
@@ -2100,6 +2109,17 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         {
             SetStatus(string.Format(L("Task.BlueprintCreateFailed"), ex.Message), "ErrorTextStyle", localize: false);
         }
+    }
+
+    private string ResolveApplyTargetTaskId(TaskBlueprintRecord blueprint)
+    {
+        if (!string.IsNullOrWhiteSpace(TaskId))
+            return TaskId.Trim();
+
+        if (!string.IsNullOrWhiteSpace(blueprint.SourceTaskId))
+            return blueprint.SourceTaskId.Trim();
+
+        return $"task_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}";
     }
 
     private TaskBlueprintRecord BuildBlueprintRecord(string name, string description, TaskBlueprintScope scope)
