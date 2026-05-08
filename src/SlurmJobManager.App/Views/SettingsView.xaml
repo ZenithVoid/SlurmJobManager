@@ -360,6 +360,25 @@
                                 Padding="10,5" />
                     </StackPanel>
 
+                    <TextBlock Text="{DynamicResource Settings.LogActionsLabel}"
+                               Style="{StaticResource FieldLabelStyle}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="{DynamicResource Settings.OpenLogsDirectory}"
+                                Command="{Binding OpenLogDirectoryCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="10,5"
+                                Margin="0,0,6,0" />
+                        <Button Content="{DynamicResource Settings.ViewRecentLog}"
+                                Command="{Binding ViewRecentLogCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="10,5"
+                                Margin="0,0,6,0" />
+                        <Button Content="{DynamicResource Settings.ExportLogs}"
+                                Command="{Binding ExportLogsCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="10,5" />
+                    </StackPanel>
+
                     <TextBlock Text="{DynamicResource Settings.LocalDataDesc}"
                                Style="{StaticResource MutedTextStyle}"
                                TextWrapping="Wrap" />
@@ -378,6 +397,14 @@
                         <Run Text="• " />
                         <Run Text="{DynamicResource Settings.LocalDataBlueprints}" />
                         <Run Text="{Binding BlueprintsDirectory, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock Margin="0,2,0,0"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               TextWrapping="Wrap"
+                               ToolTip="{Binding LogsDirectory, Mode=OneWay}">
+                        <Run Text="• " />
+                        <Run Text="{DynamicResource Settings.LocalDataLogs}" />
+                        <Run Text="{Binding LogsDirectory, Mode=OneWay}" />
                     </TextBlock>
                     <TextBlock Margin="0,2,0,0"
                                Foreground="{DynamicResource TextPrimaryBrush}"

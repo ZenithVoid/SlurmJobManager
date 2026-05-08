@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Threading;
 using SlurmJobManager.App.Services;
 using SlurmJobManager.App.Services.CrashHandling;
+using SlurmJobManager.App.Services.Logging;
 using SlurmJobManager.App.Services.Updates;
 using SlurmJobManager.App.Services.Validation;
 using SlurmJobManager.App.ViewModels;
@@ -43,12 +44,13 @@ public partial class App : Application
 
         // App-level user preferences (auto-connect on startup, etc.)
         var prefs = new AppPreferencesService();
+        ILogFileService logFileService = new LogFileService();
         IApplicationVersionService versionService = new ApplicationVersionService();
-        IUpdateCheckService updateCheckService = new UpdateCheckService(versionService);
+        IUpdateCheckService updateCheckService = new UpdateCheckService(versionService, _logger);
         IUpdateLaunchService updateLaunchService = new UpdateLaunchService();
 
         // Infrastructure services (one SSH client shared across all consumers)
-        var ssh      = new SshClientService(settings);
+        var ssh      = new SshClientService(settings, _logger);
         _sshService = ssh;
         var slurm    = new SlurmService(ssh, settings, _logger);
         var storage  = new TaskStorageService();
@@ -68,8 +70,8 @@ public partial class App : Application
         IRecentConnectionService recentConnectionService = new RecentConnectionService(_logger);
 
         // ViewModels
-        var connectionVm = new ConnectionViewModel(ssh, profileStore, recentConnectionService);
-        var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints, taskValidationService, prefs, lastTaskContextService);
+        var connectionVm = new ConnectionViewModel(ssh, profileStore, recentConnectionService, _logger);
+        var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints, taskValidationService, prefs, lastTaskContextService, logger: _logger);
         var monitorVm    = new MonitorViewModel(slurm, settings, _logger, connectionVm, notificationService);
         var logViewerVm  = new LogViewerViewModel(logChunk, _logger);
         var consoleVm    = new ConsoleViewModel(ssh, _logger, connectionVm);
@@ -80,7 +82,7 @@ public partial class App : Application
             _ = HandleConnectionEstablishedAsync(connectionVm, taskEditorVm, prefs, username);
         };
 
-        _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm, prefs, updateCheckService, versionService, updateLaunchService);
+        _mainVm = new MainViewModel(connectionVm, taskEditorVm, monitorVm, logViewerVm, consoleVm, prefs, updateCheckService, versionService, updateLaunchService, logFileService, _logger);
 
         // Default locale: zh-CN (loaded regardless of system language)
         _mainVm.ApplyLocale("zh-CN");

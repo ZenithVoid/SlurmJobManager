@@ -1,4 +1,5 @@
 using SlurmJobManager.Core.Interfaces;
+using SlurmJobManager.Core.Services;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -29,10 +30,7 @@ public sealed class SerilogAppLogger : IAppLogger, IDisposable
     public SerilogAppLogger(string? logDirectory = null, LogEventLevel minimumLevel = LogEventLevel.Information)
     {
         var dir = logDirectory
-            ?? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "SlurmJobManager",
-                "logs");
+            ?? LocalDataPaths.LogsDirectory;
 
         try
         {
