@@ -527,6 +527,16 @@
                     <views:SettingsView DataContext="{Binding Settings}" />
                 </Grid>
 
+                <!-- About -->
+                <Grid x:Name="PageAbout"
+                      Visibility="{Binding ShowAbout, Converter={StaticResource BoolToVis}}"
+                      RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <ScaleTransform x:Name="ScaleAbout" ScaleX="1" ScaleY="1" />
+                    </Grid.RenderTransform>
+                    <views:AboutView DataContext="{Binding About}" />
+                </Grid>
+
             </Grid>
         </Grid>
 
