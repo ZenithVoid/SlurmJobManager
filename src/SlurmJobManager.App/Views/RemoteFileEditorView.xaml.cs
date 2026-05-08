@@ -157,8 +157,6 @@ public partial class RemoteFileEditorView : Window
                 MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes)
                 return;
-
-            discardUnsavedChanges = true;
         }
 
         await vm.ReloadAsync(Editor.Text, discardUnsavedChanges);

@@ -402,8 +402,6 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
 
         IsStructuredModeAvailable = StructuredItems.Count > 0;
         SetStructuredMode(IsStructuredModeAvailable && preferStructuredModeAfterLoad);
-        if (!preferStructuredModeAfterLoad && IsStructuredModeAvailable)
-            SetStructuredMode(false);
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -488,7 +486,8 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         if (!IsStructuredModeAvailable)
             return;
 
-        if (IsStructuredMode && TryBuildStructuredContent(out var structuredContent, out var error))
+        var error = string.Empty;
+        if (IsStructuredMode && TryBuildStructuredContent(out var structuredContent, out error))
         {
             _suppressDirtyTracking = true;
             Content = structuredContent;
