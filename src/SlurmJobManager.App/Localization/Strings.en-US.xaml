@@ -16,6 +16,7 @@
     <sys:String x:Key="Nav.Logs">Logs</sys:String>
     <sys:String x:Key="Nav.Console">Console</sys:String>
     <sys:String x:Key="Nav.Settings">Settings</sys:String>
+    <sys:String x:Key="Nav.About">About</sys:String>
 
     <!-- ── App title ──────────────────────────────────────────────────── -->
     <sys:String x:Key="App.Title">Slurm Job Manager</sys:String>
@@ -211,6 +212,34 @@
     <sys:String x:Key="Settings.About">About</sys:String>
     <sys:String x:Key="Settings.AppName">Slurm Job Manager</sys:String>
     <sys:String x:Key="Settings.AppDesc">A modern WPF application for submitting, monitoring, and debugging Slurm HPC jobs over SSH.</sys:String>
+
+    <!-- ── About view ────────────────────────────────────────────────────── -->
+    <sys:String x:Key="About.Title">About</sys:String>
+    <sys:String x:Key="About.Subtitle">A focused desktop tool for Slurm job delivery and operations over SSH.</sys:String>
+    <sys:String x:Key="About.BasicInfoTitle">Product Information</sys:String>
+    <sys:String x:Key="About.VersionLabel">Version: </sys:String>
+    <sys:String x:Key="About.MaintainerLabel">Maintainer: </sys:String>
+    <sys:String x:Key="About.OrganizationLabel">Organization / Team: </sys:String>
+    <sys:String x:Key="About.CopyrightLabel">Copyright: </sys:String>
+    <sys:String x:Key="About.LicenseLabel">License: </sys:String>
+    <sys:String x:Key="About.RepositoryLabel">Repository: </sys:String>
+    <sys:String x:Key="About.DescriptionTitle">Product Description</sys:String>
+    <sys:String x:Key="About.DescriptionBody">Slurm Job Manager is a WPF desktop application for standardized Slurm task setup, submission, monitoring, and troubleshooting in HPC environments.</sys:String>
+    <sys:String x:Key="About.FeaturesTitle">Key Features</sys:String>
+    <sys:String x:Key="About.Feature1">SSH-based remote cluster connection and profile management</sys:String>
+    <sys:String x:Key="About.Feature2">Structured sbatch configuration and script generation</sys:String>
+    <sys:String x:Key="About.Feature3">Task/parameter file editing and remote file operations</sys:String>
+    <sys:String x:Key="About.Feature4">Slurm queue monitoring with status notifications</sys:String>
+    <sys:String x:Key="About.Feature5">Blueprint-based task template saving and reuse</sys:String>
+    <sys:String x:Key="About.Feature6">Built-in update check and updater integration</sys:String>
+    <sys:String x:Key="About.RelatedActionsTitle">Related Entry Points</sys:String>
+    <sys:String x:Key="About.OpenRepositoryButton">Open Repository</sys:String>
+    <sys:String x:Key="About.OpenLogsButton">Open Logs Directory</sys:String>
+    <sys:String x:Key="About.CheckUpdatesButton">Check Updates</sys:String>
+    <sys:String x:Key="About.CheckUpdatesHint">Check Updates opens the update section in Settings and immediately starts a check.</sys:String>
+    <sys:String x:Key="About.OpenTargetFailed">Failed to open target.</sys:String>
+    <sys:String x:Key="About.OpenTargetFailedFormat">Failed to open target: {0}</sys:String>
+    <sys:String x:Key="About.OpenLogsFailedFormat">Failed to open logs directory: {0}</sys:String>
 
     <!-- ── Errors / hints ───────────────────────────────────────────────── -->
     <sys:String x:Key="Err.ConnectionFailed">Connection failed. Please check the server configuration.</sys:String>

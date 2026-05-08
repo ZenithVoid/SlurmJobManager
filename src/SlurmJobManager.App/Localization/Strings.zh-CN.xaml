@@ -16,6 +16,7 @@
     <sys:String x:Key="Nav.Logs">日志</sys:String>
     <sys:String x:Key="Nav.Console">终端</sys:String>
     <sys:String x:Key="Nav.Settings">设置</sys:String>
+    <sys:String x:Key="Nav.About">关于</sys:String>
 
     <!-- ── 应用标题 ─────────────────────────────────────────────────────── -->
     <sys:String x:Key="App.Title">Slurm 作业管理器</sys:String>
@@ -211,6 +212,34 @@
     <sys:String x:Key="Settings.About">关于</sys:String>
     <sys:String x:Key="Settings.AppName">Slurm 作业管理器</sys:String>
     <sys:String x:Key="Settings.AppDesc">一款用于通过 SSH 提交、监控和调试 Slurm HPC 作业的现代 WPF 应用。</sys:String>
+
+    <!-- ── 关于页面 ───────────────────────────────────────────────────────── -->
+    <sys:String x:Key="About.Title">关于</sys:String>
+    <sys:String x:Key="About.Subtitle">面向 Slurm 任务交付与运维的 SSH 桌面工具。</sys:String>
+    <sys:String x:Key="About.BasicInfoTitle">产品信息</sys:String>
+    <sys:String x:Key="About.VersionLabel">版本号：</sys:String>
+    <sys:String x:Key="About.MaintainerLabel">维护者：</sys:String>
+    <sys:String x:Key="About.OrganizationLabel">单位 / 团队：</sys:String>
+    <sys:String x:Key="About.CopyrightLabel">版权信息：</sys:String>
+    <sys:String x:Key="About.LicenseLabel">许可证：</sys:String>
+    <sys:String x:Key="About.RepositoryLabel">项目仓库：</sys:String>
+    <sys:String x:Key="About.DescriptionTitle">软件简介</sys:String>
+    <sys:String x:Key="About.DescriptionBody">Slurm Job Manager 是一款用于 HPC 环境的 WPF 桌面应用，可用于规范化的 Slurm 任务配置、提交、监控与排障。</sys:String>
+    <sys:String x:Key="About.FeaturesTitle">主要功能概述</sys:String>
+    <sys:String x:Key="About.Feature1">基于 SSH 的远程集群连接与配置管理</sys:String>
+    <sys:String x:Key="About.Feature2">结构化 sbatch 配置与脚本生成</sys:String>
+    <sys:String x:Key="About.Feature3">任务/参数文件编辑与远程文件操作</sys:String>
+    <sys:String x:Key="About.Feature4">Slurm 队列监控与状态通知</sys:String>
+    <sys:String x:Key="About.Feature5">蓝图模板保存与复用</sys:String>
+    <sys:String x:Key="About.Feature6">内置更新检查与更新器联动</sys:String>
+    <sys:String x:Key="About.RelatedActionsTitle">相关入口</sys:String>
+    <sys:String x:Key="About.OpenRepositoryButton">打开项目仓库</sys:String>
+    <sys:String x:Key="About.OpenLogsButton">打开日志目录</sys:String>
+    <sys:String x:Key="About.CheckUpdatesButton">检查更新</sys:String>
+    <sys:String x:Key="About.CheckUpdatesHint">“检查更新”会跳转到设置页的更新模块并立即发起检查。</sys:String>
+    <sys:String x:Key="About.OpenTargetFailed">打开目标失败。</sys:String>
+    <sys:String x:Key="About.OpenTargetFailedFormat">打开目标失败：{0}</sys:String>
+    <sys:String x:Key="About.OpenLogsFailedFormat">打开日志目录失败：{0}</sys:String>
 
     <!-- ── 错误/提示 ─────────────────────────────────────────────────────── -->
     <sys:String x:Key="Err.ConnectionFailed">连接失败，请检查服务器配置。</sys:String>
