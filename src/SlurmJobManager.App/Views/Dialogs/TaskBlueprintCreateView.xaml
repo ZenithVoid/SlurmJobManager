@@ -5,18 +5,17 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="{DynamicResource Task.BlueprintCreateTitle}"
-    Width="640"
-    Height="480"
-    MinWidth="580"
-    MinHeight="420"
+    Title="{DynamicResource Task.BlueprintManagerTitle}"
+    Width="900"
+    Height="620"
+    MinWidth="800"
+    MinHeight="520"
     WindowStartupLocation="CenterOwner"
     Background="{DynamicResource BgBaseBrush}">
     <Grid Margin="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -26,88 +25,172 @@
             <ColumnDefinition Width="3*" />
         </Grid.ColumnDefinitions>
 
-        <TextBlock Grid.Row="0" Grid.Column="0"
-                   Text="{DynamicResource Task.BlueprintList}"
-                   Style="{StaticResource SectionHeaderStyle}" />
+        <DockPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,8">
+            <TextBlock DockPanel.Dock="Left"
+                       Text="{DynamicResource Task.BlueprintManagerTitle}"
+                       Style="{StaticResource SectionHeaderStyle}" />
+            <Button DockPanel.Dock="Right"
+                    Content="{DynamicResource Btn.Refresh}"
+                    Command="{Binding RefreshCommand}"
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Padding="10,4" />
+            <TextBox Width="280"
+                     Margin="8,0,8,0"
+                     HorizontalAlignment="Right"
+                     VerticalAlignment="Center"
+                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{DynamicResource Task.BlueprintSearchHint}" />
+        </DockPanel>
 
-        <ListBox Grid.Row="1" Grid.Column="0"
-                 ItemsSource="{Binding Blueprints}"
-                 SelectedItem="{Binding SelectedBlueprint, Mode=TwoWay}"
-                 Margin="0,6,0,8">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <StackPanel Margin="0,2">
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding Description}"
-                                   TextWrapping="Wrap"
-                                   Style="{StaticResource MutedTextStyle}" />
-                        <TextBlock Text="{Binding UpdatedAt, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}"
-                                   Style="{StaticResource MutedTextStyle}"
-                                   FontSize="11" />
-                    </StackPanel>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+        <Border Grid.Row="1" Grid.Column="0"
+                Style="{StaticResource CardStyle}"
+                Padding="8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="{DynamicResource Task.BlueprintList}"
+                           Style="{StaticResource FieldLabelStyle}" />
+
+                <ListBox Grid.Row="1"
+                         Margin="0,6,0,0"
+                         ItemsSource="{Binding FilteredBlueprints}"
+                         SelectedItem="{Binding SelectedBlueprint, Mode=TwoWay}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,2">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Description}"
+                                           TextWrapping="Wrap"
+                                           Style="{StaticResource MutedTextStyle}" />
+                                <TextBlock Text="{Binding UpdatedAt, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}"
+                                           Style="{StaticResource MutedTextStyle}"
+                                           FontSize="11" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
 
         <Border Grid.Row="1" Grid.Column="2"
                 Style="{StaticResource CardStyle}"
-                Padding="8"
-                Margin="0,6,0,8">
+                Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0"
+                           Text="{DynamicResource Task.BlueprintPreview}"
+                           Style="{StaticResource SectionHeaderStyle}" />
+
+                <Grid Grid.Row="1" Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource Task.BlueprintName}" Style="{StaticResource FieldLabelStyle}" Margin="0,0,8,4" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedBlueprintName}" Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource Task.BlueprintDescription}" Style="{StaticResource FieldLabelStyle}" Margin="0,0,8,4" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedBlueprintDescription}" Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{DynamicResource Task.BlueprintUpdatedAt}" Style="{StaticResource FieldLabelStyle}" Margin="0,0,8,4" />
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedBlueprintUpdatedAt}" Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{DynamicResource Task.BlueprintProgramPath}" Style="{StaticResource FieldLabelStyle}" Margin="0,0,8,4" />
+                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding PreviewProgramPath}" Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{DynamicResource Task.BlueprintWorkDirectory}" Style="{StaticResource FieldLabelStyle}" Margin="0,0,8,4" />
+                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding PreviewWorkDirectory}" Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{DynamicResource Task.BlueprintJobName}" Style="{StaticResource FieldLabelStyle}" Margin="0,0,8,4" />
+                    <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding PreviewJobName}" Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="{DynamicResource Task.BlueprintQueue}" Style="{StaticResource FieldLabelStyle}" Margin="0,0,8,4" />
+                    <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding PreviewQueue}" Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="7" Grid.Column="0" Text="{DynamicResource Task.BlueprintNodes}" Style="{StaticResource FieldLabelStyle}" Margin="0,0,8,4" />
+                    <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding PreviewNodes}" Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="8" Grid.Column="0" Text="{DynamicResource Task.BlueprintCpuCount}" Style="{StaticResource FieldLabelStyle}" Margin="0,0,8,4" />
+                    <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding PreviewCpuCount}" Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="9" Grid.Column="0" Text="{DynamicResource Task.BlueprintAccount}" Style="{StaticResource FieldLabelStyle}" Margin="0,0,8,4" />
+                    <TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding PreviewAccount}" Margin="0,0,0,2" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="10" Grid.Column="0" Text="{DynamicResource Task.BlueprintParamFiles}" Style="{StaticResource FieldLabelStyle}" Margin="0,0,8,4" />
+                    <TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding PreviewParamFileCount}" Margin="0,0,0,2" TextWrapping="Wrap" />
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                Style="{StaticResource CardStyle}"
+                Padding="10"
+                Margin="0,8,0,0">
             <StackPanel>
-                <TextBlock Text="{DynamicResource Task.BlueprintName}"
+                <TextBlock Text="{DynamicResource Task.BlueprintManageActions}"
                            Style="{StaticResource FieldLabelStyle}" />
-                <TextBlock Text="{Binding SelectedBlueprint.Name}"
-                           Margin="0,0,0,8" />
-                <TextBlock Text="{DynamicResource Task.BlueprintDescription}"
-                           Style="{StaticResource FieldLabelStyle}" />
-                <TextBlock Text="{Binding SelectedBlueprintDescription}"
-                           TextWrapping="Wrap"
-                           Margin="0,0,0,8" />
-                <TextBlock Text="{DynamicResource Task.BlueprintUpdatedAt}"
-                           Style="{StaticResource FieldLabelStyle}" />
-                <TextBlock Text="{Binding SelectedBlueprintUpdatedAt}"
-                           Margin="0,0,0,8" />
+                <DockPanel Margin="0,6,0,0">
+                    <TextBox Width="280"
+                             Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="{DynamicResource Task.BlueprintName}" />
+                    <Button Content="{DynamicResource Task.BlueprintRename}"
+                            Command="{Binding RenameBlueprintCommand}"
+                            Style="{StaticResource NeutralButtonStyle}"
+                            Padding="10,4"
+                            Margin="8,0,0,0" />
+                    <Button Content="{DynamicResource Task.BlueprintDuplicate}"
+                            Command="{Binding DuplicateBlueprintCommand}"
+                            Style="{StaticResource NeutralButtonStyle}"
+                            Padding="10,4"
+                            Margin="8,0,0,0" />
+                    <Button Content="{DynamicResource Task.BlueprintDelete}"
+                            Command="{Binding DeleteBlueprintCommand}"
+                            Style="{StaticResource DangerButtonStyle}"
+                            Padding="10,4"
+                            Margin="8,0,0,0" />
+                </DockPanel>
+                <TextBlock Text="{Binding PreviewParamFileCountText}"
+                           Style="{StaticResource MutedTextStyle}"
+                           Margin="0,6,0,0" />
             </StackPanel>
         </Border>
 
-        <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
-                    Orientation="Horizontal"
-                    VerticalAlignment="Center">
-            <TextBlock Text="{DynamicResource Task.BlueprintNewTaskId}"
+        <Grid Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,8,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       Text="{Binding StatusMessage}"
+                       Margin="0,0,8,0"
+                       TextWrapping="Wrap"
                        VerticalAlignment="Center"
-                       Margin="0,0,8,0" />
-            <TextBox Width="260"
-                     Text="{Binding NewTaskId, UpdateSourceTrigger=PropertyChanged}" />
-            <Button Content="{DynamicResource Task.BlueprintDelete}"
-                    Command="{Binding DeleteBlueprintCommand}"
-                    Style="{StaticResource NeutralButtonStyle}"
-                    Padding="10,4"
-                    Margin="12,0,0,0" />
-            <Button Content="{DynamicResource Btn.Refresh}"
-                    Command="{Binding RefreshCommand}"
-                    Style="{StaticResource NeutralButtonStyle}"
-                    Padding="10,4"
-                    Margin="8,0,0,0" />
-        </StackPanel>
+                       Style="{StaticResource WarningTextStyle}" />
 
-        <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"
-                   Text="{Binding StatusMessage}"
-                   Margin="0,8,0,8"
-                   TextWrapping="Wrap"
-                   Style="{StaticResource WarningTextStyle}" />
-
-        <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right">
-            <Button Content="{DynamicResource Task.BlueprintCreateConfirm}"
+            <Button Grid.Column="1"
+                    Content="{DynamicResource Task.BlueprintApplyToCurrent}"
                     Style="{StaticResource SuccessButtonStyle}"
                     Padding="12,5"
                     Margin="0,0,8,0"
-                    Click="BtnCreate_Click" />
-            <Button Content="{DynamicResource Btn.Cancel}"
+                    Click="BtnApply_Click" />
+            <Button Grid.Column="2"
+                    Content="{DynamicResource Btn.Cancel}"
                     Style="{StaticResource NeutralButtonStyle}"
                     Padding="12,5"
                     Click="BtnCancel_Click" />
-        </StackPanel>
+        </Grid>
     </Grid>
 </Window>

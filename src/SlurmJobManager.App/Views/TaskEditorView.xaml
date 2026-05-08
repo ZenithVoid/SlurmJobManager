@@ -169,7 +169,7 @@
                 </Grid.ColumnDefinitions>
                 <Button Grid.Column="0" Content="{DynamicResource Btn.SaveAsBlueprint}" Command="{Binding SaveAsBlueprintCommand}"
                         Style="{StaticResource NeutralButtonStyle}" Margin="0,0,4,0" Padding="8,4" />
-                <Button Grid.Column="1" Content="{DynamicResource Btn.CreateFromBlueprint}" Command="{Binding CreateFromBlueprintCommand}"
+                <Button Grid.Column="1" Content="{DynamicResource Btn.ManageBlueprints}" Command="{Binding CreateFromBlueprintCommand}"
                         Style="{StaticResource NeutralButtonStyle}" Padding="8,4" />
             </Grid>
             <TextBlock Text="{Binding LastSavedTime}"

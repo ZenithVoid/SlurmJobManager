@@ -10,10 +10,10 @@ public partial class TaskBlueprintCreateView : Window
         InitializeComponent();
     }
 
-    private async void BtnCreate_Click(object sender, RoutedEventArgs e)
+    private async void BtnApply_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not TaskBlueprintCreateViewModel vm) return;
-        if (await vm.ConfirmCreateAsync())
+        if (await vm.ConfirmApplyAsync())
             DialogResult = true;
     }
 
