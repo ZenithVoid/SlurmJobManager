@@ -1,5 +1,6 @@
 using System.Windows;
 using SlurmJobManager.Core.Models;
+using SlurmJobManager.Core.Services;
 
 namespace SlurmJobManager.Updater;
 
@@ -17,7 +18,9 @@ internal static class Program
         }
 
         using var logger = UpdaterLogger.Create(request!.LogFilePath);
-        logger.Info($"Updater started. ParentPid={request.ParentProcessId}, PackageType={request.PackageType}, PackagePath={request.UpdatePackagePath}");
+        var updaterVersion = ApplicationVersionInfo.Resolve(typeof(Program).Assembly);
+        logger.Info(
+            $"Updater started. UpdaterVersion={updaterVersion.DisplayVersion}, CurrentAppVersion={request.CurrentVersionDisplay ?? "-"}, TargetVersion={request.TargetVersionDisplay ?? "-"}, ParentPid={request.ParentProcessId}, PackageType={request.PackageType}, PackagePath={request.UpdatePackagePath}");
 
         try
         {

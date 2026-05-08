@@ -8,11 +8,18 @@ namespace SlurmJobManager.App.Services.Updates;
 public sealed class UpdateLaunchService : IUpdateLaunchService
 {
     private static readonly string[] InstallerExtensions = [".exe", ".msi"];
+    private readonly IApplicationVersionService _versionService;
+
+    public UpdateLaunchService(IApplicationVersionService versionService)
+    {
+        _versionService = versionService ?? throw new ArgumentNullException(nameof(versionService));
+    }
 
     public bool TryCreateLaunchRequest(
         string packagePath,
         bool restartMainApplication,
         string? restartArguments,
+        string? targetVersionDisplay,
         out UpdaterLaunchRequest? request,
         out string? errorMessage)
     {
@@ -60,7 +67,9 @@ public sealed class UpdateLaunchService : IUpdateLaunchService
             PackageType: packageType,
             RestartMainApplication: restartMainApplication,
             RestartArguments: restartArguments,
-            LogFilePath: logFilePath);
+            LogFilePath: logFilePath,
+            CurrentVersionDisplay: _versionService.CurrentVersionDisplay,
+            TargetVersionDisplay: targetVersionDisplay);
         return true;
     }
 
