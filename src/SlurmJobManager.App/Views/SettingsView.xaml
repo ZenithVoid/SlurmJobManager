@@ -208,6 +208,127 @@
                 </StackPanel>
             </Border>
 
+            <!-- ── Update Check ───────────────────────────────────────────── -->
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.UpdateSection}"
+                               Style="{StaticResource SectionHeaderStyle}" />
+
+                    <TextBlock Text="{DynamicResource Settings.UpdateCurrentVersionLabel}"
+                               Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="{Binding CurrentAppVersion, Mode=OneWay}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               Margin="0,0,0,8" />
+
+                    <TextBlock Text="{DynamicResource Settings.UpdateSourceLabel}"
+                               Style="{StaticResource FieldLabelStyle}" />
+                    <ComboBox SelectedIndex="{Binding SelectedUpdateSourceIndex, Mode=TwoWay}"
+                              Margin="0,0,0,6">
+                        <ComboBoxItem Content="{DynamicResource Settings.UpdateSourceGitHub}" />
+                        <ComboBoxItem Content="{DynamicResource Settings.UpdateSourceFolder}" />
+                    </ComboBox>
+                    <TextBlock Text="{DynamicResource Settings.UpdateSourceDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,8" />
+
+                    <TextBlock Text="{DynamicResource Settings.UpdateFolderPathLabel}"
+                               Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding UpdateFolderPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                             IsEnabled="{Binding IsFolderUpdateSource, Mode=OneWay}"
+                             Margin="0,0,0,4" />
+                    <TextBlock Text="{DynamicResource Settings.UpdateFolderPathDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,8" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <CheckBox x:Name="AutoCheckUpdatesCheckBox"
+                                  IsChecked="{Binding AutoCheckForUpdatesOnStartup, Mode=TwoWay}"
+                                  Margin="0,0,10,0" />
+                        <Label Target="{Binding ElementName=AutoCheckUpdatesCheckBox}"
+                               Content="{DynamicResource Settings.AutoCheckUpdateLabel}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               VerticalAlignment="Center"
+                               Cursor="Hand"
+                               Padding="0" />
+                    </StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.AutoCheckUpdateDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                        <CheckBox x:Name="IncludePrereleaseCheckBox"
+                                  IsChecked="{Binding IncludePrereleaseUpdates, Mode=TwoWay}"
+                                  IsEnabled="{Binding IsGitHubUpdateSource, Mode=OneWay}"
+                                  Margin="0,0,10,0" />
+                        <Label Target="{Binding ElementName=IncludePrereleaseCheckBox}"
+                               Content="{DynamicResource Settings.IncludePrereleaseLabel}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               VerticalAlignment="Center"
+                               Cursor="Hand"
+                               Padding="0" />
+                    </StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.IncludePrereleaseDesc}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,8">
+                        <Button Content="{DynamicResource Settings.CheckUpdateButton}"
+                                Command="{Binding CheckForUpdatesCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="10,5"
+                                Margin="0,0,6,0" />
+                        <Button Content="{DynamicResource Settings.OpenUpdateSourceButton}"
+                                Command="{Binding OpenUpdateSourceCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="10,5"
+                                Margin="0,0,6,0" />
+                        <Button Content="{DynamicResource Settings.OpenUpdateTargetButton}"
+                                Command="{Binding OpenUpdateTargetCommand}"
+                                Style="{StaticResource NeutralButtonStyle}"
+                                Padding="10,5" />
+                    </StackPanel>
+
+                    <Border Background="{DynamicResource BgPanelBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,8">
+                        <StackPanel>
+                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                <Run Text="{DynamicResource Settings.UpdateStatusLabel}" />
+                                <Run Text="{Binding UpdateStatusMessage, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                <Run Text="{DynamicResource Settings.UpdateLatestVersionLabel}" />
+                                <Run Text="{Binding LatestVersionDisplay, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                <Run Text="{DynamicResource Settings.UpdateResultSourceLabel}" />
+                                <Run Text="{Binding UpdateSourceDisplay, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                <Run Text="{DynamicResource Settings.UpdateReleaseTitleLabel}" />
+                                <Run Text="{Binding ReleaseTitle, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                <Run Text="{DynamicResource Settings.UpdateReleaseTimeLabel}" />
+                                <Run Text="{Binding ReleasePublishedAt, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                <Run Text="{DynamicResource Settings.UpdateLastCheckedLabel}" />
+                                <Run Text="{Binding LastCheckedAtDisplay, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Text="{Binding ReleaseNotes, Mode=OneWay}"
+                                       Style="{StaticResource MutedTextStyle}"
+                                       Margin="0,6,0,0"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
             <!-- ── Local Data ─────────────────────────────────────────────── -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
                 <StackPanel>
