@@ -246,6 +246,9 @@
     <sys:String x:Key="About.Feature5">Blueprint-based task template saving and reuse</sys:String>
     <sys:String x:Key="About.Feature6">Built-in update check and updater integration</sys:String>
     <sys:String x:Key="About.RelatedActionsTitle">Related Entry Points</sys:String>
+    <sys:String x:Key="About.CopyrightSummaryHint">Use the actions below to view product copyright and third-party license notices. The same documents are shipped with release artifacts.</sys:String>
+    <sys:String x:Key="About.OpenCopyrightNoticeButton">View Copyright Notice</sys:String>
+    <sys:String x:Key="About.OpenThirdPartyNoticesButton">View Third-Party Notices</sys:String>
     <sys:String x:Key="About.OpenRepositoryButton">Open Repository</sys:String>
     <sys:String x:Key="About.OpenLogsButton">Open Logs Directory</sys:String>
     <sys:String x:Key="About.CheckUpdatesButton">Check Updates</sys:String>
@@ -253,6 +256,8 @@
     <sys:String x:Key="About.OpenTargetFailed">Failed to open target.</sys:String>
     <sys:String x:Key="About.OpenTargetFailedFormat">Failed to open target: {0}</sys:String>
     <sys:String x:Key="About.OpenLogsFailedFormat">Failed to open logs directory: {0}</sys:String>
+    <sys:String x:Key="About.CopyrightNoticeMissingFormat">Copyright notice file not found: {0}</sys:String>
+    <sys:String x:Key="About.ThirdPartyNoticesMissingFormat">Third-party notices file not found: {0}</sys:String>
 
     <!-- ── Errors / hints ───────────────────────────────────────────────── -->
     <sys:String x:Key="Err.ConnectionFailed">Connection failed. Please check the server configuration.</sys:String>

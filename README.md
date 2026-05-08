@@ -4,6 +4,14 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 
 ---
 
+## Copyright & Third-Party Notices
+
+- Product copyright statement: [`COPYRIGHT`](./COPYRIGHT)
+- Third-party dependency notices: [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)
+- Source license: [`LICENSE`](./LICENSE)
+
+---
+
 ## 发布产物自动生成（zip + latest.json）
 
 可使用脚本将 `dotnet publish` 输出自动打包为标准更新产物：

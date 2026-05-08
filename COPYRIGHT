@@ -1,0 +1,11 @@
+Slurm Job Manager
+Copyright © 2026 ZenithVoid. All rights reserved.
+
+This software is authored and maintained by ZenithVoid.
+
+Source code licensing:
+- The repository source code is licensed under the Apache License, Version 2.0.
+- See the LICENSE file in the repository root for full terms.
+
+Third-party dependency notices:
+- See THIRD_PARTY_NOTICES.md for the third-party components currently used by this solution and their declared licenses.
