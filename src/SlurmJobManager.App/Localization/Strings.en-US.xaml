@@ -206,6 +206,7 @@
     <sys:String x:Key="Settings.UpdateLaunchingAndClosing">Updater started. Closing main app to continue update…</sys:String>
     <sys:String x:Key="Settings.UpdateLaunchFailedFormat">Failed to launch updater: {0}</sys:String>
     <sys:String x:Key="Settings.UpdateLaunchInvalidTargetFormat">Update target is invalid: {0}</sys:String>
+    <sys:String x:Key="Settings.UpdatePackageAutoSelectedFormat">Multiple packages found; using latest: {0}</sys:String>
     <sys:String x:Key="Settings.About">About</sys:String>
     <sys:String x:Key="Settings.AppName">Slurm Job Manager</sys:String>
     <sys:String x:Key="Settings.AppDesc">A modern WPF application for submitting, monitoring, and debugging Slurm HPC jobs over SSH.</sys:String>

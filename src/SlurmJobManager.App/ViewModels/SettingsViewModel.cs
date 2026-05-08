@@ -370,13 +370,16 @@ public sealed class SettingsViewModel : ViewModelBase
 
     private async Task LaunchUpdateAsync()
     {
-        if (!TryResolveLocalUpdatePackage(_lastOpenTarget, out var packagePath, out var packageError))
+        if (!TryResolveLocalUpdatePackage(_lastOpenTarget, out var packagePath, out var packageError, out var selectionMessage))
         {
             var message = string.Format(L("Settings.UpdateLaunchInvalidTargetFormat"), packageError ?? L("Settings.UnknownError"));
             UpdateStatusMessage = message;
             ToastService.Instance.Error(message);
             return;
         }
+
+        if (!string.IsNullOrWhiteSpace(selectionMessage))
+            ToastService.Instance.Info(selectionMessage);
 
         if (!_updateLaunchService.TryCreateLaunchRequest(
                 packagePath!,
@@ -491,10 +494,15 @@ public sealed class SettingsViewModel : ViewModelBase
 
     private static string L(string key) => Application.Current?.TryFindResource(key) as string ?? key;
 
-    private static bool TryResolveLocalUpdatePackage(string? openTarget, out string? packagePath, out string? errorMessage)
+    private static bool TryResolveLocalUpdatePackage(
+        string? openTarget,
+        out string? packagePath,
+        out string? errorMessage,
+        out string? selectionMessage)
     {
         packagePath = null;
         errorMessage = null;
+        selectionMessage = null;
 
         if (string.IsNullOrWhiteSpace(openTarget))
         {
@@ -541,6 +549,8 @@ public sealed class SettingsViewModel : ViewModelBase
         }
 
         packagePath = candidates[0];
+        if (candidates.Count > 1)
+            selectionMessage = string.Format(L("Settings.UpdatePackageAutoSelectedFormat"), Path.GetFileName(packagePath));
         return true;
     }
 }

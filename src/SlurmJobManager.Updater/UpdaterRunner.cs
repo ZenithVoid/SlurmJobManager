@@ -141,6 +141,9 @@ internal sealed class UpdaterRunner(UpdaterLogger logger)
                 throw new InvalidOperationException($"Zip package is missing required file: {mainExeName}");
 
             var updaterExePath = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(updaterExePath))
+                _logger.Warn("Environment.ProcessPath is empty; updater self-replacement protection is unavailable in this host context.");
+
             foreach (var sourceFile in Directory.EnumerateFiles(extractedDir, "*", SearchOption.AllDirectories))
             {
                 var relativePath = Path.GetRelativePath(extractedDir, sourceFile);

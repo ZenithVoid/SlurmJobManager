@@ -206,6 +206,7 @@
     <sys:String x:Key="Settings.UpdateLaunchingAndClosing">更新器已启动，正在关闭主程序以继续更新…</sys:String>
     <sys:String x:Key="Settings.UpdateLaunchFailedFormat">启动更新器失败：{0}</sys:String>
     <sys:String x:Key="Settings.UpdateLaunchInvalidTargetFormat">更新目标无效：{0}</sys:String>
+    <sys:String x:Key="Settings.UpdatePackageAutoSelectedFormat">检测到多个更新包，已使用最新文件：{0}</sys:String>
     <sys:String x:Key="Settings.About">关于</sys:String>
     <sys:String x:Key="Settings.AppName">Slurm 作业管理器</sys:String>
     <sys:String x:Key="Settings.AppDesc">一款用于通过 SSH 提交、监控和调试 Slurm HPC 作业的现代 WPF 应用。</sys:String>
