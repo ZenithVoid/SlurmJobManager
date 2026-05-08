@@ -831,6 +831,14 @@
     <sys:String x:Key="RemoteEditor.Saving">⏳ 保存中…</sys:String>
     <sys:String x:Key="RemoteEditor.SavingLarge">⏳ 大文件保存中…</sys:String>
     <sys:String x:Key="RemoteEditor.Save">💾 保存</sys:String>
+    <sys:String x:Key="RemoteEditor.Reload">重载</sys:String>
+    <sys:String x:Key="RemoteEditor.ReloadTitle">重新加载文件</sys:String>
+    <sys:String x:Key="RemoteEditor.ReloadUnsavedPrompt">当前存在未保存修改，重载将丢弃这些编辑。是否继续？</sys:String>
+    <sys:String x:Key="RemoteEditor.ReloadNeedsConfirm">检测到未保存修改，请确认后再重载。</sys:String>
+    <sys:String x:Key="RemoteEditor.Reloaded">已从远程文件重新加载。</sys:String>
+    <sys:String x:Key="RemoteEditor.SaveBeforeLoadBlocked">远程文件尚未成功加载，无法执行保存。</sys:String>
+    <sys:String x:Key="RemoteEditor.EmptyOverwriteTitle">确认空内容覆盖</sys:String>
+    <sys:String x:Key="RemoteEditor.EmptyOverwriteConfirm">你将使用空内容覆盖一个非空文件（{0}），是否继续？</sys:String>
     <sys:String x:Key="RemoteEditor.VeryLargeSaveTitle">确认保存</sys:String>
     <sys:String x:Key="RemoteEditor.VeryLargeSaveConfirm">即将覆盖超大文件（{0}），确认继续保存？</sys:String>
     <sys:String x:Key="RemoteEditor.SaveCancelled">已取消保存。</sys:String>
@@ -843,9 +851,15 @@
     <sys:String x:Key="RemoteEditor.StructuredUnavailable">当前文件不可用结构化编辑。</sys:String>
     <sys:String x:Key="RemoteEditor.StructuredSaveFailed">结构化参数序列化失败。</sys:String>
     <sys:String x:Key="RemoteEditor.StructuredSaveFailedFormat">结构化参数序列化失败：{0}</sys:String>
+    <sys:String x:Key="RemoteEditor.StructuredParseFromTextFailed">当前文本无法安全切换为结构化表达，请继续使用文本模式编辑。</sys:String>
+    <sys:String x:Key="RemoteEditor.StructuredModeSynced">结构化模式已与当前文本同步。</sys:String>
+    <sys:String x:Key="RemoteEditor.TextModeSynced">文本模式已反映当前结构化修改。</sys:String>
     <sys:String x:Key="RemoteEditor.BinaryRejected">检测到二进制文件，已阻止按文本打开。</sys:String>
     <sys:String x:Key="RemoteEditor.EncodingUnknown">编码无法可靠识别，当前按 UTF-8 打开。</sys:String>
     <sys:String x:Key="RemoteEditor.EncodingTip">显示检测到的文件编码（仅供参考）。</sys:String>
+    <sys:String x:Key="RemoteEditor.StateSummaryFormat">模式：{0}   状态：{1}</sys:String>
+    <sys:String x:Key="RemoteEditor.StateSaved">已保存</sys:String>
+    <sys:String x:Key="RemoteEditor.StateDirty">未保存修改</sys:String>
     <sys:String x:Key="RemoteEditor.UnsavedTitle">未保存更改</sys:String>
     <sys:String x:Key="RemoteEditor.UnsavedPrompt">检测到未保存修改。是否保存后关闭？</sys:String>
 

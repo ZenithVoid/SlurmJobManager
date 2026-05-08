@@ -4100,7 +4100,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 return false;
             }
 
-            var editorViewModel = new RemoteFileEditorViewModel(_ssh, _prefs, normalizedPath, _homeDirectory);
+            var editorViewModel = new RemoteFileEditorViewModel(_ssh, _prefs, normalizedPath, _homeDirectory, _logger);
             var editorWindow = new RemoteFileEditorView { DataContext = editorViewModel };
             if (Application.Current.MainWindow is { } mainWindow)
                 editorWindow.Owner = mainWindow;

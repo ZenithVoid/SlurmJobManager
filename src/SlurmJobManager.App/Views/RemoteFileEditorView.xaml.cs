@@ -133,6 +133,35 @@ public partial class RemoteFileEditorView : Window
         await vm.SaveChangesAsync(editorText);
     }
 
+    private async void BtnReload_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not RemoteFileEditorViewModel vm)
+            return;
+        if (vm.IsBusy)
+            return;
+
+        if (vm.IsTextMode && !string.Equals(Editor.Text, vm.Content, StringComparison.Ordinal))
+            vm.Content = Editor.Text;
+
+        var discardUnsavedChanges = true;
+        if (vm.IsDirty)
+        {
+            var prompt = Application.Current?.TryFindResource("RemoteEditor.ReloadUnsavedPrompt") as string
+                         ?? "当前存在未保存修改，重载将覆盖这些内容。是否继续？";
+            var title = Application.Current?.TryFindResource("RemoteEditor.ReloadTitle") as string
+                        ?? "重新加载文件";
+            var confirm = MessageBox.Show(
+                prompt,
+                title,
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes)
+                return;
+        }
+
+        await vm.ReloadAsync(Editor.Text, discardUnsavedChanges);
+    }
+
     private void OnClosing(object? sender, CancelEventArgs e)
     {
         if (_allowClose) return;
