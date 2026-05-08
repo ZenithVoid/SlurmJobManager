@@ -20,6 +20,7 @@ namespace SlurmJobManager.App.ViewModels;
 public sealed class SettingsViewModel : ViewModelBase
 {
     private const string GitHubReleasesPage = "https://github.com/ZenithVoid/SlurmJobManager/releases";
+    private const int ReleaseScriptSearchMaxDepth = 8;
     private static readonly TimeSpan UpdateLaunchGracePeriod = TimeSpan.FromMilliseconds(250);
 
     private readonly MainViewModel _main;
@@ -886,7 +887,7 @@ public sealed class SettingsViewModel : ViewModelBase
     private static string? ResolveReleaseArtifactsScriptPath()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
-        for (var i = 0; i < 8 && current is not null; i++)
+        for (var i = 0; i < ReleaseScriptSearchMaxDepth && current is not null; i++)
         {
             var candidate = Path.Combine(current.FullName, "scripts", "Generate-ReleaseArtifacts.ps1");
             if (File.Exists(candidate))
