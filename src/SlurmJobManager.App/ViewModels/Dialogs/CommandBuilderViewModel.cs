@@ -555,7 +555,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             }
         }
 
-        // Step 2: which mpirun
+        // Step 2: command -v mpirun
         var (whichOut, _, whichExit) = await _ssh.ExecuteAsync("command -v mpirun 2>/dev/null", ct);
         if (whichExit == 0 && !string.IsNullOrWhiteSpace(whichOut))
         {
@@ -1185,6 +1185,8 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         if (_isSyncingTimeSelection)
             return;
 
+        // Slurm time here is intentionally normalized to whole-day granularity for the Year/Month/Day picker UI.
+        // We map year/month to fixed day lengths to keep behavior stable and predictable in script generation.
         var totalDays = (_sbatchTimeYears * 365) + (_sbatchTimeMonths * 30) + _sbatchTimeDays;
         var timeLimit = totalDays > 0
             ? $"{totalDays}-00:00:00"
