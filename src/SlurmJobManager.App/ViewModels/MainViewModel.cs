@@ -23,6 +23,7 @@ public sealed class MainViewModel : ViewModelBase
     public ConsoleViewModel    Console     { get; }
     public DashboardViewModel  Dashboard   { get; }
     public SettingsViewModel   Settings    { get; }
+    public AboutViewModel      About       { get; }
 
     public IReadOnlyList<NavItem> NavItems { get; }
 
@@ -60,6 +61,7 @@ public sealed class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(ShowLogs));
             OnPropertyChanged(nameof(ShowConsole));
             OnPropertyChanged(nameof(ShowSettings));
+            OnPropertyChanged(nameof(ShowAbout));
 
             // Keep ActiveNavItem in sync when ActiveTab is set directly
             var matching = NavItems?.FirstOrDefault(n => n.TabId == value);
@@ -91,6 +93,7 @@ public sealed class MainViewModel : ViewModelBase
     public bool ShowLogs      => ActiveTab == "Logs";
     public bool ShowConsole   => ActiveTab == "Console";
     public bool ShowSettings  => ActiveTab == "Settings";
+    public bool ShowAbout     => ActiveTab == "About";
 
     public ICommand ToggleThemeCommand  { get; }
     public ICommand NavigateCommand     { get; }
@@ -153,6 +156,7 @@ public sealed class MainViewModel : ViewModelBase
             new("Logs",      "📋", "Nav.Logs"),
             new("Console",   "⌨", "Nav.Console"),
             new("Settings",  "⚙", "Nav.Settings"),
+            new("About",     "ℹ", "Nav.About"),
         };
 
         // Set initial selection to Dashboard
@@ -160,6 +164,12 @@ public sealed class MainViewModel : ViewModelBase
 
         Dashboard = new DashboardViewModel(connection, monitor, tab => ActiveTab = tab);
         Settings  = new SettingsViewModel(this, prefs, updateCheckService, versionService, updateLaunchService);
+        About     = new AboutViewModel(versionService, () =>
+        {
+            ActivateTab("Settings");
+            if (Settings.CheckForUpdatesCommand.CanExecute(null))
+                Settings.CheckForUpdatesCommand.Execute(null);
+        });
         TaskEditor.SetOpenInConsoleHandler(OpenConsoleAtDirectoryAsync);
         Monitor.SetDiagnosticNavigationHandlers(
             row => row != null && TaskEditor.LastJobId.HasValue && TaskEditor.LastJobId.Value == row.JobId

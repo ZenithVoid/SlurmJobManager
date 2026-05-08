@@ -38,6 +38,7 @@ public partial class MainWindow : Window
             { "Logs",      (PageLogs,      ScaleLogs) },
             { "Console",   (PageConsole,   ScaleConsole) },
             { "Settings",  (PageSettings,  ScaleSettings) },
+            { "About",     (PageAbout,     ScaleAbout) },
         };
 
         // Subscribe to navigation changes for page transitions
