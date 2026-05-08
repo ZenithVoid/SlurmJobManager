@@ -8,6 +8,7 @@ namespace SlurmJobManager.App.ViewModels;
 public sealed class RemoteFilePickerViewModel : ViewModelBase
 {
     private readonly ISshClientService _ssh;
+    private readonly bool _restrictToHomeScope;
 
     private string _currentPath = string.Empty;
     private RemoteFilePickerEntry? _selectedEntry;
@@ -49,7 +50,7 @@ public sealed class RemoteFilePickerViewModel : ViewModelBase
         get
         {
             var parent = GetParent(CurrentPath);
-            return !string.IsNullOrWhiteSpace(parent) && IsWithinHomeScope(parent);
+            return !string.IsNullOrWhiteSpace(parent) && (!_restrictToHomeScope || IsWithinHomeScope(parent));
         }
     }
     public bool CanSelectFile => SelectedEntry is { IsDirectory: false };
@@ -63,9 +64,10 @@ public sealed class RemoteFilePickerViewModel : ViewModelBase
     public ICommand RefreshCommand { get; }
     public ICommand SelectFileCommand { get; }
 
-    public RemoteFilePickerViewModel(ISshClientService ssh, string homeDirectory)
+    public RemoteFilePickerViewModel(ISshClientService ssh, string homeDirectory, bool restrictToHomeScope = true)
     {
         _ssh = ssh ?? throw new ArgumentNullException(nameof(ssh));
+        _restrictToHomeScope = restrictToHomeScope;
         HomeDirectory = string.IsNullOrWhiteSpace(homeDirectory) ? "~" : homeDirectory.TrimEnd('/');
         _currentPath = HomeDirectory;
 
@@ -87,7 +89,7 @@ public sealed class RemoteFilePickerViewModel : ViewModelBase
     private async Task GoUpAsync(CancellationToken ct)
     {
         var parent = GetParent(CurrentPath);
-        if (!string.IsNullOrWhiteSpace(parent) && IsWithinHomeScope(parent))
+        if (!string.IsNullOrWhiteSpace(parent) && (!_restrictToHomeScope || IsWithinHomeScope(parent)))
             await LoadEntriesAsync(parent, ct);
     }
 

@@ -94,7 +94,6 @@ public sealed class TaskUnitViewModel : ViewModelBase
         TimeLimit = source?.TimeLimit ?? "99-00:00:00",
         Account = source?.Account ?? "preproc",
         Exclusive = source?.Exclusive ?? false,
-        ModulePurge = source?.ModulePurge ?? false,
     };
 }
 
