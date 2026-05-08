@@ -11,6 +11,8 @@ namespace SlurmJobManager.App.Services;
 /// </summary>
 public sealed class AppPreferencesService
 {
+    public const string DefaultRemotePickerDirectoryFallback = "/gpfs/";
+
     private static readonly string PrefsPath = LocalDataPaths.PreferencesFilePath;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -92,6 +94,31 @@ public sealed class AppPreferencesService
         return LastSaveSucceeded;
     }
 
+    /// <summary>
+    /// Default starting directory for remote SSH file/directory picker dialogs.
+    /// Falls back to <c>/gpfs/</c> when not configured.
+    /// </summary>
+    public string DefaultRemotePickerDirectory
+        => NormalizeRemoteDirectory(_dto.DefaultRemotePickerDirectory);
+
+    public bool TrySetDefaultRemotePickerDirectory(string? value, out string? error)
+    {
+        var normalized = NormalizeRemoteDirectory(value);
+        if (!string.Equals(NormalizeRemoteDirectory(_dto.DefaultRemotePickerDirectory), normalized, StringComparison.Ordinal))
+        {
+            _dto = _dto with { DefaultRemotePickerDirectory = normalized };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
     // ── Persistence ──────────────────────────────────────────────────────────
 
     private AppPrefsDto Load()
@@ -132,5 +159,25 @@ public sealed class AppPreferencesService
 
     private sealed record AppPrefsDto(
         bool AutoConnectOnStartup = false,
-        bool AutoRestoreLastTaskOnLogin = false);
+        bool AutoRestoreLastTaskOnLogin = false,
+        string? DefaultRemotePickerDirectory = DefaultRemotePickerDirectoryFallback);
+
+    private static string NormalizeRemoteDirectory(string? value)
+    {
+        var trimmed = (value ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+            return DefaultRemotePickerDirectoryFallback;
+
+        trimmed = trimmed.Replace('\\', '/');
+        if (!trimmed.StartsWith("/", StringComparison.Ordinal))
+            trimmed = $"/{trimmed}";
+
+        while (trimmed.Contains("//", StringComparison.Ordinal))
+            trimmed = trimmed.Replace("//", "/", StringComparison.Ordinal);
+
+        if (trimmed.Length == 1)
+            return "/";
+
+        return $"{trimmed.TrimEnd('/')}/";
+    }
 }

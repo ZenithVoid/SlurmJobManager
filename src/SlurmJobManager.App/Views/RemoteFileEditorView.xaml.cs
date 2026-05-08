@@ -137,7 +137,7 @@ public partial class RemoteFileEditorView : Window
     {
         if (_allowClose) return;
         if (DataContext is not RemoteFileEditorViewModel vm) return;
-        if (!string.Equals(Editor.Text, vm.Content, StringComparison.Ordinal))
+        if (vm.IsTextMode && !string.Equals(Editor.Text, vm.Content, StringComparison.Ordinal))
             vm.Content = Editor.Text;
         if (!vm.IsDirty) return;
 

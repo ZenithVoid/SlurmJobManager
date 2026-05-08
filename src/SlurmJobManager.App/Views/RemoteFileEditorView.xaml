@@ -74,6 +74,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -125,26 +126,168 @@
                 </StackPanel>
             </Grid>
 
+            <StackPanel Grid.Row="1"
+                        Orientation="Horizontal"
+                        Margin="0,0,0,6"
+                        Visibility="{Binding IsStructuredModeAvailable, Converter={StaticResource BoolToVis}}">
+                <Button Content="{DynamicResource RemoteEditor.StructuredMode}"
+                        Command="{Binding SwitchToStructuredModeCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        Padding="8,3"
+                        Margin="0,0,6,0" />
+                <Button Content="{DynamicResource RemoteEditor.TextMode}"
+                        Command="{Binding SwitchToTextModeCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        Padding="8,3" />
+            </StackPanel>
+
             <!-- Editor -->
-            <TextBlock Grid.Row="1"
+            <TextBlock Grid.Row="2"
                        Text="{DynamicResource RemoteEditor.BinaryRejected}"
                        Style="{StaticResource WarningTextStyle}"
                        FontSize="12"
                        Margin="0,0,0,6"
                        Visibility="{Binding IsBinaryFile, Converter={StaticResource BoolToVis}}" />
 
-            <Border Grid.Row="2"
+            <Border Grid.Row="3"
                     Background="{DynamicResource BgCrustBrush}"
                     BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1"
                     CornerRadius="6">
                 <Border.Style>
                     <Style TargetType="Border">
-                        <Setter Property="Visibility" Value="Visible" />
+                        <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsBinaryFile}" Value="True">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsStructuredModeAvailable}" Value="True" />
+                                    <Condition Binding="{Binding IsStructuredMode}" Value="True" />
+                                    <Condition Binding="{Binding IsBinaryFile}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding StructuredItems}" Margin="8">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="3*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="{Binding Key}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Section}"
+                                                   Foreground="{DynamicResource TextMutedBrush}"
+                                                   FontSize="11" />
+                                    </StackPanel>
+                                    <Grid Grid.Column="1">
+                                        <TextBox Text="{Binding StringValue, UpdateSourceTrigger=PropertyChanged}">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsString}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                        <CheckBox IsChecked="{Binding BoolValue, Mode=TwoWay}">
+                                            <CheckBox.Style>
+                                                <Style TargetType="CheckBox">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsBoolean}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </CheckBox.Style>
+                                        </CheckBox>
+                                        <TextBox Text="{Binding IntegerValue, UpdateSourceTrigger=LostFocus}">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsInteger}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                        <TextBox Text="{Binding FloatingValue, UpdateSourceTrigger=LostFocus}">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsFloating}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                        <TextBlock Text="{DynamicResource RemoteEditor.NullValue}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsNull}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                    <Button Grid.Column="2"
+                                            Content="..."
+                                            Command="{Binding BrowseValueCommand}"
+                                            Margin="6,0,0,0"
+                                            Padding="8,2">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource NeutralButtonStyle}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsString}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <Border Grid.Row="3"
+                    Background="{DynamicResource BgCrustBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsTextMode}" Value="True" />
+                                    <Condition Binding="{Binding IsBinaryFile}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible" />
+                            </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
@@ -161,12 +304,12 @@
             </Border>
 
             <!-- Status -->
-            <TextBlock Grid.Row="3"
+            <TextBlock Grid.Row="4"
                        Text="{Binding StatusMessage}"
                        Style="{Binding StatusStyleKey, Converter={StaticResource StyleKeyToStyle}}" />
 
             <!-- Buttons -->
-            <Grid Grid.Row="4">
+            <Grid Grid.Row="5">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />

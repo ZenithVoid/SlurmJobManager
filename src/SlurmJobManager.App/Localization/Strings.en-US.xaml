@@ -133,6 +133,8 @@
     <sys:String x:Key="Settings.AutoRestoreLastTaskDesc">On successful login, restore the last task context for the same host and username.</sys:String>
     <sys:String x:Key="Settings.AutoRestoreLastTaskEffect">When enabled, the app navigates to Tasks and restores the last TaskId (plus related context). Without history, no forced jump is performed.</sys:String>
     <sys:String x:Key="Settings.AutoSaveHint">Settings on this page are auto-saved when changed.</sys:String>
+    <sys:String x:Key="Settings.DefaultRemotePickerDirectoryLabel">Default remote picker directory:</sys:String>
+    <sys:String x:Key="Settings.DefaultRemotePickerDirectoryDesc">Used as the initial location for remote file/directory pickers after SSH is connected. Default: /gpfs/</sys:String>
     <sys:String x:Key="Settings.Appearance">Appearance</sys:String>
     <sys:String x:Key="Settings.Theme">Theme:</sys:String>
     <sys:String x:Key="Settings.ThemeDesc">Switch between dark (Catppuccin Mocha) and light (Catppuccin Latte) themes.</sys:String>
@@ -231,7 +233,7 @@
     <sys:String x:Key="Task.ContextInfoFilePathLabel">Current File Path:</sys:String>
     <sys:String x:Key="Task.ContextValueEmpty">Not set</sys:String>
     <sys:String x:Key="Task.RootDirectory">Root Directory (remote)</sys:String>
-    <sys:String x:Key="Task.BrowseRemote">Browse remote directory (constrained to user home)</sys:String>
+    <sys:String x:Key="Task.BrowseRemote">Browse remote directory</sys:String>
     <sys:String x:Key="Task.TaskId">Task ID</sys:String>
     <sys:String x:Key="Task.RemoteWorkDir">Remote Work Directory</sys:String>
     <sys:String x:Key="Task.AppPath">App Path (on remote)</sys:String>
@@ -609,6 +611,12 @@
     <sys:String x:Key="RemoteEditor.Saved">Saved: </sys:String>
     <sys:String x:Key="RemoteEditor.SaveFailed">Save failed: </sys:String>
     <sys:String x:Key="RemoteEditor.Close">Close</sys:String>
+    <sys:String x:Key="RemoteEditor.StructuredMode">Structured Mode</sys:String>
+    <sys:String x:Key="RemoteEditor.TextMode">Text Mode</sys:String>
+    <sys:String x:Key="RemoteEditor.NullValue">(null)</sys:String>
+    <sys:String x:Key="RemoteEditor.StructuredUnavailable">Structured editor is not available for this file.</sys:String>
+    <sys:String x:Key="RemoteEditor.StructuredSaveFailed">Failed to serialize structured parameters.</sys:String>
+    <sys:String x:Key="RemoteEditor.StructuredSaveFailedFormat">Failed to serialize structured parameters: {0}</sys:String>
     <sys:String x:Key="RemoteEditor.BinaryRejected">Binary-like file detected, opening as text is blocked.</sys:String>
     <sys:String x:Key="RemoteEditor.EncodingUnknown">Encoding cannot be identified reliably, opened as UTF-8.</sys:String>
     <sys:String x:Key="RemoteEditor.EncodingTip">Detected file encoding (best effort).</sys:String>

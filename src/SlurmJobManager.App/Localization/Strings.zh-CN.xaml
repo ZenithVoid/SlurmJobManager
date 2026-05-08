@@ -133,6 +133,8 @@
     <sys:String x:Key="Settings.AutoRestoreLastTaskDesc">登录成功后，按连接（主机 + 用户名）恢复该连接上次的任务上下文。</sys:String>
     <sys:String x:Key="Settings.AutoRestoreLastTaskEffect">开启后会自动跳转到任务页并恢复上次 TaskId（以及关联上下文）；若无历史记录则不会强制跳转。</sys:String>
     <sys:String x:Key="Settings.AutoSaveHint">本页面设置项修改后会自动保存。</sys:String>
+    <sys:String x:Key="Settings.DefaultRemotePickerDirectoryLabel">默认远程选择目录：</sys:String>
+    <sys:String x:Key="Settings.DefaultRemotePickerDirectoryDesc">SSH 连接成功后，远程文件/目录选择器将优先从该目录开始导航。默认值：/gpfs/</sys:String>
     <sys:String x:Key="Settings.Appearance">外观</sys:String>
     <sys:String x:Key="Settings.Theme">主题：</sys:String>
     <sys:String x:Key="Settings.ThemeDesc">在深色（Catppuccin Mocha）与浅色（Catppuccin Latte）主题间切换。</sys:String>
@@ -231,7 +233,7 @@
     <sys:String x:Key="Task.ContextInfoFilePathLabel">当前文件路径：</sys:String>
     <sys:String x:Key="Task.ContextValueEmpty">未设置</sys:String>
     <sys:String x:Key="Task.RootDirectory">根目录（远程）</sys:String>
-    <sys:String x:Key="Task.BrowseRemote">浏览远程目录（仅限用户主目录）</sys:String>
+    <sys:String x:Key="Task.BrowseRemote">浏览远程目录</sys:String>
     <sys:String x:Key="Task.TaskId">任务 ID</sys:String>
     <sys:String x:Key="Task.RemoteWorkDir">远程工作目录</sys:String>
     <sys:String x:Key="Task.AppPath">应用路径（远程）</sys:String>
@@ -609,6 +611,12 @@
     <sys:String x:Key="RemoteEditor.Saved">已保存：</sys:String>
     <sys:String x:Key="RemoteEditor.SaveFailed">保存失败：</sys:String>
     <sys:String x:Key="RemoteEditor.Close">关闭</sys:String>
+    <sys:String x:Key="RemoteEditor.StructuredMode">结构化模式</sys:String>
+    <sys:String x:Key="RemoteEditor.TextMode">文本模式</sys:String>
+    <sys:String x:Key="RemoteEditor.NullValue">（空值）</sys:String>
+    <sys:String x:Key="RemoteEditor.StructuredUnavailable">当前文件不可用结构化编辑。</sys:String>
+    <sys:String x:Key="RemoteEditor.StructuredSaveFailed">结构化参数序列化失败。</sys:String>
+    <sys:String x:Key="RemoteEditor.StructuredSaveFailedFormat">结构化参数序列化失败：{0}</sys:String>
     <sys:String x:Key="RemoteEditor.BinaryRejected">检测到二进制文件，已阻止按文本打开。</sys:String>
     <sys:String x:Key="RemoteEditor.EncodingUnknown">编码无法可靠识别，当前按 UTF-8 打开。</sys:String>
     <sys:String x:Key="RemoteEditor.EncodingTip">显示检测到的文件编码（仅供参考）。</sys:String>

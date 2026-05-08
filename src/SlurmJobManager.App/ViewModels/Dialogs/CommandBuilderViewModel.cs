@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
+using SlurmJobManager.App.Services;
 using SlurmJobManager.App.ViewModels;
 using SlurmJobManager.App.Views;
 using SlurmJobManager.App.Views.Dialogs;
@@ -27,6 +28,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private const string DefaultAccount = "preproc";
 
     private readonly ISshClientService _ssh;
+    private readonly AppPreferencesService _prefs;
 
     // ── Context passed from TaskEditorViewModel ────────────────────────────
     private readonly string _taskId;
@@ -237,6 +239,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
     public CommandBuilderViewModel(
         ISshClientService ssh,
+        AppPreferencesService prefs,
         string taskId = "",
         string remoteWorkDir = "",
         IEnumerable<CommandEntry>? initialCommands = null,
@@ -244,6 +247,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         SbatchJobOptions? initialSbatchOptions = null)
     {
         _ssh           = ssh           ?? throw new ArgumentNullException(nameof(ssh));
+        _prefs         = prefs         ?? throw new ArgumentNullException(nameof(prefs));
         _taskId        = taskId;
         _remoteWorkDir = remoteWorkDir;
 
@@ -451,7 +455,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         }
         catch (Exception ex) { StatusMessage = $"检查文件失败：{ex.Message}"; return; }
 
-        var vm  = new RemoteFileEditorViewModel(_ssh, path);
+        var vm  = new RemoteFileEditorViewModel(_ssh, _prefs, path);
         var win = new RemoteFileEditorView { DataContext = vm };
         if (Application.Current.MainWindow is { } mw) win.Owner = mw;
         await vm.LoadAsync(ct);
@@ -720,7 +724,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         }
 
         var homeDir = await ResolveHomeDirectoryAsync(ct);
-        var vm = new RemoteFilePickerViewModel(_ssh, homeDir);
+        var vm = new RemoteFilePickerViewModel(_ssh, ResolveRemotePickerStartDirectory(homeDir));
         var win = new RemoteFilePickerView { DataContext = vm };
         if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
 
@@ -1149,6 +1153,18 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         {
             return false;
         }
+    }
+
+    private string ResolveRemotePickerStartDirectory(string? fallbackDirectory = null)
+    {
+        var configured = _prefs.DefaultRemotePickerDirectory;
+        if (!string.IsNullOrWhiteSpace(configured))
+            return NormalizeRemotePath(configured);
+
+        if (!string.IsNullOrWhiteSpace(fallbackDirectory))
+            return NormalizeRemotePath(fallbackDirectory);
+
+        return AppPreferencesService.DefaultRemotePickerDirectoryFallback;
     }
 
     private static string L(string key, string fallback)

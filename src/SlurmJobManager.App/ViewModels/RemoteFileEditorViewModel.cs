@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.App.Services;
@@ -15,6 +17,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     private const long VeryLargeFileThresholdBytes = 16 * 1024 * 1024;
 
     private readonly ISshClientService _ssh;
+    private readonly AppPreferencesService _prefs;
     private readonly string _homeDirectory;
 
     private string _content = string.Empty;
@@ -29,6 +32,9 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     private long _fileSizeBytes;
     private bool _isLargeFileMode;
     private bool _isVeryLargeFileMode;
+    private bool _isStructuredMode;
+    private bool _isStructuredModeAvailable;
+    private StructuredParameterFileFormat? _structuredFormat;
     private TextEncodingDetectionResult _encodingDetection = new()
     {
         Encoding = new System.Text.UTF8Encoding(false),
@@ -86,18 +92,43 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         }
     }
 
+    public bool IsStructuredMode
+    {
+        get => _isStructuredMode;
+        private set
+        {
+            if (SetField(ref _isStructuredMode, value))
+                OnPropertyChanged(nameof(IsTextMode));
+        }
+    }
+
+    public bool IsTextMode => !IsStructuredMode;
+
+    public bool IsStructuredModeAvailable
+    {
+        get => _isStructuredModeAvailable;
+        private set => SetField(ref _isStructuredModeAvailable, value);
+    }
+
     /// <summary>Set to <c>true</c> after a successful save so the view can close.</summary>
     public bool SaveCompleted { get; private set; }
     public bool LoadSucceeded { get; private set; }
 
-    public ICommand SaveCommand { get; }
+    public ObservableCollection<StructuredParameterItemViewModel> StructuredItems { get; } = new();
 
-    public RemoteFileEditorViewModel(ISshClientService ssh, string remotePath, string? homeDirectory = null)
+    public ICommand SaveCommand { get; }
+    public ICommand SwitchToTextModeCommand { get; }
+    public ICommand SwitchToStructuredModeCommand { get; }
+
+    public RemoteFileEditorViewModel(ISshClientService ssh, AppPreferencesService prefs, string remotePath, string? homeDirectory = null)
     {
         _ssh           = ssh ?? throw new ArgumentNullException(nameof(ssh));
+        _prefs         = prefs ?? throw new ArgumentNullException(nameof(prefs));
         _homeDirectory = RemotePathDisplayHelper.NormalizeRemotePath(homeDirectory);
         RemotePath     = remotePath;
         SaveCommand    = new AsyncRelayCommand(SaveCommandAsync, () => !IsBusy);
+        SwitchToTextModeCommand = new RelayCommand(() => SetStructuredMode(false), () => IsStructuredModeAvailable);
+        SwitchToStructuredModeCommand = new RelayCommand(() => SetStructuredMode(true), () => IsStructuredModeAvailable);
     }
 
     public async Task LoadAsync(CancellationToken ct = default)
@@ -154,6 +185,9 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
             _suppressDirtyTracking = false;
             _lastSavedContent = Content;
             IsDirty = false;
+
+            InitializeStructuredEditor();
+
             if (!_encodingDetection.IsReliable)
             {
                 StatusMessage = _encodingDetection.WarningMessage
@@ -194,6 +228,19 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         if (editorText != null)
             Content = editorText;
 
+        if (IsStructuredModeAvailable && IsStructuredMode)
+        {
+            if (!TryBuildStructuredContent(out var structuredContent, out var error))
+            {
+                SetStatus(error, "ErrorTextStyle", localize: false);
+                return false;
+            }
+
+            _suppressDirtyTracking = true;
+            Content = structuredContent;
+            _suppressDirtyTracking = false;
+        }
+
         if (IsVeryLargeFileMode)
         {
             var confirmText = string.Format(L("RemoteEditor.VeryLargeSaveConfirm"), FileSizeText);
@@ -229,8 +276,124 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         finally { IsBusy = false; }
     }
 
+    private void InitializeStructuredEditor()
+    {
+        foreach (var item in StructuredItems)
+            item.PropertyChanged -= OnStructuredItemPropertyChanged;
+        StructuredItems.Clear();
+        _structuredFormat = null;
+
+        if (!StructuredParameterParser.TryParse(RemotePath, Content, out var format, out var entries))
+        {
+            IsStructuredModeAvailable = false;
+            SetStructuredMode(false);
+            CommandManager.InvalidateRequerySuggested();
+            return;
+        }
+
+        _structuredFormat = format;
+        foreach (var entry in entries)
+        {
+            var item = new StructuredParameterItemViewModel(entry, BrowseRemotePathAsync);
+            item.PropertyChanged += OnStructuredItemPropertyChanged;
+            StructuredItems.Add(item);
+        }
+
+        IsStructuredModeAvailable = StructuredItems.Count > 0;
+        SetStructuredMode(IsStructuredModeAvailable);
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    private bool TryBuildStructuredContent(out string content, out string error)
+    {
+        content = string.Empty;
+        error = L("RemoteEditor.StructuredSaveFailed");
+
+        if (!IsStructuredModeAvailable || _structuredFormat == null)
+        {
+            error = L("RemoteEditor.StructuredUnavailable");
+            return false;
+        }
+
+        try
+        {
+            var entries = StructuredItems.Select(i => i.ToEntry()).ToList();
+            content = StructuredParameterParser.Serialize(_structuredFormat.Value, entries);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = string.Format(L("RemoteEditor.StructuredSaveFailedFormat"), ex.Message);
+            return false;
+        }
+    }
+
+    private async Task<string?> BrowseRemotePathAsync(StructuredParameterItemViewModel item, CancellationToken ct)
+    {
+        if (!IsSshConnectedSafe())
+        {
+            SetStatus("Task.RequireConnectionForBrowse", "WarningTextStyle");
+            return null;
+        }
+
+        var startDir = ResolveRemotePickerStartDirectory();
+
+        if (item.ShouldPreferDirectoryPicker)
+        {
+            var vm = new RemoteDirectoryPickerViewModel(_ssh, startDir);
+            var win = new Views.RemoteDirectoryPickerView { DataContext = vm };
+            if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
+            await vm.LoadInitialAsync(ct);
+            return win.ShowDialog() == true ? vm.ResultPath : null;
+        }
+
+        var fileVm = new RemoteFilePickerViewModel(_ssh, startDir);
+        var fileWin = new Views.RemoteFilePickerView { DataContext = fileVm };
+        if (Application.Current.MainWindow is { } owner) fileWin.Owner = owner;
+        await fileVm.LoadInitialAsync(ct);
+        return fileWin.ShowDialog() == true ? fileVm.ResultPath : null;
+    }
+
+    private string ResolveRemotePickerStartDirectory()
+    {
+        var configured = _prefs.DefaultRemotePickerDirectory;
+        if (!string.IsNullOrWhiteSpace(configured))
+            return configured;
+
+        return AppPreferencesService.DefaultRemotePickerDirectoryFallback;
+    }
+
+    private bool IsSshConnectedSafe()
+    {
+        try
+        {
+            return _ssh.IsConnected;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+    }
+
+    private void SetStructuredMode(bool enable)
+    {
+        IsStructuredMode = IsStructuredModeAvailable && enable;
+    }
+
     private static string L(string key)
         => Application.Current?.TryFindResource(key) as string ?? key;
+
+    private void OnStructuredItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(StructuredParameterItemViewModel.StringValue)
+            or nameof(StructuredParameterItemViewModel.BoolValue)
+            or nameof(StructuredParameterItemViewModel.IntegerValue)
+            or nameof(StructuredParameterItemViewModel.FloatingValue)
+            or nameof(StructuredParameterItemViewModel.ValueKind))
+        {
+            IsDirty = true;
+        }
+    }
 
     private void SetStatus(string messageOrKey, string styleKey, bool localize = true)
     {
@@ -252,5 +415,115 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         }
 
         return $"{value:0.##} {units[unitIndex]}";
+    }
+}
+
+public sealed class StructuredParameterItemViewModel : ViewModelBase
+{
+    private readonly Func<StructuredParameterItemViewModel, CancellationToken, Task<string?>> _browseRemotePathAsync;
+
+    private StructuredParameterValueKind _valueKind;
+    private string _stringValue;
+    private bool _boolValue;
+    private long _integerValue;
+    private double _floatingValue;
+
+    public StructuredParameterItemViewModel(
+        StructuredParameterEntry entry,
+        Func<StructuredParameterItemViewModel, CancellationToken, Task<string?>> browseRemotePathAsync)
+    {
+        Section = entry.Section;
+        Key = entry.Key;
+        JsonPathSegments = entry.JsonPathSegments;
+        _valueKind = entry.ValueKind;
+        _stringValue = entry.StringValue;
+        _boolValue = entry.BoolValue;
+        _integerValue = entry.IntegerValue;
+        _floatingValue = entry.FloatingValue;
+        _browseRemotePathAsync = browseRemotePathAsync;
+
+        BrowseValueCommand = new AsyncRelayCommand(BrowseValueAsync, () => ValueKind == StructuredParameterValueKind.String);
+    }
+
+    public string Section { get; }
+    public string Key { get; }
+    public string[] JsonPathSegments { get; }
+
+    public StructuredParameterValueKind ValueKind
+    {
+        get => _valueKind;
+        set
+        {
+            if (SetField(ref _valueKind, value))
+            {
+                OnPropertyChanged(nameof(IsString));
+                OnPropertyChanged(nameof(IsBoolean));
+                OnPropertyChanged(nameof(IsInteger));
+                OnPropertyChanged(nameof(IsFloating));
+                OnPropertyChanged(nameof(IsNull));
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
+    }
+
+    public string StringValue
+    {
+        get => _stringValue;
+        set => SetField(ref _stringValue, value);
+    }
+
+    public bool BoolValue
+    {
+        get => _boolValue;
+        set => SetField(ref _boolValue, value);
+    }
+
+    public long IntegerValue
+    {
+        get => _integerValue;
+        set => SetField(ref _integerValue, value);
+    }
+
+    public double FloatingValue
+    {
+        get => _floatingValue;
+        set => SetField(ref _floatingValue, value);
+    }
+
+    public bool IsString => ValueKind == StructuredParameterValueKind.String;
+    public bool IsBoolean => ValueKind == StructuredParameterValueKind.Boolean;
+    public bool IsInteger => ValueKind == StructuredParameterValueKind.Integer;
+    public bool IsFloating => ValueKind == StructuredParameterValueKind.Floating;
+    public bool IsNull => ValueKind == StructuredParameterValueKind.Null;
+
+    public bool ShouldPreferDirectoryPicker
+    {
+        get
+        {
+            var lower = Key.ToLowerInvariant();
+            return lower.Contains("dir")
+                   || lower.Contains("directory")
+                   || lower.Contains("folder");
+        }
+    }
+
+    public ICommand BrowseValueCommand { get; }
+
+    public StructuredParameterEntry ToEntry()
+        => new(
+            Section,
+            Key,
+            JsonPathSegments,
+            ValueKind,
+            StringValue,
+            BoolValue,
+            IntegerValue,
+            FloatingValue);
+
+    private async Task BrowseValueAsync(CancellationToken ct)
+    {
+        var selected = await _browseRemotePathAsync(this, ct);
+        if (!string.IsNullOrWhiteSpace(selected))
+            StringValue = selected;
     }
 }
