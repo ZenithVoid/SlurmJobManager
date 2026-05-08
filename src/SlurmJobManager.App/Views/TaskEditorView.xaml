@@ -21,8 +21,9 @@
         <StackPanel Margin="12">
             <Border Style="{StaticResource PageHeaderCardStyle}">
                 <StackPanel>
-                    <TextBlock Text="{DynamicResource Task.Title}" Style="{StaticResource PageTitleStyle}" />
+                    <TextBlock Text="{Binding TaskTitleText}" Style="{StaticResource PageTitleStyle}" />
                     <TextBlock Text="{Binding TaskContextSummary}" Style="{StaticResource PageContextSummaryStyle}" />
+                    <TextBlock Text="{Binding UnsavedStatusText}" Style="{StaticResource WarningTextStyle}" Margin="0,4,0,0" />
                 </StackPanel>
             </Border>
 

@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -89,6 +91,10 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private int _disposeState;
     private bool IsDisposed => Volatile.Read(ref _disposeState) != 0;
     private bool _suppressLastTaskContextCapture;
+    private string _savedTaskConfigurationFingerprint = string.Empty;
+    private bool _isTaskConfigurationDirty;
+    private bool _hasUnsavedChanges;
+    private int _dirtyTrackingPauseDepth;
 
     // ── Workspace / active task-unit state ──────────────────────────────────
     // Each TaskId has exactly ONE active task unit.  Legacy workspaces with
@@ -112,6 +118,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 TryAutoFillRemoteWorkDir();
                 ScheduleTaskIdDirectoryCheck();
                 TryScheduleLastTaskContextSave();
+                NotifyTaskConfigurationChanged();
             }
         }
     }
@@ -129,6 +136,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(TaskContextTaskIdDisplay));
                 OnPropertyChanged(nameof(TaskContextSummary));
                 TryScheduleLastTaskContextSave();
+                NotifyTaskConfigurationChanged();
             }
         }
     }
@@ -146,12 +154,54 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                     LoadSelectedRemoteTemplate();
                     SaveAsFileName = value;
                 }
+
+                NotifyTaskConfigurationChanged();
             }
         }
     }
 
-    public string TemplateContent   { get => _templateContent;   set => SetField(ref _templateContent, value); }
+    public string TemplateContent
+    {
+        get => _templateContent;
+        set
+        {
+            if (SetField(ref _templateContent, value))
+                NotifyTaskConfigurationChanged();
+        }
+    }
     public string LastSavedTime     { get => _lastSavedTime;     set => SetField(ref _lastSavedTime, value); }
+
+    public bool IsTaskConfigurationDirty
+    {
+        get => _isTaskConfigurationDirty;
+        private set
+        {
+            if (SetField(ref _isTaskConfigurationDirty, value))
+            {
+                OnPropertyChanged(nameof(HasUnsavedChanges));
+                OnPropertyChanged(nameof(TaskTitleText));
+                OnPropertyChanged(nameof(UnsavedStatusText));
+            }
+        }
+    }
+
+    public bool HasUnsavedChanges
+    {
+        get => _hasUnsavedChanges;
+        private set
+        {
+            if (SetField(ref _hasUnsavedChanges, value))
+            {
+                OnPropertyChanged(nameof(TaskTitleText));
+                OnPropertyChanged(nameof(UnsavedStatusText));
+            }
+        }
+    }
+
+    public string TaskTitleText => HasUnsavedChanges ? $"{L("Task.Title")} *" : L("Task.Title");
+    public string UnsavedStatusText => HasUnsavedChanges
+        ? string.Format(L("Task.UnsavedStatusFormat"), L("Task.UnsavedSourceTaskConfig"))
+        : string.Empty;
 
     public string RemoteWorkDir
     {
@@ -181,6 +231,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 }
 
                 TryScheduleLastTaskContextSave();
+                NotifyTaskConfigurationChanged();
             }
         }
     }
@@ -188,16 +239,42 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     public string AppPath
     {
         get => _appPath;
-        set { if (SetField(ref _appPath, value)) { RebuildFilteredAppList(); CommandManager.InvalidateRequerySuggested(); } }
+        set
+        {
+            if (SetField(ref _appPath, value))
+            {
+                if (_selectedTaskUnit != null)
+                {
+                    if (_selectedTaskUnit.Programs.Count == 0)
+                        _selectedTaskUnit.Programs.Add(new ProgramEntryViewModel());
+                    _selectedTaskUnit.Programs[0].ProgramPath = value;
+                }
+                RebuildFilteredAppList();
+                CommandManager.InvalidateRequerySuggested();
+                NotifyTaskConfigurationChanged();
+            }
+        }
     }
 
     public string SaveAsFileName
     {
         get => _saveAsFileName;
-        set => SetField(ref _saveAsFileName, value);
+        set
+        {
+            if (SetField(ref _saveAsFileName, value))
+                NotifyTaskConfigurationChanged();
+        }
     }
 
-    public string SbatchTemplate    { get => _sbatchTemplate;    set => SetField(ref _sbatchTemplate, value); }
+    public string SbatchTemplate
+    {
+        get => _sbatchTemplate;
+        set
+        {
+            if (SetField(ref _sbatchTemplate, value))
+                NotifyTaskConfigurationChanged();
+        }
+    }
     public bool IsBusy
     {
         get => _isBusy;
@@ -330,6 +407,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(TaskContextFilePathDisplay));
                 OnPropertyChanged(nameof(TaskContextSummary));
                 TryScheduleLastTaskContextSave();
+                NotifyTaskConfigurationChanged();
             }
         }
     }
@@ -435,9 +513,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         {
             if (SetField(ref _selectedTaskUnit, value))
             {
+                PauseTaskConfigurationDirtyTracking();
                 SyncFromSelectedUnit();
+                ResumeTaskConfigurationDirtyTracking(commitSnapshot: false);
                 OnPropertyChanged(nameof(ActiveUnit));
                 CommandManager.InvalidateRequerySuggested();
+                NotifyTaskConfigurationChanged();
             }
         }
     }
@@ -559,11 +640,349 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         // Create a single default task unit so the UI is never empty on first run
         EnsureAtLeastOneTaskUnit();
+        InitializeTaskConfigurationDirtyTracking();
     }
 
     public void SetOpenInConsoleHandler(Func<string, Task<bool>>? openInConsoleAsync)
     {
         _openInConsoleAsync = openInConsoleAsync;
+    }
+
+    public bool ConfirmDiscardUnsavedChangesForAppClose()
+    {
+        if (!HasUnsavedChanges)
+            return true;
+
+        var result = MessageBox.Show(
+            string.Format(L("Task.UnsavedDiscardPrompt"), L("Task.UnsavedActionCloseApplication"), L("Task.UnsavedSourceTaskConfig")),
+            L("Task.UnsavedTitle"),
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning);
+        return result == MessageBoxResult.OK;
+    }
+
+    private void InitializeTaskConfigurationDirtyTracking()
+    {
+        Parameters.CollectionChanged += OnParametersCollectionChanged;
+        foreach (var parameter in Parameters)
+            parameter.PropertyChanged += OnTrackedPropertyChanged;
+
+        TaskUnits.CollectionChanged += OnTaskUnitsCollectionChanged;
+        foreach (var unit in TaskUnits)
+            AttachTaskUnitTracking(unit);
+
+        CommitTaskConfigurationSnapshot();
+    }
+
+    private void OnParametersCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (var item in e.NewItems.OfType<ParameterEntry>())
+                item.PropertyChanged += OnTrackedPropertyChanged;
+        }
+
+        if (e.OldItems != null)
+        {
+            foreach (var item in e.OldItems.OfType<ParameterEntry>())
+                item.PropertyChanged -= OnTrackedPropertyChanged;
+        }
+
+        NotifyTaskConfigurationChanged();
+    }
+
+    private void OnTaskUnitsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (var unit in e.NewItems.OfType<TaskUnitViewModel>())
+                AttachTaskUnitTracking(unit);
+        }
+
+        if (e.OldItems != null)
+        {
+            foreach (var unit in e.OldItems.OfType<TaskUnitViewModel>())
+                DetachTaskUnitTracking(unit);
+        }
+
+        NotifyTaskConfigurationChanged();
+    }
+
+    private void AttachTaskUnitTracking(TaskUnitViewModel unit)
+    {
+        unit.PropertyChanged += OnTrackedPropertyChanged;
+
+        unit.Programs.CollectionChanged += OnProgramCollectionChanged;
+        foreach (var entry in unit.Programs)
+            entry.PropertyChanged += OnTrackedPropertyChanged;
+
+        unit.ParamFiles.CollectionChanged += OnParamFileCollectionChanged;
+        foreach (var entry in unit.ParamFiles)
+            entry.PropertyChanged += OnTrackedPropertyChanged;
+
+        unit.ExtraParams.CollectionChanged += OnExtraParamsCollectionChanged;
+        foreach (var entry in unit.ExtraParams)
+            entry.PropertyChanged += OnTrackedPropertyChanged;
+
+        unit.Commands.CollectionChanged += OnCommandCollectionChanged;
+        foreach (var command in unit.Commands)
+            AttachCommandTracking(command);
+    }
+
+    private void DetachTaskUnitTracking(TaskUnitViewModel unit)
+    {
+        unit.PropertyChanged -= OnTrackedPropertyChanged;
+
+        unit.Programs.CollectionChanged -= OnProgramCollectionChanged;
+        foreach (var entry in unit.Programs)
+            entry.PropertyChanged -= OnTrackedPropertyChanged;
+
+        unit.ParamFiles.CollectionChanged -= OnParamFileCollectionChanged;
+        foreach (var entry in unit.ParamFiles)
+            entry.PropertyChanged -= OnTrackedPropertyChanged;
+
+        unit.ExtraParams.CollectionChanged -= OnExtraParamsCollectionChanged;
+        foreach (var entry in unit.ExtraParams)
+            entry.PropertyChanged -= OnTrackedPropertyChanged;
+
+        unit.Commands.CollectionChanged -= OnCommandCollectionChanged;
+        foreach (var command in unit.Commands)
+            DetachCommandTracking(command);
+    }
+
+    private void OnProgramCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (var item in e.NewItems.OfType<ProgramEntryViewModel>())
+                item.PropertyChanged += OnTrackedPropertyChanged;
+        }
+
+        if (e.OldItems != null)
+        {
+            foreach (var item in e.OldItems.OfType<ProgramEntryViewModel>())
+                item.PropertyChanged -= OnTrackedPropertyChanged;
+        }
+
+        NotifyTaskConfigurationChanged();
+    }
+
+    private void OnParamFileCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (var item in e.NewItems.OfType<ParameterFileEntryViewModel>())
+                item.PropertyChanged += OnTrackedPropertyChanged;
+        }
+
+        if (e.OldItems != null)
+        {
+            foreach (var item in e.OldItems.OfType<ParameterFileEntryViewModel>())
+                item.PropertyChanged -= OnTrackedPropertyChanged;
+        }
+
+        NotifyTaskConfigurationChanged();
+    }
+
+    private void OnExtraParamsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (var item in e.NewItems.OfType<ParameterEntry>())
+                item.PropertyChanged += OnTrackedPropertyChanged;
+        }
+
+        if (e.OldItems != null)
+        {
+            foreach (var item in e.OldItems.OfType<ParameterEntry>())
+                item.PropertyChanged -= OnTrackedPropertyChanged;
+        }
+
+        NotifyTaskConfigurationChanged();
+    }
+
+    private void OnCommandCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (var item in e.NewItems.OfType<CommandEntryViewModel>())
+                AttachCommandTracking(item);
+        }
+
+        if (e.OldItems != null)
+        {
+            foreach (var item in e.OldItems.OfType<CommandEntryViewModel>())
+                DetachCommandTracking(item);
+        }
+
+        NotifyTaskConfigurationChanged();
+    }
+
+    private void AttachCommandTracking(CommandEntryViewModel command)
+    {
+        command.PropertyChanged += OnTrackedPropertyChanged;
+        command.ParameterFiles.CollectionChanged += OnTrackedCollectionChanged;
+        command.ExtraArgs.CollectionChanged += OnExtraArgsCollectionChanged;
+        foreach (var extra in command.ExtraArgs)
+            extra.PropertyChanged += OnTrackedPropertyChanged;
+    }
+
+    private void DetachCommandTracking(CommandEntryViewModel command)
+    {
+        command.PropertyChanged -= OnTrackedPropertyChanged;
+        command.ParameterFiles.CollectionChanged -= OnTrackedCollectionChanged;
+        command.ExtraArgs.CollectionChanged -= OnExtraArgsCollectionChanged;
+        foreach (var extra in command.ExtraArgs)
+            extra.PropertyChanged -= OnTrackedPropertyChanged;
+    }
+
+    private void OnExtraArgsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (var item in e.NewItems.OfType<ExtraArgViewModel>())
+                item.PropertyChanged += OnTrackedPropertyChanged;
+        }
+
+        if (e.OldItems != null)
+        {
+            foreach (var item in e.OldItems.OfType<ExtraArgViewModel>())
+                item.PropertyChanged -= OnTrackedPropertyChanged;
+        }
+
+        NotifyTaskConfigurationChanged();
+    }
+
+    private void OnTrackedCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        => NotifyTaskConfigurationChanged();
+
+    private void OnTrackedPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        => NotifyTaskConfigurationChanged();
+
+    private void NotifyTaskConfigurationChanged()
+    {
+        if (_dirtyTrackingPauseDepth > 0 || IsDisposed)
+            return;
+
+        UpdateTaskConfigurationDirtyState();
+    }
+
+    private void PauseTaskConfigurationDirtyTracking()
+        => _dirtyTrackingPauseDepth++;
+
+    private void ResumeTaskConfigurationDirtyTracking(bool commitSnapshot)
+    {
+        if (_dirtyTrackingPauseDepth > 0)
+            _dirtyTrackingPauseDepth--;
+
+        if (_dirtyTrackingPauseDepth > 0)
+            return;
+
+        if (commitSnapshot)
+            CommitTaskConfigurationSnapshot();
+        else
+            UpdateTaskConfigurationDirtyState();
+    }
+
+    private void UpdateTaskConfigurationDirtyState()
+    {
+        var isDirty = !string.Equals(
+            _savedTaskConfigurationFingerprint,
+            BuildTaskConfigurationFingerprint(),
+            StringComparison.Ordinal);
+        IsTaskConfigurationDirty = isDirty;
+        HasUnsavedChanges = isDirty;
+    }
+
+    private void CommitTaskConfigurationSnapshot()
+    {
+        _savedTaskConfigurationFingerprint = BuildTaskConfigurationFingerprint();
+        IsTaskConfigurationDirty = false;
+        HasUnsavedChanges = false;
+    }
+
+    private string BuildTaskConfigurationFingerprint()
+    {
+        var taskUnits = TaskUnits.Select(unit => new
+        {
+            unit.TaskName,
+            unit.Enabled,
+            unit.RemoteWorkDirectory,
+            unit.SbatchTemplate,
+            SbatchOptions = unit.SbatchOptions is null
+                ? null
+                : new
+                {
+                    unit.SbatchOptions.JobName,
+                    unit.SbatchOptions.Partition,
+                    unit.SbatchOptions.Nodes,
+                    unit.SbatchOptions.CpuCount,
+                    unit.SbatchOptions.TimeLimit,
+                    unit.SbatchOptions.Account,
+                    unit.SbatchOptions.Exclusive,
+                },
+            Programs = unit.Programs.Select(program => new
+            {
+                program.ProgramPath,
+                program.ArgsTemplate,
+                program.Order,
+            }).ToList(),
+            ParamFiles = unit.ParamFiles.Select(file => new
+            {
+                file.FilePath,
+                file.Alias,
+                file.IsPinned,
+            }).ToList(),
+            Commands = unit.Commands.Select(command => new
+            {
+                command.CommandLine,
+                command.Description,
+                command.Order,
+                command.ProgramPath,
+                command.MpirunPath,
+                command.IncludeBindToNone,
+                ParameterFiles = command.ParameterFiles.ToList(),
+                ExtraArgs = command.ExtraArgs.Select(arg => arg.Arg).ToList(),
+            }).ToList(),
+            ExtraParams = unit.ExtraParams.Select(parameter => new
+            {
+                parameter.Key,
+                parameter.Value,
+            }).ToList(),
+        }).ToList();
+
+        var snapshot = new
+        {
+            RootDirectory,
+            RemoteWorkDir,
+            SbatchTemplate,
+            Parameters = Parameters.Select(parameter => new
+            {
+                parameter.Key,
+                parameter.Value,
+            }).ToList(),
+            TaskUnits = taskUnits,
+        };
+
+        return JsonSerializer.Serialize(snapshot);
+    }
+
+    private async Task<bool> ConfirmDiscardUnsavedChangesAsync(string actionResourceKey, CancellationToken ct)
+    {
+        if (!HasUnsavedChanges)
+            return true;
+
+        await Task.Yield();
+        var result = MessageBox.Show(
+            string.Format(L("Task.UnsavedDiscardPrompt"), L(actionResourceKey), L("Task.UnsavedSourceTaskConfig")),
+            L("Task.UnsavedTitle"),
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning);
+        if (result == MessageBoxResult.OK)
+            return true;
+
+        SetStatus("Task.UnsavedActionCancelled", "InfoTextStyle");
+        return false;
     }
 
     // ── Task-unit management ─────────────────────────────────────────────────
@@ -2083,6 +2502,9 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         if (dialog.ShowDialog() != true || !dialogVm.Confirmed || !dialogVm.ApplyRequested || dialogVm.AppliedBlueprintRecord == null)
             return;
 
+        if (!await ConfirmDiscardUnsavedChangesAsync("Task.UnsavedActionApplyBlueprint", ct))
+            return;
+
         var targetTaskId = ResolveApplyTargetTaskId(dialogVm.AppliedBlueprintRecord);
         var applyConfirm = new ConfirmationDialogViewModel(
             title: L("Task.BlueprintApplyCurrentTitle"),
@@ -2096,7 +2518,9 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         try
         {
+            PauseTaskConfigurationDirtyTracking();
             var warnings = ApplyBlueprintToEditor(dialogVm.AppliedBlueprintRecord, targetTaskId);
+            ResumeTaskConfigurationDirtyTracking(commitSnapshot: true);
             var successMessage = string.Format(L("Task.BlueprintApplySucceeded"), dialogVm.AppliedBlueprintRecord.Name);
             if (warnings.Count == 0)
             {
@@ -2116,6 +2540,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         }
         catch (Exception ex)
         {
+            ResumeTaskConfigurationDirtyTracking(commitSnapshot: false);
             SetStatus(string.Format(L("Task.BlueprintCreateFailed"), ex.Message), "ErrorTextStyle", localize: false);
             _logger?.Error($"Blueprint apply failed. Blueprint='{dialogVm.AppliedBlueprintRecord?.Name}', TargetTaskId='{targetTaskId}'.", ex);
         }
@@ -2454,9 +2879,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private string GetLocalTaskDir() => Path.Combine(LocalDataRoot, TaskId);
 
     private async Task SaveTaskAsync(CancellationToken ct)
+        => _ = await SaveTaskCoreAsync(ct);
+
+    private async Task<bool> SaveTaskCoreAsync(CancellationToken ct)
     {
         if (!await ValidateBeforeActionAsync(TaskValidationOperation.Save, ct))
-            return;
+            return false;
 
         IsBusy = true;
         SetStatus("Task.Saving", "InfoTextStyle");
@@ -2487,17 +2915,22 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                     localize: false);
             }
             _logger?.Info($"Task save completed. TaskId='{TaskId}', LocalDir='{GetLocalTaskDir()}'.");
+            CommitTaskConfigurationSnapshot();
+            return true;
         }
         catch (Exception ex)
         {
             SetStatus(string.Format(L("Task.SaveFailed"), ex.Message), "ErrorTextStyle", localize: false);
             _logger?.Error($"Task save failed. TaskId='{TaskId}', Root='{RootDirectory}'.", ex);
+            return false;
         }
         finally { IsBusy = false; }
     }
 
     private async Task LoadTaskAsync(CancellationToken ct)
     {
+        if (!await ConfirmDiscardUnsavedChangesAsync("Task.UnsavedActionLoadTask", ct))
+            return;
         if (!ValidateRootAndId()) return;
         IsBusy = true;
         SetStatus("Task.Loading", "InfoTextStyle");
@@ -2510,17 +2943,22 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 // Try legacy path
                 var record = await _storage.LoadAsync(LocalDataRoot, TaskId, ct);
                 if (record == null) { SetStatus("Task.LoadNotFound", "WarningTextStyle"); return; }
+                PauseTaskConfigurationDirtyTracking();
                 ApplyTaskRecord(record);
+                ResumeTaskConfigurationDirtyTracking(commitSnapshot: true);
                 SetStatus(string.Format(L("Task.LoadedLegacy"), TaskId), "SuccessTextStyle", localize: false);
                 return;
             }
 
+            PauseTaskConfigurationDirtyTracking();
             ApplyWorkspace(workspace);
+            ResumeTaskConfigurationDirtyTracking(commitSnapshot: true);
             SetStatus(string.Format(L("Task.WorkspaceLoaded"), TaskId, workspace.Tasks.Count), "SuccessTextStyle", localize: false);
             _logger?.Info($"Task load completed. TaskId='{TaskId}', UnitCount={workspace.Tasks.Count}.");
         }
         catch (Exception ex)
         {
+            ResumeTaskConfigurationDirtyTracking(commitSnapshot: false);
             SetStatus(string.Format(L("Task.LoadFailed"), ex.Message), "ErrorTextStyle", localize: false);
             _logger?.Error($"Task load failed. TaskId='{TaskId}', Root='{RootDirectory}'.", ex);
         }
@@ -3444,6 +3882,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(LastSubmitRemoteWorkDirDisplay));
         OnPropertyChanged(nameof(LastSubmitRemoteStdoutPathDisplay));
         OnPropertyChanged(nameof(LastSubmitRemoteStderrPathDisplay));
+        OnPropertyChanged(nameof(TaskTitleText));
+        OnPropertyChanged(nameof(UnsavedStatusText));
     }
 
     private TaskRecord BuildTaskRecord() => new()
@@ -3717,6 +4157,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         _taskIdValidationCts?.Cancel();
         _taskIdValidationCts?.Dispose();
         _taskIdValidationCts = null;
+        Parameters.CollectionChanged -= OnParametersCollectionChanged;
+        foreach (var parameter in Parameters)
+            parameter.PropertyChanged -= OnTrackedPropertyChanged;
+        TaskUnits.CollectionChanged -= OnTaskUnitsCollectionChanged;
+        foreach (var unit in TaskUnits)
+            DetachTaskUnitTracking(unit);
         try { CommandManager.InvalidateRequerySuggested(); } catch { /* best effort */ }
     }
 
