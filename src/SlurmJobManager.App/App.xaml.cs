@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 using SlurmJobManager.App.Services;
@@ -7,6 +8,7 @@ using SlurmJobManager.App.Services.Packaging;
 using SlurmJobManager.App.Services.Updates;
 using SlurmJobManager.App.Services.Validation;
 using SlurmJobManager.App.ViewModels;
+using SlurmJobManager.App.Views;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
 using SlurmJobManager.Infrastructure.Logs;
@@ -25,6 +27,7 @@ public partial class App : Application
     private readonly SemaphoreSlim _shutdownGate = new(1, 1);
     private bool _shutdownCompleted;
     private bool _closeAfterCleanup;
+    private bool _closeConfirmationInProgress;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -180,8 +183,60 @@ public partial class App : Application
     private void OnMainWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         if (_closeAfterCleanup) return;
+        if (_closeConfirmationInProgress)
+        {
+            e.Cancel = true;
+            return;
+        }
         e.Cancel = true;
-        _ = ShutdownAndCloseMainWindowAsync(sender as Window);
+        _ = ConfirmUnsavedAndCloseMainWindowAsync(sender as Window);
+    }
+
+    private async Task ConfirmUnsavedAndCloseMainWindowAsync(Window? window)
+    {
+        if (_closeConfirmationInProgress)
+            return;
+
+        _closeConfirmationInProgress = true;
+        try
+        {
+            if (!ConfirmCloseWithUnsavedChanges())
+                return;
+
+            await ShutdownAndCloseMainWindowAsync(window);
+        }
+        finally
+        {
+            _closeConfirmationInProgress = false;
+        }
+    }
+
+    private bool ConfirmCloseWithUnsavedChanges()
+    {
+        var taskEditorHasUnsavedChanges = _mainVm?.TaskEditor.HasUnsavedChanges == true;
+        var dirtyRemoteEditors = 0;
+        foreach (var window in Current.Windows.OfType<RemoteFileEditorView>())
+        {
+            if (window.DataContext is RemoteFileEditorViewModel { IsDirty: true })
+                dirtyRemoteEditors++;
+        }
+
+        if (!taskEditorHasUnsavedChanges && dirtyRemoteEditors == 0)
+            return true;
+
+        var unsavedItems = new List<string>();
+        if (taskEditorHasUnsavedChanges)
+            unsavedItems.Add($"- {L("Task.UnsavedSourceTaskConfig")}");
+        if (dirtyRemoteEditors > 0)
+            unsavedItems.Add($"- {string.Format(L("App.UnsavedSourceRemoteEditors"), dirtyRemoteEditors)}");
+
+        var prompt = string.Format(L("App.UnsavedClosePrompt"), string.Join(Environment.NewLine, unsavedItems));
+        var result = MessageBox.Show(
+            prompt,
+            L("Task.UnsavedTitle"),
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning);
+        return result == MessageBoxResult.OK;
     }
 
     // ── Global exception hooks ───────────────────────────────────────────────

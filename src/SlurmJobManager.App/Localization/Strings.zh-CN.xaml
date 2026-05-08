@@ -433,6 +433,16 @@
     <sys:String x:Key="Task.OverwriteTitle">覆盖确认</sys:String>
     <sys:String x:Key="Task.OverwritePrompt">远程文件 {0} 已存在，是否覆盖？</sys:String>
     <sys:String x:Key="Task.SaveCancelled">保存已取消。</sys:String>
+    <sys:String x:Key="Task.UnsavedTitle">未保存更改</sys:String>
+    <sys:String x:Key="Task.UnsavedDiscardPrompt">[{1}] 存在未保存修改。继续执行 {0} 将丢失这些修改，是否继续？</sys:String>
+    <sys:String x:Key="Task.UnsavedStatusFormat">存在未保存修改：{0}</sys:String>
+    <sys:String x:Key="Task.UnsavedSourceTaskConfig">任务配置</sys:String>
+    <sys:String x:Key="Task.UnsavedActionLoadTask">加载其他任务</sys:String>
+    <sys:String x:Key="Task.UnsavedActionApplyBlueprint">应用蓝图</sys:String>
+    <sys:String x:Key="Task.UnsavedActionCloseApplication">关闭应用</sys:String>
+    <sys:String x:Key="Task.UnsavedActionCancelled">已取消当前操作，请先保存需要保留的修改。</sys:String>
+    <sys:String x:Key="App.UnsavedClosePrompt">应用即将关闭，以下未保存修改将被丢弃：\n{0}\n\n点击“确定”继续关闭，或点击“取消”返回后保存。</sys:String>
+    <sys:String x:Key="App.UnsavedSourceRemoteEditors">远程文件编辑器（{0} 个）</sys:String>
     <!-- Multi-task workspace -->
     <sys:String x:Key="Task.TaskUnits">任务单元</sys:String>
     <sys:String x:Key="Task.ActiveUnit">活动任务单元</sys:String>

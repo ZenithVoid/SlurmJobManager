@@ -433,6 +433,16 @@
     <sys:String x:Key="Task.OverwriteTitle">Overwrite Confirmation</sys:String>
     <sys:String x:Key="Task.OverwritePrompt">Remote file {0} already exists. Overwrite?</sys:String>
     <sys:String x:Key="Task.SaveCancelled">Save cancelled.</sys:String>
+    <sys:String x:Key="Task.UnsavedTitle">Unsaved Changes</sys:String>
+    <sys:String x:Key="Task.UnsavedDiscardPrompt">There are unsaved changes in [{1}]. Continuing with {0} will discard these changes. Continue?</sys:String>
+    <sys:String x:Key="Task.UnsavedStatusFormat">Unsaved changes: {0}</sys:String>
+    <sys:String x:Key="Task.UnsavedSourceTaskConfig">Task configuration</sys:String>
+    <sys:String x:Key="Task.UnsavedActionLoadTask">loading another task</sys:String>
+    <sys:String x:Key="Task.UnsavedActionApplyBlueprint">applying blueprint</sys:String>
+    <sys:String x:Key="Task.UnsavedActionCloseApplication">closing application</sys:String>
+    <sys:String x:Key="Task.UnsavedActionCancelled">Action cancelled. Please save changes first if needed.</sys:String>
+    <sys:String x:Key="App.UnsavedClosePrompt">The application is about to close and discard unsaved changes:\n{0}\n\nClick OK to close anyway, or Cancel to return and save.</sys:String>
+    <sys:String x:Key="App.UnsavedSourceRemoteEditors">Remote file editors ({0})</sys:String>
     <!-- Multi-task workspace -->
     <sys:String x:Key="Task.TaskUnits">Task Units</sys:String>
     <sys:String x:Key="Task.ActiveUnit">Active Task Unit</sys:String>
