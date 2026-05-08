@@ -33,6 +33,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private readonly ITaskValidationService _taskValidationService;
     private readonly AppPreferencesService _prefs;
     private readonly ILastTaskContextService? _lastTaskContextService;
+    private readonly IAppLogger? _logger;
     private Func<string, Task<bool>>? _openInConsoleAsync;
 
     // ── Local storage root (under <AppBaseDirectory>/Data) ──────────────────
@@ -504,7 +505,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         ITaskValidationService taskValidationService,
         AppPreferencesService prefs,
         ILastTaskContextService? lastTaskContextService = null,
-        Func<string, Task<bool>>? openInConsoleAsync = null)
+        Func<string, Task<bool>>? openInConsoleAsync = null,
+        IAppLogger? logger = null)
     {
         _ssh     = ssh     ?? throw new ArgumentNullException(nameof(ssh));
         _slurm   = slurm   ?? throw new ArgumentNullException(nameof(slurm));
@@ -514,6 +516,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         _prefs = prefs ?? throw new ArgumentNullException(nameof(prefs));
         _lastTaskContextService = lastTaskContextService;
         _openInConsoleAsync = openInConsoleAsync;
+        _logger = logger;
 
         BrowseRootDirectoryCommand       = new AsyncRelayCommand(BrowseRootDirectoryAsync, CanBrowseRootDirectory);
         CreateTaskIdDirectoryCommand     = new AsyncRelayCommand(CreateCurrentTaskIdDirectoryAsync, CanCreateTaskIdDirectory);
@@ -1938,6 +1941,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         EnsureAtLeastOneTaskUnit();
         var unit = _selectedTaskUnit!;
         var effectiveWorkDir = ResolveWorkDirForSubmit(unit);
+        _logger?.Info($"Opening command builder for task '{TaskId}', unit '{unit.TaskName}', workDir='{effectiveWorkDir}'.");
 
         var dlgVm = new CommandBuilderViewModel(
             _ssh,
@@ -1992,6 +1996,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             unit.SbatchOptions = dlgVm.GetResultSbatchOptions();
 
             SetStatus("Task.CommandUpdated", "SuccessTextStyle");
+            _logger?.Info($"Command builder applied for task '{TaskId}', unit '{unit.TaskName}'. Commands={unit.Commands.Count}");
             CommandManager.InvalidateRequerySuggested();
         }
     }
@@ -2048,10 +2053,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             var blueprint = BuildBlueprintRecord(dialogVm.BlueprintName, dialogVm.BlueprintDescription, scope);
             await _blueprints.SaveAsync(blueprint, scope, overwriteByName: overwrite, ct);
             SetStatus(string.Format(L("Task.BlueprintSaveSucceeded"), blueprint.Name), "SuccessTextStyle", localize: false);
+            _logger?.Info($"Blueprint saved. Name='{blueprint.Name}', TaskId='{TaskId}', Scope='{TaskBlueprintScope.BuildScopeKey(scope.HostOrAddress, scope.Username)}'.");
         }
         catch (Exception ex)
         {
             SetStatus(string.Format(L("Task.BlueprintSaveFailed"), ex.Message), "ErrorTextStyle", localize: false);
+            _logger?.Error($"Blueprint save failed. Name='{dialogVm.BlueprintName}', TaskId='{TaskId}'.", ex);
         }
     }
 
@@ -2104,10 +2111,13 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }
+
+            _logger?.Info($"Blueprint applied. Name='{dialogVm.AppliedBlueprintRecord.Name}', TargetTaskId='{targetTaskId}', Warnings={warnings.Count}.");
         }
         catch (Exception ex)
         {
             SetStatus(string.Format(L("Task.BlueprintCreateFailed"), ex.Message), "ErrorTextStyle", localize: false);
+            _logger?.Error($"Blueprint apply failed. Blueprint='{dialogVm.AppliedBlueprintRecord?.Name}', TargetTaskId='{targetTaskId}'.", ex);
         }
     }
 
@@ -2450,6 +2460,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         IsBusy = true;
         SetStatus("Task.Saving", "InfoTextStyle");
+        _logger?.Info($"Task save started. TaskId='{TaskId}', Root='{RootDirectory}', UnitCount={TaskUnits.Count}.");
         try
         {
             Directory.CreateDirectory(GetLocalTaskDir());
@@ -2475,8 +2486,13 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                     "SuccessTextStyle",
                     localize: false);
             }
+            _logger?.Info($"Task save completed. TaskId='{TaskId}', LocalDir='{GetLocalTaskDir()}'.");
         }
-        catch (Exception ex) { SetStatus(string.Format(L("Task.SaveFailed"), ex.Message), "ErrorTextStyle", localize: false); }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.SaveFailed"), ex.Message), "ErrorTextStyle", localize: false);
+            _logger?.Error($"Task save failed. TaskId='{TaskId}', Root='{RootDirectory}'.", ex);
+        }
         finally { IsBusy = false; }
     }
 
@@ -2485,6 +2501,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         if (!ValidateRootAndId()) return;
         IsBusy = true;
         SetStatus("Task.Loading", "InfoTextStyle");
+        _logger?.Info($"Task load started. TaskId='{TaskId}', Root='{RootDirectory}'.");
         try
         {
             var workspace = await _storage.LoadWorkspaceAsync(LocalDataRoot, TaskId, ct);
@@ -2500,8 +2517,13 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
             ApplyWorkspace(workspace);
             SetStatus(string.Format(L("Task.WorkspaceLoaded"), TaskId, workspace.Tasks.Count), "SuccessTextStyle", localize: false);
+            _logger?.Info($"Task load completed. TaskId='{TaskId}', UnitCount={workspace.Tasks.Count}.");
         }
-        catch (Exception ex) { SetStatus(string.Format(L("Task.LoadFailed"), ex.Message), "ErrorTextStyle", localize: false); }
+        catch (Exception ex)
+        {
+            SetStatus(string.Format(L("Task.LoadFailed"), ex.Message), "ErrorTextStyle", localize: false);
+            _logger?.Error($"Task load failed. TaskId='{TaskId}', Root='{RootDirectory}'.", ex);
+        }
         finally { IsBusy = false; }
     }
 
@@ -2639,6 +2661,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         IsBusy = true;
         SetStatus("Task.SubmitPreparing", "InfoTextStyle");
+        _logger?.Info($"Task submit started. TaskId='{TaskId}', Unit='{_selectedTaskUnit.TaskName}'.");
         try
         {
             PrepareLastSubmitPaths(_selectedTaskUnit);
@@ -2649,6 +2672,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             LastSubmitStageLabel = L("Task.SubmitStageSbatchSubmit");
             LastSubmitNextSteps = L("Task.SubmitAdviceSuccess");
             SetStatus(string.Format(L("Task.SubmitSucceeded"), jobId), "SuccessTextStyle", localize: false);
+            _logger?.Info($"Task submit succeeded. TaskId='{TaskId}', Unit='{_selectedTaskUnit.TaskName}', JobId={jobId}.");
         }
         catch (SubmitStageException ex)
         {
@@ -2660,6 +2684,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 ex.Message);
             LastSubmitNextSteps = BuildSubmitNextSteps(ex.Stage);
             SetStatus(LastSubmitStatusMessage, "ErrorTextStyle", localize: false);
+            _logger?.Error($"Task submit failed at stage '{ex.Stage}'. TaskId='{TaskId}', Unit='{_selectedTaskUnit.TaskName}'. {ex.Message}", ex);
         }
         catch (Exception ex)
         {
@@ -2671,6 +2696,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 ex.Message);
             LastSubmitNextSteps = BuildSubmitNextSteps(SubmitFailureStage.Unknown);
             SetStatus(LastSubmitStatusMessage, "ErrorTextStyle", localize: false);
+            _logger?.Error($"Task submit failed unexpectedly. TaskId='{TaskId}', Unit='{_selectedTaskUnit.TaskName}'.", ex);
         }
         finally { IsBusy = false; }
 

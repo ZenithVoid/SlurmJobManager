@@ -1,9 +1,13 @@
 using System.Diagnostics;
 using System.IO;
+using Microsoft.Win32;
 using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.App.Services;
+using SlurmJobManager.App.Services.Logging;
 using SlurmJobManager.App.Services.Updates;
+using SlurmJobManager.App.Views.Dialogs;
+using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Services;
 
 namespace SlurmJobManager.App.ViewModels;
@@ -22,6 +26,8 @@ public sealed class SettingsViewModel : ViewModelBase
     private readonly IUpdateCheckService _updateCheckService;
     private readonly IApplicationVersionService _versionService;
     private readonly IUpdateLaunchService _updateLaunchService;
+    private readonly ILogFileService _logFileService;
+    private readonly IAppLogger? _logger;
 
     private string _updateStatusMessage;
     private string _latestVersionDisplay = "-";
@@ -40,13 +46,17 @@ public sealed class SettingsViewModel : ViewModelBase
         AppPreferencesService prefs,
         IUpdateCheckService updateCheckService,
         IApplicationVersionService versionService,
-        IUpdateLaunchService updateLaunchService)
+        IUpdateLaunchService updateLaunchService,
+        ILogFileService logFileService,
+        IAppLogger? logger = null)
     {
         _main = main ?? throw new ArgumentNullException(nameof(main));
         _prefs = prefs ?? throw new ArgumentNullException(nameof(prefs));
         _updateCheckService = updateCheckService ?? throw new ArgumentNullException(nameof(updateCheckService));
         _versionService = versionService ?? throw new ArgumentNullException(nameof(versionService));
         _updateLaunchService = updateLaunchService ?? throw new ArgumentNullException(nameof(updateLaunchService));
+        _logFileService = logFileService ?? throw new ArgumentNullException(nameof(logFileService));
+        _logger = logger;
 
         _updateStatusMessage = L("Settings.UpdateNotCheckedYet");
         _updateSourceDisplay = L("Settings.UpdateSourceUnknown");
@@ -133,10 +143,14 @@ public sealed class SettingsViewModel : ViewModelBase
     public ICommand SwitchLocaleCommand => _main.SwitchLocaleCommand;
     public ICommand OpenDataDirectoryCommand => new RelayCommand(OpenDataDirectory);
     public ICommand CopyDataDirectoryCommand => new RelayCommand(CopyDataDirectory);
+    public ICommand OpenLogDirectoryCommand => new RelayCommand(OpenLogDirectory);
+    public ICommand ViewRecentLogCommand => new RelayCommand(ViewRecentLog);
+    public ICommand ExportLogsCommand => new RelayCommand(ExportLogs);
 
     // ── Local data paths ───────────────────────────────────────────────────
 
     public string LocalDataDirectory => LocalDataPaths.DataDirectory;
+    public string LogsDirectory => _logFileService.LogsDirectory;
     public string TasksDirectory => LocalDataPaths.TasksDirectory;
     public string BlueprintsDirectory => LocalDataPaths.BlueprintsDirectory;
     public string RecentConnectionsFilePath => LocalDataPaths.RecentConnectionsFilePath;
@@ -294,6 +308,7 @@ public sealed class SettingsViewModel : ViewModelBase
 
     private async Task CheckForUpdatesAsync(bool showToasts)
     {
+        _logger?.Info($"Update check requested. Source={_prefs.UpdateSourceType}, IncludePrerelease={_prefs.IncludePrereleaseUpdates}");
         try
         {
             IsCheckingUpdates = true;
@@ -309,6 +324,7 @@ public sealed class SettingsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
+            _logger?.Error("Update check failed unexpectedly.", ex);
             UpdateStatusMessage = string.Format(L("Settings.UpdateCheckFailedFormat"), ex.Message);
             _hasCheckedUpdates = true;
             if (showToasts)
@@ -324,6 +340,7 @@ public sealed class SettingsViewModel : ViewModelBase
 
     private void ApplyUpdateResult(UpdateCheckResult result, bool showToasts)
     {
+        _logger?.Info($"Update check completed. Success={result.IsSuccess}, HasUpdate={result.HasUpdate}, Source={result.SourceType}");
         UpdateSourceDisplay = result.SourceType == UpdateSourceType.GitHub
             ? L("Settings.UpdateSourceGitHub")
             : L("Settings.UpdateSourceFolder");
@@ -372,6 +389,7 @@ public sealed class SettingsViewModel : ViewModelBase
     {
         if (!TryResolveLocalUpdatePackage(_lastOpenTarget, out var packagePath, out var packageError, out var selectionMessage))
         {
+            _logger?.Warning($"Update launch aborted because target is invalid. Detail={packageError}");
             var message = string.Format(L("Settings.UpdateLaunchInvalidTargetFormat"), packageError ?? L("Settings.UnknownError"));
             UpdateStatusMessage = message;
             ToastService.Instance.Error(message);
@@ -388,6 +406,7 @@ public sealed class SettingsViewModel : ViewModelBase
                 out var request,
                 out var createError))
         {
+            _logger?.Warning($"Update launch request creation failed. Package={packagePath}, Error={createError}");
             var message = string.Format(L("Settings.UpdateLaunchFailedFormat"), createError ?? L("Settings.UnknownError"));
             UpdateStatusMessage = message;
             ToastService.Instance.Error(message);
@@ -397,12 +416,14 @@ public sealed class SettingsViewModel : ViewModelBase
         var launchResult = _updateLaunchService.LaunchUpdater(request!);
         if (!launchResult.IsSuccess)
         {
+            _logger?.Error($"Failed to launch updater. Target={packagePath}, Error={launchResult.ErrorMessage}");
             var message = string.Format(L("Settings.UpdateLaunchFailedFormat"), launchResult.ErrorMessage ?? L("Settings.UnknownError"));
             UpdateStatusMessage = message;
             ToastService.Instance.Error(message);
             return;
         }
 
+        _logger?.Info($"Updater launched successfully. UpdaterPath={launchResult.UpdaterPath}, Package={packagePath}");
         UpdateStatusMessage = L("Settings.UpdateLaunchingAndClosing");
         ToastService.Instance.Success(L("Settings.UpdateLaunchSuccess"));
         await Task.Delay(UpdateLaunchGracePeriod);
@@ -489,6 +510,92 @@ public sealed class SettingsViewModel : ViewModelBase
         catch (Exception ex)
         {
             ToastService.Instance.Error(string.Format(L("Settings.CopyDataDirFailedFormat"), ex.Message));
+        }
+    }
+
+    private void OpenLogDirectory()
+    {
+        try
+        {
+            _logFileService.EnsureLogsDirectory();
+            var started = Process.Start(new ProcessStartInfo
+            {
+                FileName = _logFileService.LogsDirectory,
+                UseShellExecute = true,
+            });
+
+            if (started == null)
+            {
+                ToastService.Instance.Error(L("Settings.OpenLogsDirFailed"));
+                return;
+            }
+
+            _logger?.Info($"Opened logs directory: {_logFileService.LogsDirectory}");
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error($"Failed to open logs directory: {_logFileService.LogsDirectory}", ex);
+            ToastService.Instance.Error(string.Format(L("Settings.OpenLogsDirFailedFormat"), ex.Message));
+        }
+    }
+
+    private void ViewRecentLog()
+    {
+        try
+        {
+            var latest = _logFileService.GetLatestAppLogFilePath();
+            if (string.IsNullOrWhiteSpace(latest))
+            {
+                ToastService.Instance.Warning(L("Settings.RecentLogNotFound"));
+                return;
+            }
+
+            var content = _logFileService.ReadFileText(latest);
+            var viewer = new RecentLogViewerWindow(
+                L("Settings.RecentLogViewerTitle"),
+                latest,
+                content);
+
+            if (Application.Current.MainWindow is { } mainWindow)
+                viewer.Owner = mainWindow;
+
+            viewer.ShowDialog();
+            _logger?.Info($"Viewed recent log file: {latest}");
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error("Failed to load recent log for viewer.", ex);
+            ToastService.Instance.Error(string.Format(L("Settings.RecentLogOpenFailedFormat"), ex.Message));
+        }
+    }
+
+    private void ExportLogs()
+    {
+        try
+        {
+            _logFileService.EnsureLogsDirectory();
+            var defaultZipName = $"SlurmJobManager-logs-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
+            var saveDialog = new SaveFileDialog
+            {
+                Title = L("Settings.ExportLogsDialogTitle"),
+                Filter = "Zip files (*.zip)|*.zip",
+                DefaultExt = ".zip",
+                AddExtension = true,
+                FileName = defaultZipName,
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+            };
+
+            if (saveDialog.ShowDialog() != true)
+                return;
+
+            var path = _logFileService.ExportLogsZip(saveDialog.FileName);
+            _logger?.Info($"Exported logs archive: {path}");
+            ToastService.Instance.Success(string.Format(L("Settings.ExportLogsSuccessFormat"), path));
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error("Failed to export logs.", ex);
+            ToastService.Instance.Error(string.Format(L("Settings.ExportLogsFailedFormat"), ex.Message));
         }
     }
 

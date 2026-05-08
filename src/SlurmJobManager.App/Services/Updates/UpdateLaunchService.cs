@@ -51,7 +51,7 @@ public sealed class UpdateLaunchService : IUpdateLaunchService
             return false;
         }
 
-        var logFilePath = Path.Combine(LocalDataPaths.DataDirectory, "logs", "updater.log");
+        var logFilePath = LocalDataPaths.UpdaterLogFilePath;
         request = new UpdaterLaunchRequest(
             ParentProcessId: Environment.ProcessId,
             MainExecutablePath: Path.GetFullPath(mainExecutablePath),

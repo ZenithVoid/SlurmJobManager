@@ -29,6 +29,7 @@ public sealed class ConnectionViewModel : ViewModelBase
     private readonly ISshClientService _ssh;
     private readonly IConnectionProfileStore? _profileStore;
     private readonly IRecentConnectionService? _recentConnectionService;
+    private readonly IAppLogger? _logger;
 
     private string _host = string.Empty;
     private int _port = 22;
@@ -114,11 +115,13 @@ public sealed class ConnectionViewModel : ViewModelBase
     public ConnectionViewModel(
         ISshClientService ssh,
         IConnectionProfileStore? profileStore = null,
-        IRecentConnectionService? recentConnectionService = null)
+        IRecentConnectionService? recentConnectionService = null,
+        IAppLogger? logger = null)
     {
         _ssh = ssh ?? throw new ArgumentNullException(nameof(ssh));
         _profileStore = profileStore;
         _recentConnectionService = recentConnectionService;
+        _logger = logger;
 
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, () => !IsBusy && !IsConnected);
         DisconnectCommand = new AsyncRelayCommand(DisconnectAsync, () => !IsBusy && IsConnected);
@@ -137,16 +140,19 @@ public sealed class ConnectionViewModel : ViewModelBase
     /// <summary>Re-establishes the connection using the current profile fields.</summary>
     public async Task<bool> TryReconnectAsync(CancellationToken ct)
     {
+        _logger?.Info($"SSH reconnect requested. Host={Host.Trim()}, Port={(Port <= 0 ? 22 : Port)}, User={Username.Trim()}, AuthMode={(string.IsNullOrWhiteSpace(PrivateKeyPath) ? "password" : "private-key")}");
         try
         {
             await _ssh.ConnectAsync(BuildProfile(), ct);
             Status = ConnectionStatus.Connected;
             StatusMessage = BuildConnectedStatusMessage();
             await AddRecentConnectionAsync(ct);
+            _logger?.Info($"SSH reconnect succeeded. Host={Host.Trim()}, User={Username.Trim()}");
             return true;
         }
         catch
         {
+            _logger?.Warning($"SSH reconnect failed. Host={Host.Trim()}, User={Username.Trim()}");
             return false;
         }
     }
@@ -156,6 +162,7 @@ public sealed class ConnectionViewModel : ViewModelBase
         IsBusy = true;
         Status = ConnectionStatus.Connecting;
         StatusMessage = L("Status.Connecting");
+        _logger?.Info($"SSH connect requested. Host={Host.Trim()}, Port={(Port <= 0 ? 22 : Port)}, User={Username.Trim()}, AuthMode={(string.IsNullOrWhiteSpace(PrivateKeyPath) ? "password" : "private-key")}");
         try
         {
             await _ssh.ConnectAsync(BuildProfile(), ct);
@@ -163,11 +170,13 @@ public sealed class ConnectionViewModel : ViewModelBase
             StatusMessage = BuildConnectedStatusMessage();
             await AddRecentConnectionAsync(ct);
             ConnectionEstablished?.Invoke(_username);
+            _logger?.Info($"SSH connect succeeded. Host={Host.Trim()}, User={Username.Trim()}");
         }
         catch (Exception ex)
         {
             Status = ConnectionStatus.ConnectFailed;
             StatusMessage = ClassifyError(ex, usingKeyAuth: !string.IsNullOrWhiteSpace(PrivateKeyPath));
+            _logger?.Error($"SSH connect failed. Host={Host.Trim()}, Port={(Port <= 0 ? 22 : Port)}, User={Username.Trim()}", ex);
         }
         finally
         {
@@ -181,6 +190,7 @@ public sealed class ConnectionViewModel : ViewModelBase
         await _ssh.DisconnectAsync();
         Status = ConnectionStatus.Disconnected;
         StatusMessage = L("Status.Idle");
+        _logger?.Info("SSH disconnected by user.");
         OnPropertyChanged(nameof(IsConnected));
     }
 
@@ -189,16 +199,19 @@ public sealed class ConnectionViewModel : ViewModelBase
         IsBusy = true;
         Status = ConnectionStatus.Testing;
         StatusMessage = L("Conn.Testing");
+        _logger?.Info($"SSH test requested. Host={Host.Trim()}, Port={(Port <= 0 ? 22 : Port)}, User={Username.Trim()}, AuthMode={(string.IsNullOrWhiteSpace(PrivateKeyPath) ? "password" : "private-key")}");
         try
         {
             await _ssh.TestConnectionAsync(BuildProfile(), ct);
             Status = ConnectionStatus.TestSucceeded;
             StatusMessage = BuildTestSuccessStatusMessage();
+            _logger?.Info($"SSH test succeeded. Host={Host.Trim()}, User={Username.Trim()}");
         }
         catch (Exception ex)
         {
             Status = ConnectionStatus.TestFailed;
             StatusMessage = ClassifyError(ex, usingKeyAuth: !string.IsNullOrWhiteSpace(PrivateKeyPath));
+            _logger?.Error($"SSH test failed. Host={Host.Trim()}, Port={(Port <= 0 ? 22 : Port)}, User={Username.Trim()}", ex);
         }
         finally
         {

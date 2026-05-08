@@ -2,6 +2,7 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using SlurmJobManager.Core.Interfaces;
 
 namespace SlurmJobManager.App.Services.Updates;
 
@@ -14,14 +15,17 @@ public sealed class UpdateCheckService : IUpdateCheckService
     private static readonly HttpClient HttpClient = BuildHttpClient();
 
     private readonly IApplicationVersionService _versionService;
+    private readonly IAppLogger? _logger;
 
-    public UpdateCheckService(IApplicationVersionService versionService)
+    public UpdateCheckService(IApplicationVersionService versionService, IAppLogger? logger = null)
     {
         _versionService = versionService ?? throw new ArgumentNullException(nameof(versionService));
+        _logger = logger;
     }
 
     public async Task<UpdateCheckResult> CheckForUpdatesAsync(UpdateCheckRequest request, CancellationToken cancellationToken = default)
     {
+        _logger?.Info($"UpdateCheckService started. Source={request.SourceType}, IncludePrerelease={request.IncludePrerelease}");
         return request.SourceType switch
         {
             UpdateSourceType.GitHub => await CheckGitHubAsync(request.IncludePrerelease, cancellationToken),
@@ -37,6 +41,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
             using var response = await HttpClient.GetAsync(GitHubReleasesApi, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
+                _logger?.Warning($"GitHub update check returned HTTP {(int)response.StatusCode}.");
                 return BuildFailure(
                     UpdateSourceType.GitHub,
                     $"GitHub update check failed with HTTP {(int)response.StatusCode}.",
@@ -67,6 +72,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
                 var releaseUrl = TryGetString(release, "html_url") ?? GitHubReleasesPage;
                 _ = DateTimeOffset.TryParse(publishedAtRaw, out var publishedAt);
 
+                _logger?.Info($"GitHub update check resolved version '{tag}'.");
                 return BuildSuccess(
                     UpdateSourceType.GitHub,
                     remoteVersion,
@@ -86,10 +92,12 @@ public sealed class UpdateCheckService : IUpdateCheckService
         }
         catch (OperationCanceledException)
         {
+            _logger?.Warning("GitHub update check was canceled.");
             throw;
         }
         catch (Exception ex)
         {
+            _logger?.Error("GitHub update check failed.", ex);
             return BuildFailure(UpdateSourceType.GitHub, ex.Message, GitHubReleasesPage);
         }
     }
@@ -127,6 +135,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
             var package = TryGetString(root, "package");
             var target = ResolveFolderTarget(path, package);
 
+            _logger?.Info($"Folder update check resolved version '{versionText}' from '{path}'.");
             return Task.FromResult(BuildSuccess(
                 UpdateSourceType.Folder,
                 remoteVersion,
@@ -138,6 +147,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
         }
         catch (Exception ex)
         {
+            _logger?.Error($"Folder update check failed for path '{folderPath}'.", ex);
             return Task.FromResult(BuildFailure(UpdateSourceType.Folder, ex.Message, folderPath));
         }
     }

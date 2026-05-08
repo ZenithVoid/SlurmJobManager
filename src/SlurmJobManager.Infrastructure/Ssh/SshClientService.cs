@@ -14,6 +14,7 @@ namespace SlurmJobManager.Infrastructure.Ssh;
 public sealed class SshClientService : ISshClientService
 {
     private readonly AppSettings _settings;
+    private readonly IAppLogger? _logger;
     private readonly List<IInteractiveShellSession> _interactiveSessions = new();
     private readonly object _sessionLock = new();
     private readonly object _clientLock = new();
@@ -24,9 +25,10 @@ public sealed class SshClientService : ISshClientService
     private bool _disposed;
     private string? _lastServerFingerprint;
 
-    public SshClientService(AppSettings? settings = null)
+    public SshClientService(AppSettings? settings = null, IAppLogger? logger = null)
     {
         _settings = settings ?? new AppSettings();
+        _logger = logger;
     }
 
     public bool IsConnected
@@ -64,6 +66,7 @@ public sealed class SshClientService : ISshClientService
         Disconnect();
 
         ct.ThrowIfCancellationRequested();
+        _logger?.Info($"SSH connect starting. Host={profile.Host}, Port={profile.Port}, User={profile.Username}, AuthMode={(string.IsNullOrWhiteSpace(profile.PrivateKeyPath) ? "password" : "private-key")}");
 
         var connInfo = BuildConnectionInfo(profile);
 
@@ -79,10 +82,19 @@ public sealed class SshClientService : ISshClientService
         // SSH.NET Connect() is synchronous; run off the thread-pool so the UI stays responsive.
         return Task.Run(() =>
         {
-            ct.ThrowIfCancellationRequested();
-            _sshClient!.Connect();
-            ct.ThrowIfCancellationRequested();
-            _sftpClient!.Connect();
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+                _sshClient!.Connect();
+                ct.ThrowIfCancellationRequested();
+                _sftpClient!.Connect();
+                _logger?.Info($"SSH connect completed. Host={profile.Host}, User={profile.Username}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"SSH connect failed. Host={profile.Host}, Port={profile.Port}, User={profile.Username}", ex);
+                throw;
+            }
         }, ct);
     }
 
@@ -90,14 +102,24 @@ public sealed class SshClientService : ISshClientService
     {
         ThrowIfDisposed();
         ct.ThrowIfCancellationRequested();
+        _logger?.Info($"SSH test starting. Host={profile.Host}, Port={profile.Port}, User={profile.Username}, AuthMode={(string.IsNullOrWhiteSpace(profile.PrivateKeyPath) ? "password" : "private-key")}");
 
         return Task.Run(() =>
         {
-            var connInfo = BuildConnectionInfo(profile);
-            using var testClient = new SshClient(connInfo);
-            AttachFingerprintCapture(testClient);
-            testClient.Connect();
-            testClient.Disconnect();
+            try
+            {
+                var connInfo = BuildConnectionInfo(profile);
+                using var testClient = new SshClient(connInfo);
+                AttachFingerprintCapture(testClient);
+                testClient.Connect();
+                testClient.Disconnect();
+                _logger?.Info($"SSH test succeeded. Host={profile.Host}, User={profile.Username}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"SSH test failed. Host={profile.Host}, Port={profile.Port}, User={profile.Username}", ex);
+                throw;
+            }
         }, ct);
     }
 
@@ -106,15 +128,23 @@ public sealed class SshClientService : ISshClientService
     {
         EnsureConnected();
 
-        using var cmd = _sshClient!.CreateCommand(command);
-        cmd.CommandTimeout = _settings.CommandTimeout;
+        try
+        {
+            using var cmd = _sshClient!.CreateCommand(command);
+            cmd.CommandTimeout = _settings.CommandTimeout;
 
-        // Link the caller's token with the command timeout so whichever fires first wins.
-        using var timeoutCts = new CancellationTokenSource(_settings.CommandTimeout);
-        using var linked     = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+            // Link the caller's token with the command timeout so whichever fires first wins.
+            using var timeoutCts = new CancellationTokenSource(_settings.CommandTimeout);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
-        await Task.Run(() => cmd.Execute(), linked.Token);
-        return (cmd.Result, cmd.Error, cmd.ExitStatus ?? -1);
+            await Task.Run(() => cmd.Execute(), linked.Token);
+            return (cmd.Result, cmd.Error, cmd.ExitStatus ?? -1);
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error("SSH remote command execution failed.", ex);
+            throw;
+        }
     }
 
     public Task<IInteractiveShellSession> StartInteractiveShellSessionAsync(
@@ -151,9 +181,18 @@ public sealed class SshClientService : ISshClientService
         EnsureConnected();
         return Task.Run(() =>
         {
-            ct.ThrowIfCancellationRequested();
-            using var stream = File.OpenRead(localPath);
-            _sftpClient!.UploadFile(stream, remotePath, canOverride: true);
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+                using var stream = File.OpenRead(localPath);
+                _sftpClient!.UploadFile(stream, remotePath, canOverride: true);
+                _logger?.Info($"Uploaded file to remote path: {remotePath}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Failed to upload file to remote path: {remotePath}", ex);
+                throw;
+            }
         }, ct);
     }
 
@@ -162,15 +201,25 @@ public sealed class SshClientService : ISshClientService
         EnsureConnected();
         return Task.Run(() =>
         {
-            ct.ThrowIfCancellationRequested();
-            using var stream = File.OpenWrite(localPath);
-            _sftpClient!.DownloadFile(remotePath, stream);
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+                using var stream = File.OpenWrite(localPath);
+                _sftpClient!.DownloadFile(remotePath, stream);
+                _logger?.Info($"Downloaded remote file: {remotePath}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Failed to download remote file: {remotePath}", ex);
+                throw;
+            }
         }, ct);
     }
 
     public Task DisconnectAsync()
     {
         Disconnect();
+        _logger?.Info("SSH disconnect completed.");
         return Task.CompletedTask;
     }
 
@@ -187,13 +236,21 @@ public sealed class SshClientService : ISshClientService
         EnsureConnected();
         return Task.Run<IReadOnlyList<string>>(() =>
         {
-            ct.ThrowIfCancellationRequested();
-            var entries = _sftpClient!.ListDirectory(remotePath);
-            return entries
-                .Where(e => e.IsDirectory && e.Name != "." && e.Name != "..")
-                .Select(e => e.Name)
-                .OrderBy(n => n)
-                .ToList();
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+                var entries = _sftpClient!.ListDirectory(remotePath);
+                return entries
+                    .Where(e => e.IsDirectory && e.Name != "." && e.Name != "..")
+                    .Select(e => e.Name)
+                    .OrderBy(n => n)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Failed to list remote directories: {remotePath}", ex);
+                throw;
+            }
         }, ct);
     }
 
@@ -214,7 +271,7 @@ public sealed class SshClientService : ISshClientService
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[SshClientService.ListFilesAsync] {remotePath}: {ex.Message}");
+                _logger?.Warning($"Failed to list remote files under '{remotePath}': {ex.Message}");
                 return Array.Empty<string>();
             }
         }, ct);
@@ -225,10 +282,19 @@ public sealed class SshClientService : ISshClientService
         EnsureConnected();
         return Task.Run(() =>
         {
-            ct.ThrowIfCancellationRequested();
-            using var ms = new MemoryStream();
-            _sftpClient!.DownloadFile(remotePath, ms);
-            return Encoding.UTF8.GetString(ms.ToArray());
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+                using var ms = new MemoryStream();
+                _sftpClient!.DownloadFile(remotePath, ms);
+                _logger?.Info($"Read remote text file: {remotePath}");
+                return Encoding.UTF8.GetString(ms.ToArray());
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Failed to read remote text file: {remotePath}", ex);
+                throw;
+            }
         }, ct);
     }
 
@@ -237,10 +303,19 @@ public sealed class SshClientService : ISshClientService
         EnsureConnected();
         return Task.Run(() =>
         {
-            ct.ThrowIfCancellationRequested();
-            using var ms = new MemoryStream();
-            _sftpClient!.DownloadFile(remotePath, ms);
-            return ms.ToArray();
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+                using var ms = new MemoryStream();
+                _sftpClient!.DownloadFile(remotePath, ms);
+                _logger?.Info($"Read remote binary file: {remotePath}");
+                return ms.ToArray();
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Failed to read remote binary file: {remotePath}", ex);
+                throw;
+            }
         }, ct);
     }
 
@@ -249,10 +324,19 @@ public sealed class SshClientService : ISshClientService
         EnsureConnected();
         return Task.Run(() =>
         {
-            ct.ThrowIfCancellationRequested();
-            var bytes = Encoding.UTF8.GetBytes(content);
-            using var ms = new MemoryStream(bytes);
-            _sftpClient!.UploadFile(ms, remotePath, canOverride: true);
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+                var bytes = Encoding.UTF8.GetBytes(content);
+                using var ms = new MemoryStream(bytes);
+                _sftpClient!.UploadFile(ms, remotePath, canOverride: true);
+                _logger?.Info($"Wrote remote text file: {remotePath}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Failed to write remote text file: {remotePath}", ex);
+                throw;
+            }
         }, ct);
     }
 
@@ -261,9 +345,18 @@ public sealed class SshClientService : ISshClientService
         EnsureConnected();
         return Task.Run(() =>
         {
-            ct.ThrowIfCancellationRequested();
-            using var ms = new MemoryStream(content, writable: false);
-            _sftpClient!.UploadFile(ms, remotePath, canOverride: true);
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+                using var ms = new MemoryStream(content, writable: false);
+                _sftpClient!.UploadFile(ms, remotePath, canOverride: true);
+                _logger?.Info($"Wrote remote binary file: {remotePath}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Failed to write remote binary file: {remotePath}", ex);
+                throw;
+            }
         }, ct);
     }
 
