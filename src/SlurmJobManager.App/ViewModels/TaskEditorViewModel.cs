@@ -2053,7 +2053,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             var blueprint = BuildBlueprintRecord(dialogVm.BlueprintName, dialogVm.BlueprintDescription, scope);
             await _blueprints.SaveAsync(blueprint, scope, overwriteByName: overwrite, ct);
             SetStatus(string.Format(L("Task.BlueprintSaveSucceeded"), blueprint.Name), "SuccessTextStyle", localize: false);
-            _logger?.Info($"Blueprint saved. Name='{blueprint.Name}', TaskId='{TaskId}', Scope='{scope.ScopeKey}'.");
+            _logger?.Info($"Blueprint saved. Name='{blueprint.Name}', TaskId='{TaskId}', Scope='{TaskBlueprintScope.BuildScopeKey(scope.HostOrAddress, scope.Username)}'.");
         }
         catch (Exception ex)
         {

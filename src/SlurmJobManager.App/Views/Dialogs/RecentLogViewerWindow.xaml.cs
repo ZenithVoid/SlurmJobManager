@@ -1,4 +1,5 @@
 using System.Windows;
+using SlurmJobManager.App.Services;
 
 namespace SlurmJobManager.App.Views.Dialogs;
 
@@ -23,9 +24,11 @@ public partial class RecentLogViewerWindow : Window
         {
             Clipboard.SetText(LogContent ?? string.Empty);
         }
-        catch
+        catch (Exception ex)
         {
-            // best effort
+            var format = Application.Current?.TryFindResource("Settings.CopyDataDirFailedFormat") as string
+                         ?? "Failed to copy log content: {0}";
+            ToastService.Instance.Error(string.Format(format, ex.Message));
         }
     }
 

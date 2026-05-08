@@ -1,3 +1,4 @@
+using System.IO;
 using System.IO.Compression;
 using SlurmJobManager.Core.Services;
 
@@ -13,11 +14,18 @@ public sealed class LogFileService : ILogFileService
 
     public string? GetLatestAppLogFilePath()
     {
-        EnsureLogsDirectory();
-        return Directory
-            .EnumerateFiles(LogsDirectory, AppLogPattern, SearchOption.TopDirectoryOnly)
-            .OrderByDescending(File.GetLastWriteTimeUtc)
-            .FirstOrDefault();
+        try
+        {
+            EnsureLogsDirectory();
+            return Directory
+                .EnumerateFiles(LogsDirectory, AppLogPattern, SearchOption.TopDirectoryOnly)
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .FirstOrDefault();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public string ReadFileText(string filePath)
@@ -34,7 +42,14 @@ public sealed class LogFileService : ILogFileService
         if (File.Exists(fullZipPath))
             File.Delete(fullZipPath);
 
-        ZipFile.CreateFromDirectory(LogsDirectory, fullZipPath, CompressionLevel.Optimal, includeBaseDirectory: true);
-        return fullZipPath;
+        try
+        {
+            ZipFile.CreateFromDirectory(LogsDirectory, fullZipPath, CompressionLevel.Optimal, includeBaseDirectory: false);
+            return fullZipPath;
+        }
+        catch (IOException ex)
+        {
+            throw new InvalidOperationException($"Unable to export logs archive: {ex.Message}", ex);
+        }
     }
 }
