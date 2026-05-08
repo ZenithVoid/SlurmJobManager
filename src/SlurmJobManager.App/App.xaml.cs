@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Threading;
 using SlurmJobManager.App.Services;
 using SlurmJobManager.App.Services.CrashHandling;
+using SlurmJobManager.App.Services.Validation;
 using SlurmJobManager.App.ViewModels;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
@@ -48,6 +49,7 @@ public partial class App : Application
         var slurm    = new SlurmService(ssh, settings, _logger);
         var storage  = new TaskStorageService();
         var blueprints = new TaskBlueprintService();
+        var taskValidationService = new TaskValidationService(ssh);
         ILastTaskContextService lastTaskContextService = new LastTaskContextService(_logger);
         var logChunk = new SshLogChunkService(ssh, settings, _logger);
         INotificationService notificationService = new WindowsNotificationService(_logger);
@@ -63,7 +65,7 @@ public partial class App : Application
 
         // ViewModels
         var connectionVm = new ConnectionViewModel(ssh, profileStore, recentConnectionService);
-        var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints, prefs, lastTaskContextService);
+        var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints, taskValidationService, prefs, lastTaskContextService);
         var monitorVm    = new MonitorViewModel(slurm, settings, _logger, connectionVm, notificationService);
         var logViewerVm  = new LogViewerViewModel(logChunk, _logger);
         var consoleVm    = new ConsoleViewModel(ssh, _logger, connectionVm);

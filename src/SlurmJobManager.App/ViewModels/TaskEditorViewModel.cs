@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Input;
 using Microsoft.Win32;
 using SlurmJobManager.App.Services;
+using SlurmJobManager.App.Services.Validation;
 using SlurmJobManager.App.ViewModels.Dialogs;
 using SlurmJobManager.App.Views;
 using SlurmJobManager.App.Views.Dialogs;
@@ -29,6 +30,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private readonly ISlurmService _slurm;
     private readonly ITaskStorageService _storage;
     private readonly ITaskBlueprintService _blueprints;
+    private readonly ITaskValidationService _taskValidationService;
     private readonly AppPreferencesService _prefs;
     private readonly ILastTaskContextService? _lastTaskContextService;
     private Func<string, Task<bool>>? _openInConsoleAsync;
@@ -42,6 +44,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private static readonly string[] AppSourceDirs = { "/env/preprocess/out", "/env/preprocess/bin" };
     private const string RemoteTemplateDir = "/env/preprocess/out/config";
     private const int MaxTaskIdLength = 200;
+    private const string DefaultValidationAccount = "preproc";
 
     // ── Scalar backing fields ────────────────────────────────────────────────
     private string _rootDirectory = string.Empty;
@@ -498,6 +501,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         ISlurmService slurm,
         ITaskStorageService storage,
         ITaskBlueprintService blueprints,
+        ITaskValidationService taskValidationService,
         AppPreferencesService prefs,
         ILastTaskContextService? lastTaskContextService = null,
         Func<string, Task<bool>>? openInConsoleAsync = null)
@@ -506,6 +510,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         _slurm   = slurm   ?? throw new ArgumentNullException(nameof(slurm));
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _blueprints = blueprints ?? throw new ArgumentNullException(nameof(blueprints));
+        _taskValidationService = taskValidationService ?? throw new ArgumentNullException(nameof(taskValidationService));
         _prefs = prefs ?? throw new ArgumentNullException(nameof(prefs));
         _lastTaskContextService = lastTaskContextService;
         _openInConsoleAsync = openInConsoleAsync;
@@ -2420,12 +2425,9 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private async Task SaveTaskAsync(CancellationToken ct)
     {
-        if (!ValidateRootAndId()) return;
-        if (!IsSshConnectedSafe())
-        {
-            SetStatus("Task.RequireConnection", "WarningTextStyle");
+        if (!await ValidateBeforeActionAsync(TaskValidationOperation.Save, ct))
             return;
-        }
+
         IsBusy = true;
         SetStatus("Task.Saving", "InfoTextStyle");
         try
@@ -2606,7 +2608,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private async Task SubmitJobAsync(CancellationToken ct)
     {
-        if (!ValidateSubmitRequirements()) return;
+        if (!await ValidateBeforeActionAsync(TaskValidationOperation.Submit, ct))
+            return;
 
         if (_selectedTaskUnit == null)
         {
@@ -2814,6 +2817,167 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         return string.Empty;
     }
 
+    private async Task<bool> ValidateBeforeActionAsync(TaskValidationOperation operation, CancellationToken ct)
+    {
+        EnsureAtLeastOneTaskUnit();
+        if (_selectedTaskUnit == null)
+        {
+            SetStatus("Task.NoActiveUnit", "WarningTextStyle");
+            return false;
+        }
+
+        SyncToSelectedUnit();
+        var dialogVm = new TaskValidationDialogViewModel(
+            _taskValidationService,
+            BuildValidationContext,
+            ExecuteValidationQuickFixAsync,
+            operation);
+        await dialogVm.RefreshAsync(ct);
+
+        if (!dialogVm.HasAnyIssue)
+            return true;
+
+        var dialog = new TaskValidationDialogView { DataContext = dialogVm };
+        if (Application.Current.MainWindow is { } mainWindow)
+            dialog.Owner = mainWindow;
+
+        var continueRequested = dialog.ShowDialog() == true && dialogVm.ContinueRequested && dialogVm.CanContinue;
+        if (continueRequested)
+            return true;
+
+        SetStatus("Task.Validation.Cancelled", "WarningTextStyle");
+        if (operation == TaskValidationOperation.Submit)
+        {
+            LastSubmitStatusStyleKey = "WarningTextStyle";
+            LastSubmitStatusMessage = L("Task.Validation.Cancelled");
+            LastSubmitStageLabel = L("Task.Validation.StageBlocked");
+            LastSubmitNextSteps = L("Task.Validation.NextSteps");
+            OnPropertyChanged(nameof(HasLastSubmitDiagnostics));
+        }
+
+        return false;
+    }
+
+    private TaskValidationContext BuildValidationContext()
+    {
+        EnsureAtLeastOneTaskUnit();
+        var unit = _selectedTaskUnit;
+        var options = unit?.SbatchOptions is null ? new SbatchJobOptions() : CloneSbatchOptions(unit.SbatchOptions);
+        var appPath = unit?.Programs.FirstOrDefault()?.ProgramPath ?? AppPath;
+        var workDir = ResolveWorkDirForSubmit(unit);
+        var sbatchTemplate = !string.IsNullOrWhiteSpace(unit?.SbatchTemplate)
+            ? unit!.SbatchTemplate!
+            : SbatchTemplate;
+        var parameterFiles = unit == null
+            ? Array.Empty<string>()
+            : unit.ParamFiles
+                .Select(p => p.FilePath)
+                .Concat(unit.Commands.SelectMany(c => c.ParameterFiles))
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+        return new TaskValidationContext
+        {
+            IsSshConnected = IsSshConnectedSafe(),
+            RootDirectory = RootDirectory,
+            TaskId = TaskId,
+            EffectiveWorkDirectory = workDir,
+            AppPath = appPath,
+            SbatchTemplate = sbatchTemplate,
+            SbatchOptions = options,
+            ParameterFiles = parameterFiles,
+            DefaultAccount = DefaultValidationAccount,
+        };
+    }
+
+    private async Task<string?> ExecuteValidationQuickFixAsync(TaskValidationIssue issue, CancellationToken ct)
+    {
+        EnsureAtLeastOneTaskUnit();
+        if (_selectedTaskUnit == null)
+            return L("Task.NoActiveUnit");
+
+        var workDir = NormalizeRemotePath(ResolveWorkDirForSubmit(_selectedTaskUnit));
+        switch (issue.QuickFixKind)
+        {
+            case TaskValidationQuickFixKind.CreateWorkDirectory:
+            {
+                if (string.IsNullOrWhiteSpace(workDir))
+                    return L("Task.Validation.WorkDirRequiredDetail");
+
+                var escaped = EscapeShellArg(workDir);
+                var (_, stderr, exitCode) = await _ssh.ExecuteAsync($"mkdir -p {escaped}/logs", ct);
+                if (exitCode != 0)
+                    throw new InvalidOperationException(string.IsNullOrWhiteSpace(stderr) ? L("Task.RemoteWorkDirPrepareFailedNoDetail") : stderr.Trim());
+
+                CurrentTaskFilesPath = workDir;
+                return string.Format(L("Task.Validation.FixCreateWorkDirSuccess"), CollapseHomePath(workDir));
+            }
+            case TaskValidationQuickFixKind.MaterializeParameterCopies:
+            {
+                if (string.IsNullOrWhiteSpace(workDir))
+                    return L("Task.Validation.WorkDirRequiredDetail");
+
+                var copied = await MaterializeUnitParamFilesToWorkDirAsync(_selectedTaskUnit.ToModel(), workDir, ct);
+                return string.Format(L("Task.Validation.FixMaterializeSuccess"), copied.Count);
+            }
+            case TaskValidationQuickFixKind.RefreshQueueMetadata:
+            {
+                var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync("sinfo --noheader --format=\"%P\"", ct);
+                if (exitCode != 0)
+                    throw new InvalidOperationException(string.IsNullOrWhiteSpace(stderr) ? L("Task.Validation.QueueMetadataMissingDetail") : stderr.Trim());
+
+                var queueCount = stdout
+                    .Replace("\r\n", "\n")
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(line => line.Trim().TrimEnd('*'))
+                    .Where(line => !string.IsNullOrWhiteSpace(line))
+                    .Distinct(StringComparer.Ordinal)
+                    .Count();
+                return string.Format(L("Task.Validation.FixRefreshQueuesSuccess"), queueCount);
+            }
+            case TaskValidationQuickFixKind.FillDefaultAccount:
+            {
+                _selectedTaskUnit.SbatchOptions.Account = DefaultValidationAccount;
+                _selectedTaskUnit.SbatchTemplate = SetOrAppendSbatchDirective(_selectedTaskUnit.SbatchTemplate, "--account", DefaultValidationAccount);
+                return string.Format(L("Task.Validation.FixDefaultAccountSuccess"), DefaultValidationAccount);
+            }
+            default:
+                return null;
+        }
+    }
+
+    private static string SetOrAppendSbatchDirective(string? sbatchTemplate, string directiveName, string directiveValue)
+    {
+        var normalized = (sbatchTemplate ?? string.Empty).Replace("\r\n", "\n");
+        var lines = normalized.Split('\n').ToList();
+        var prefix = $"#SBATCH {directiveName}";
+        var replaced = false;
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var trimmed = lines[i].TrimStart();
+            if (!trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            lines[i] = $"{prefix}={directiveValue}";
+            replaced = true;
+            break;
+        }
+
+        if (!replaced)
+        {
+            var insertIndex = lines.FindIndex(static line => line.TrimStart().StartsWith("#SBATCH ", StringComparison.OrdinalIgnoreCase));
+            if (insertIndex < 0)
+                insertIndex = lines.FindIndex(static line => line.TrimStart().StartsWith("#!", StringComparison.Ordinal));
+            if (insertIndex >= 0)
+                lines.Insert(insertIndex + 1, $"{prefix}={directiveValue}");
+            else
+                lines.Insert(0, $"{prefix}={directiveValue}");
+        }
+
+        return string.Join("\n", lines);
+    }
+
     private bool CanBrowseRootDirectory()
         => !IsDisposed && IsSshConnectedSafe();
 
@@ -2835,13 +2999,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
     private bool CanSubmit() =>
         !IsDisposed
-        && !IsBusy
-        && IsSshConnectedSafe()
-        && !string.IsNullOrWhiteSpace(RootDirectory)
-        && !string.IsNullOrWhiteSpace(TaskId)
-        && !string.IsNullOrWhiteSpace(ResolveWorkDirForSubmit(_selectedTaskUnit))
-        && (!string.IsNullOrWhiteSpace(AppPath)
-            || (_selectedTaskUnit?.Programs.Any(p => !string.IsNullOrWhiteSpace(p.ProgramPath)) == true));
+        && !IsBusy;
 
     private bool ValidateRootAndId()
     {
