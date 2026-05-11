@@ -5,7 +5,7 @@ namespace SlurmJobManager.App.Services.Updates;
 
 internal static class UpdatePackageNaming
 {
-    private const string ProductPrefix = "SlurmJobManager-";
+    private const string ProductPrefix = "SlurmPilot-";
     private static readonly string[] SupportedPackageExtensions = [".zip", ".exe", ".msi"];
 
     public static bool IsSupportedPackage(string path)

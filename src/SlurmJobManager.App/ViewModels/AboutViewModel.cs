@@ -15,7 +15,7 @@ public sealed class AboutViewModel : ViewModelBase
     private const string CopyrightNoticeFileName = "COPYRIGHT";
     private const string ThirdPartyNoticesFileName = "THIRD_PARTY_NOTICES.md";
     private const string MaintainerFallback = "ZenithVoid";
-    private const string ProductNameFallback = "Slurm Job Manager";
+    private const string ProductNameFallback = "SlurmPilot";
     private readonly Action _checkUpdatesAction;
     private readonly IExternalTargetOpener _externalTargetOpener;
 

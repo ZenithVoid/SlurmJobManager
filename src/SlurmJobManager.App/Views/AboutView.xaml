@@ -33,7 +33,7 @@
                         <Image Width="52"
                                Height="52"
                                Stretch="Uniform"
-                               Source="pack://application:,,,/SlurmJobManager.App;component/Assets/AppIcon/server-palm.ico"
+                               Source="pack://application:,,,/SlurmJobManager.App;component/Assets/AppIcon/slurmpilot.ico"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center" />
                     </Border>

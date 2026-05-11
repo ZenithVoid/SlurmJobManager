@@ -8,7 +8,7 @@ param(
     [string]$RuntimeIdentifier = "win-x64",
     [string]$Notes = "",
     [string]$PublishedAtUtc,
-    [string]$PackageNamePrefix = "SlurmJobManager",
+    [string]$PackageNamePrefix = "SlurmPilot",
     [string]$AppProjectName = "SlurmJobManager.App",
     [switch]$GenerateLegacyVersionJson
 )
@@ -97,7 +97,7 @@ function Build-LatestManifestObject {
 
     return [ordered]@{
         version      = $Version
-        title        = "SlurmJobManager $Version"
+        title        = "SlurmPilot $Version"
         packageType  = $PackageType
         fileName     = $PackageFileName
         relativePath = $PackageFileName
@@ -120,7 +120,7 @@ function Build-LegacyVersionManifestObject {
 
     return [ordered]@{
         version     = $Version
-        title       = "SlurmJobManager $Version"
+        title       = "SlurmPilot $Version"
         package     = $PackageFileName
         publishedAt = $PublishedAt
         notes       = $NotesText
@@ -154,7 +154,7 @@ if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
 }
 
-$tempStageRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("SlurmJobManagerReleaseArtifacts_" + [System.Guid]::NewGuid().ToString("N"))
+$tempStageRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("SlurmPilotReleaseArtifacts_" + [System.Guid]::NewGuid().ToString("N"))
 $tempPublishCopy = Join-Path $tempStageRoot "publish"
 
 try {

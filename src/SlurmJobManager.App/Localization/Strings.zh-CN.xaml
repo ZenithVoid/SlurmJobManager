@@ -19,9 +19,9 @@
     <sys:String x:Key="Nav.About">关于</sys:String>
 
     <!-- ── 应用标题 ─────────────────────────────────────────────────────── -->
-    <sys:String x:Key="App.Title">Slurm 作业管理器</sys:String>
-    <sys:String x:Key="App.TitleLine1">Slurm 作业</sys:String>
-    <sys:String x:Key="App.TitleLine2">管理器</sys:String>
+    <sys:String x:Key="App.Title">SlurmPilot</sys:String>
+    <sys:String x:Key="App.TitleLine1">SlurmPilot</sys:String>
+    <sys:String x:Key="App.TitleLine2">集群作业</sys:String>
 
     <!-- ── 通用按钮 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Btn.Refresh">刷新</sys:String>
@@ -284,8 +284,8 @@
     <sys:String x:Key="Settings.ReleasePackagingOpenOutputFailed">打开发布产物目录失败。</sys:String>
     <sys:String x:Key="Settings.ReleasePackagingOpenOutputFailedFormat">打开发布产物目录失败：{0}</sys:String>
     <sys:String x:Key="Settings.About">关于</sys:String>
-    <sys:String x:Key="Settings.AppName">Slurm 作业管理器</sys:String>
-    <sys:String x:Key="Settings.AppDesc">一款用于通过 SSH 提交、监控和调试 Slurm HPC 作业的现代 WPF 应用。</sys:String>
+    <sys:String x:Key="Settings.AppName">SlurmPilot</sys:String>
+    <sys:String x:Key="Settings.AppDesc">SlurmPilot 集群作业管理软件是一款用于通过 SSH 提交、监控和调试 Slurm HPC 作业的现代 WPF 应用。</sys:String>
 
     <!-- ── 关于页面 ───────────────────────────────────────────────────────── -->
     <sys:String x:Key="About.Title">关于</sys:String>
@@ -298,7 +298,7 @@
     <sys:String x:Key="About.LicenseLabel">许可证：</sys:String>
     <sys:String x:Key="About.RepositoryLabel">项目仓库：</sys:String>
     <sys:String x:Key="About.DescriptionTitle">软件简介</sys:String>
-    <sys:String x:Key="About.DescriptionBody">Slurm Job Manager 是一款用于 HPC 环境的 WPF 桌面应用，可用于规范化的 Slurm 任务配置、提交、监控与排障。</sys:String>
+    <sys:String x:Key="About.DescriptionBody">SlurmPilot 集群作业管理软件是一款用于 HPC 环境的 WPF 桌面应用，可用于规范化的 Slurm 任务配置、提交、监控与排障。</sys:String>
     <sys:String x:Key="About.FeaturesTitle">主要功能概述</sys:String>
     <sys:String x:Key="About.Feature1">基于 SSH 的远程集群连接与配置管理</sys:String>
     <sys:String x:Key="About.Feature2">结构化 sbatch 配置与脚本生成</sys:String>

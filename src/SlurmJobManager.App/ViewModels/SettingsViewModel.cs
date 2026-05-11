@@ -906,7 +906,7 @@ public sealed class SettingsViewModel : ViewModelBase
         try
         {
             _logFileService.EnsureLogsDirectory();
-            var defaultZipName = $"SlurmJobManager-logs-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
+            var defaultZipName = $"SlurmPilot-logs-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
             var saveDialog = new SaveFileDialog
             {
                 Title = L("Settings.ExportLogsDialogTitle"),
