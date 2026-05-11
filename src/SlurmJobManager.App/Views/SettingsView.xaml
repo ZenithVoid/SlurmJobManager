@@ -220,8 +220,48 @@
                             Foreground="{DynamicResource TextMutedBrush}"
                             FontSize="12"
                             FontWeight="SemiBold"
-                            Text="ⓘ"
-                            ToolTip="{DynamicResource Settings.LocalDataDesc}" />
+                            Text="ⓘ">
+                            <TextBlock.ToolTip>
+                                <ToolTip Style="{StaticResource AppToolTipStyle}" MaxWidth="720">
+                                    <StackPanel>
+                                        <TextBlock
+                                            Foreground="{DynamicResource TextPrimaryBrush}"
+                                            Text="{DynamicResource Settings.LocalDataDesc}"
+                                            TextWrapping="Wrap" />
+                                        <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="• " />
+                                            <Run Text="{DynamicResource Settings.LocalDataTasks}" />
+                                            <Run Text="{Binding TasksDirectory, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="• " />
+                                            <Run Text="{DynamicResource Settings.LocalDataBlueprints}" />
+                                            <Run Text="{Binding BlueprintsDirectory, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="• " />
+                                            <Run Text="{DynamicResource Settings.LocalDataLogs}" />
+                                            <Run Text="{Binding LogsDirectory, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="• " />
+                                            <Run Text="{DynamicResource Settings.LocalDataRecentConnections}" />
+                                            <Run Text="{Binding RecentConnectionsFilePath, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="• " />
+                                            <Run Text="{DynamicResource Settings.LocalDataPreferences}" />
+                                            <Run Text="{Binding PreferencesFilePath, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="• " />
+                                            <Run Text="{DynamicResource Settings.LocalDataLastTaskContexts}" />
+                                            <Run Text="{Binding LastTaskContextsFilePath, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </ToolTip>
+                            </TextBlock.ToolTip>
+                        </TextBlock>
                     </StackPanel>
                     <TextBox
                         Margin="0,0,0,8"
@@ -242,61 +282,6 @@
                             Content="{DynamicResource Settings.CopyDataDirectory}"
                             Style="{StaticResource NeutralButtonStyle}" />
                     </StackPanel>
-
-                    <TextBlock
-                        Margin="0,6,0,0"
-                        Foreground="{DynamicResource TextPrimaryBrush}"
-                        TextWrapping="Wrap"
-                        ToolTip="{Binding TasksDirectory, Mode=OneWay}">
-                        <Run Text="• " />
-                        <Run Text="{DynamicResource Settings.LocalDataTasks}" />
-                        <Run Text="{Binding TasksDirectory, Mode=OneWay}" />
-                    </TextBlock>
-                    <TextBlock
-                        Margin="0,2,0,0"
-                        Foreground="{DynamicResource TextPrimaryBrush}"
-                        TextWrapping="Wrap"
-                        ToolTip="{Binding BlueprintsDirectory, Mode=OneWay}">
-                        <Run Text="• " />
-                        <Run Text="{DynamicResource Settings.LocalDataBlueprints}" />
-                        <Run Text="{Binding BlueprintsDirectory, Mode=OneWay}" />
-                    </TextBlock>
-                    <TextBlock
-                        Margin="0,2,0,0"
-                        Foreground="{DynamicResource TextPrimaryBrush}"
-                        TextWrapping="Wrap"
-                        ToolTip="{Binding LogsDirectory, Mode=OneWay}">
-                        <Run Text="• " />
-                        <Run Text="{DynamicResource Settings.LocalDataLogs}" />
-                        <Run Text="{Binding LogsDirectory, Mode=OneWay}" />
-                    </TextBlock>
-                    <TextBlock
-                        Margin="0,2,0,0"
-                        Foreground="{DynamicResource TextPrimaryBrush}"
-                        TextWrapping="Wrap"
-                        ToolTip="{Binding RecentConnectionsFilePath, Mode=OneWay}">
-                        <Run Text="• " />
-                        <Run Text="{DynamicResource Settings.LocalDataRecentConnections}" />
-                        <Run Text="{Binding RecentConnectionsFilePath, Mode=OneWay}" />
-                    </TextBlock>
-                    <TextBlock
-                        Margin="0,2,0,0"
-                        Foreground="{DynamicResource TextPrimaryBrush}"
-                        TextWrapping="Wrap"
-                        ToolTip="{Binding PreferencesFilePath, Mode=OneWay}">
-                        <Run Text="• " />
-                        <Run Text="{DynamicResource Settings.LocalDataPreferences}" />
-                        <Run Text="{Binding PreferencesFilePath, Mode=OneWay}" />
-                    </TextBlock>
-                    <TextBlock
-                        Margin="0,2,0,0"
-                        Foreground="{DynamicResource TextPrimaryBrush}"
-                        TextWrapping="Wrap"
-                        ToolTip="{Binding LastTaskContextsFilePath, Mode=OneWay}">
-                        <Run Text="• " />
-                        <Run Text="{DynamicResource Settings.LocalDataLastTaskContexts}" />
-                        <Run Text="{Binding LastTaskContextsFilePath, Mode=OneWay}" />
-                    </TextBlock>
                 </StackPanel>
             </Border>
 
