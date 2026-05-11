@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.App.Services;
+using SlurmJobManager.App.Services.ExternalTargets;
 using SlurmJobManager.App.Services.Logging;
 using SlurmJobManager.App.Services.Packaging;
 using SlurmJobManager.App.Services.Updates;
@@ -142,6 +143,7 @@ public sealed class MainViewModel : ViewModelBase
         IUpdateLaunchService updateLaunchService,
         IPackagingFeatureAuthorizationService packagingFeatureAuthorizationService,
         ILogFileService logFileService,
+        IExternalTargetOpener externalTargetOpener,
         IAppLogger? logger = null)
     {
         Connection = connection ?? throw new ArgumentNullException(nameof(connection));
@@ -177,8 +179,9 @@ public sealed class MainViewModel : ViewModelBase
             updateLaunchService,
             packagingFeatureAuthorizationService,
             logFileService,
+            externalTargetOpener,
             logger);
-        About     = new AboutViewModel(versionService, () =>
+        About     = new AboutViewModel(versionService, externalTargetOpener, () =>
         {
             ActivateTab("Settings");
             if (Settings.CheckForUpdatesCommand.CanExecute(null))

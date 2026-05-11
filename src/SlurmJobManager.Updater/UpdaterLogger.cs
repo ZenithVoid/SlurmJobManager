@@ -53,8 +53,8 @@ internal sealed class UpdaterLogger : IDisposable
             return Path.GetFullPath(preferredPath);
 
         return Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "SlurmJobManager",
+            AppContext.BaseDirectory,
+            "Data",
             "logs",
             "updater.log");
     }

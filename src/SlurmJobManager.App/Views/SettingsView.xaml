@@ -212,7 +212,17 @@
                         Style="{StaticResource MutedTextStyle}"
                         TextWrapping="Wrap" />
 
-                    <TextBlock Text="{DynamicResource Settings.LocalDataRootLabel}" Style="{StaticResource FieldLabelStyle}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                        <TextBlock Text="{DynamicResource Settings.LocalDataRootLabel}" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock
+                            Margin="6,0,0,0"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource TextMutedBrush}"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Text="ⓘ"
+                            ToolTip="{DynamicResource Settings.LocalDataDesc}" />
+                    </StackPanel>
                     <TextBox
                         Margin="0,0,0,8"
                         IsReadOnly="True"
@@ -233,7 +243,6 @@
                             Style="{StaticResource NeutralButtonStyle}" />
                     </StackPanel>
 
-                    <TextBlock Text="{DynamicResource Settings.LocalDataDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
                     <TextBlock
                         Margin="0,6,0,0"
                         Foreground="{DynamicResource TextPrimaryBrush}"
@@ -320,36 +329,39 @@
                         TextWrapping="Wrap" />
 
                     <TextBlock Text="{DynamicResource Settings.UpdateProxyModeLabel}" Style="{StaticResource FieldLabelStyle}" />
-                    <ComboBox SelectedIndex="{Binding SelectedUpdateProxyModeIndex, Mode=TwoWay}" Margin="0,0,0,4">
+                    <ComboBox
+                        SelectedIndex="{Binding SelectedUpdateProxyModeIndex, Mode=TwoWay}"
+                        Margin="0,0,0,4"
+                        MinHeight="32"
+                        VerticalContentAlignment="Center">
                         <ComboBoxItem Content="{DynamicResource Settings.UpdateProxyModeNoProxy}" />
                         <ComboBoxItem Content="{DynamicResource Settings.UpdateProxyModeSystem}" />
                         <ComboBoxItem Content="{DynamicResource Settings.UpdateProxyModeCustom}" />
                     </ComboBox>
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeNoProxyDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyModeSystemDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
                     <TextBlock
                         Margin="0,0,0,8"
                         Text="{DynamicResource Settings.UpdateProxyModeCustomDesc}"
                         Style="{StaticResource MutedTextStyle}"
-                        TextWrapping="Wrap" />
+                        TextWrapping="Wrap"
+                        Visibility="{Binding IsUpdateProxyDetailVisible, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
 
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyHostLabel}" Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox
-                        Margin="0,0,0,4"
-                        IsEnabled="{Binding IsCustomUpdateProxyMode, Mode=OneWay}"
-                        Text="{Binding UpdateCustomProxyHost, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                    <TextBlock
-                        Margin="0,0,0,8"
-                        Text="{DynamicResource Settings.UpdateProxyHostDesc}"
-                        Style="{StaticResource MutedTextStyle}"
-                        TextWrapping="Wrap" />
+                    <StackPanel Visibility="{Binding ShouldShowCustomProxyFields, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{DynamicResource Settings.UpdateProxyHostLabel}" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBox
+                            Margin="0,0,0,4"
+                            Text="{Binding UpdateCustomProxyHost, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            Text="{DynamicResource Settings.UpdateProxyHostDesc}"
+                            Style="{StaticResource MutedTextStyle}"
+                            TextWrapping="Wrap" />
 
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyPortLabel}" Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox
-                        Margin="0,0,0,4"
-                        IsEnabled="{Binding IsCustomUpdateProxyMode, Mode=OneWay}"
-                        Text="{Binding UpdateCustomProxyPortText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                    <TextBlock Text="{DynamicResource Settings.UpdateProxyPortDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Settings.UpdateProxyPortLabel}" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBox
+                            Margin="0,0,0,4"
+                            Text="{Binding UpdateCustomProxyPortText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        <TextBlock Text="{DynamicResource Settings.UpdateProxyPortDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+                    </StackPanel>
 
                     <TextBlock Margin="0,10,0,4" Text="{DynamicResource Settings.NetworkActionsLabel}" Style="{StaticResource FieldLabelStyle}" />
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">

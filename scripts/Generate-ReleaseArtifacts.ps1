@@ -170,7 +170,8 @@ try {
 
     $staleDirs = @(
         (Join-Path $tempPublishCopy ".updater-backup"),
-        (Join-Path $tempPublishCopy "logs")
+        (Join-Path $tempPublishCopy "logs"),
+        (Join-Path $tempPublishCopy "Data\logs")
     )
     foreach ($dir in $staleDirs) {
         if (Test-Path -LiteralPath $dir) {

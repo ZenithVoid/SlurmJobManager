@@ -6,26 +6,19 @@ namespace SlurmJobManager.Core.Services;
 public static class LocalDataPaths
 {
     /// <summary>
-    /// Roaming app-data root for shared runtime artifacts: %AppData%/SlurmJobManager
-    /// </summary>
-    public static string RoamingAppDataDirectory => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "SlurmJobManager");
-
-    /// <summary>
-    /// Centralized logs directory: %AppData%/SlurmJobManager/logs
-    /// </summary>
-    public static string LogsDirectory => Path.Combine(RoamingAppDataDirectory, "logs");
-
-    /// <summary>
-    /// Updater log file path: %AppData%/SlurmJobManager/logs/updater.log
-    /// </summary>
-    public static string UpdaterLogFilePath => Path.Combine(LogsDirectory, "updater.log");
-
-    /// <summary>
     /// Root data directory: &lt;AppBaseDirectory&gt;/Data
     /// </summary>
     public static string DataDirectory => Path.Combine(AppContext.BaseDirectory, "Data");
+
+    /// <summary>
+    /// Centralized logs directory: &lt;AppBaseDirectory&gt;/Data/logs
+    /// </summary>
+    public static string LogsDirectory => Path.Combine(DataDirectory, "logs");
+
+    /// <summary>
+    /// Updater log file path: &lt;AppBaseDirectory&gt;/Data/logs/updater.log
+    /// </summary>
+    public static string UpdaterLogFilePath => Path.Combine(LogsDirectory, "updater.log");
 
     /// <summary>
     /// Task data root directory: &lt;AppBaseDirectory&gt;/Data/tasks

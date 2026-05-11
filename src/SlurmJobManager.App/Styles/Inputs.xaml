@@ -116,6 +116,8 @@
         <Setter Property="BorderBrush"         Value="{DynamicResource BgSurface1Brush}" />
         <Setter Property="BorderThickness"     Value="1" />
         <Setter Property="Padding"             Value="7,5" />
+        <Setter Property="MinHeight"           Value="32" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="FocusVisualStyle"    Value="{x:Null}" />
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility"   Value="Auto" />
@@ -162,7 +164,7 @@
 
                         <!-- Selected item display (overlays the ToggleButton, non-interactive) -->
                         <ContentPresenter x:Name="ContentSite"
-                                          Margin="8,0,24,0"
+                                          Margin="8,4,24,4"
                                           IsHitTestVisible="False"
                                           HorizontalAlignment="Left"
                                           VerticalAlignment="Center"
