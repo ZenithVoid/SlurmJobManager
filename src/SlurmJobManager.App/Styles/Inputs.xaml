@@ -124,7 +124,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBox">
-                    <Grid>
+                    <Grid x:Name="TemplateRoot" SnapsToDevicePixels="True">
                         <!-- ToggleButton provides the border, background and dropdown arrow -->
                         <ToggleButton x:Name="ToggleButton"
                                       Focusable="False"
@@ -175,19 +175,21 @@
                         <!-- Dropdown popup -->
                         <Popup x:Name="PART_Popup"
                                Placement="Bottom"
+                               PlacementTarget="{Binding ElementName=ToggleButton}"
                                IsOpen="{TemplateBinding IsDropDownOpen}"
                                AllowsTransparency="True"
-                               Focusable="False">
-                            <Border MinWidth="{TemplateBinding ActualWidth}"
-                                    MaxHeight="{TemplateBinding MaxDropDownHeight}"
-                                    Background="{DynamicResource BgSurface0Brush}"
-                                    BorderBrush="{DynamicResource BgSurface2Brush}"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Margin="0,2,0,0">
-                                <ScrollViewer SnapsToDevicePixels="True">
-                                    <StackPanel IsItemsHost="True"
-                                                KeyboardNavigation.DirectionalNavigation="Contained" />
+                               Focusable="False"
+                               PopupAnimation="Slide">
+                            <Border Width="{Binding ActualWidth, ElementName=TemplateRoot}"
+                                     MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                     Background="{DynamicResource BgSurface0Brush}"
+                                     BorderBrush="{DynamicResource BgSurface2Brush}"
+                                     BorderThickness="1"
+                                     CornerRadius="6"
+                                     Margin="0,2,0,0">
+                                <ScrollViewer SnapsToDevicePixels="True"
+                                              CanContentScroll="True">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
                                 </ScrollViewer>
                             </Border>
                         </Popup>
