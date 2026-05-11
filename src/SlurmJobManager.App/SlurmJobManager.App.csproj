@@ -30,8 +30,10 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <UpdaterProjectPath>$(MSBuildProjectDirectory)/../SlurmJobManager.Updater/SlurmJobManager.Updater.csproj</UpdaterProjectPath>
-    <UpdaterOutputBaseDirectory>$(MSBuildProjectDirectory)/../SlurmJobManager.Updater/bin/$(Configuration)/net8.0-windows</UpdaterOutputBaseDirectory>
+    <UpdaterTargetFramework>net8.0-windows</UpdaterTargetFramework>
+    <UpdaterProjectDirectory>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../SlurmJobManager.Updater'))</UpdaterProjectDirectory>
+    <UpdaterProjectPath>$(UpdaterProjectDirectory)/SlurmJobManager.Updater.csproj</UpdaterProjectPath>
+    <UpdaterOutputBaseDirectory>$(UpdaterProjectDirectory)/bin/$(Configuration)/$(UpdaterTargetFramework)</UpdaterOutputBaseDirectory>
     <UpdaterOutputRidDirectory>$(UpdaterOutputBaseDirectory)/$(RuntimeIdentifier)</UpdaterOutputRidDirectory>
   </PropertyGroup>
 
@@ -52,9 +54,14 @@
       <UpdaterRequiredArtifact Include="$(UpdaterResolvedOutputDirectory)/SlurmJobManager.Updater.deps.json" />
       <UpdaterRequiredArtifact Include="$(UpdaterResolvedOutputDirectory)/SlurmJobManager.Updater.runtimeconfig.json" />
       <MissingUpdaterRequiredArtifact Include="@(UpdaterRequiredArtifact)" Condition="!Exists('%(UpdaterRequiredArtifact.Identity)')" />
-      <UpdaterArtifactsToCopy Include="$(UpdaterResolvedOutputDirectory)/**/*.*" />
-      <UpdaterArtifactsToCopy Remove="$(UpdaterResolvedOutputDirectory)/win-*/**/*.*"
+      <!--
+        Non-RID updater output is expected to be a flat directory for this project, so only top-level files are copied.
+        RID-specific output may contain runtime subdirectories and therefore uses recursive copy.
+      -->
+      <UpdaterArtifactsToCopy Include="$(UpdaterResolvedOutputDirectory)/*.*"
                               Condition="'$(UpdaterResolvedOutputDirectory)' == '$(UpdaterOutputBaseDirectory)'" />
+      <UpdaterArtifactsToCopy Include="$(UpdaterResolvedOutputDirectory)/**/*.*"
+                              Condition="'$(UpdaterResolvedOutputDirectory)' != '$(UpdaterOutputBaseDirectory)'" />
     </ItemGroup>
     <Error Condition="'@(UpdaterLaunchArtifactFound)' == ''"
            Text="Missing updater launch artifact from '$(UpdaterResolvedOutputDirectory)'. Expected one of: @(UpdaterLaunchArtifactCandidate, ', '). App Configuration='$(Configuration)', RuntimeIdentifier='$(RuntimeIdentifier)'." />
@@ -65,14 +72,14 @@
   <Target Name="CopyUpdaterArtifactsToBuildOutput" AfterTargets="Build">
     <CallTarget Targets="_ResolveUpdaterArtifacts" />
     <Copy SourceFiles="@(UpdaterArtifactsToCopy)"
-          DestinationFiles="@(UpdaterArtifactsToCopy->'$(OutDir)Updater/%(RecursiveDir)%(Filename)%(Extension)')"
+          DestinationFiles="@(UpdaterArtifactsToCopy->'$(OutDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 
   <Target Name="CopyUpdaterArtifactsToPublishOutput" AfterTargets="Publish">
     <CallTarget Targets="_ResolveUpdaterArtifacts" />
     <Copy SourceFiles="@(UpdaterArtifactsToCopy)"
-          DestinationFiles="@(UpdaterArtifactsToCopy->'$(PublishDir)Updater/%(RecursiveDir)%(Filename)%(Extension)')"
+          DestinationFiles="@(UpdaterArtifactsToCopy->'$(PublishDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 </Project>
