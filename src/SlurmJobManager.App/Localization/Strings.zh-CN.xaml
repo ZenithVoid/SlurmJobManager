@@ -21,7 +21,7 @@
     <!-- ── 应用标题 ─────────────────────────────────────────────────────── -->
     <sys:String x:Key="App.Title">SlurmPilot</sys:String>
     <sys:String x:Key="App.TitleLine1">SlurmPilot</sys:String>
-    <sys:String x:Key="App.TitleLine2"></sys:String>
+    <sys:String x:Key="App.TitleLine2">集群作业</sys:String>
 
     <!-- ── 通用按钮 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Btn.Refresh">刷新</sys:String>
