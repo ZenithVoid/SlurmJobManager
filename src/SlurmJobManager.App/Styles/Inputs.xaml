@@ -115,16 +115,19 @@
         <Setter Property="Foreground"          Value="{DynamicResource TextPrimaryBrush}" />
         <Setter Property="BorderBrush"         Value="{DynamicResource BgSurface1Brush}" />
         <Setter Property="BorderThickness"     Value="1" />
-        <Setter Property="Padding"             Value="7,5" />
-        <Setter Property="MinHeight"           Value="32" />
+        <Setter Property="Padding"             Value="10,5" />
+        <Setter Property="MinHeight"           Value="34" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="FocusVisualStyle"    Value="{x:Null}" />
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility"   Value="Auto" />
+        <Setter Property="ScrollViewer.CanContentScroll" Value="False" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBox">
-                    <Grid x:Name="TemplateRoot" SnapsToDevicePixels="True">
+                    <Grid x:Name="TemplateRoot"
+                          SnapsToDevicePixels="True"
+                          MinHeight="{TemplateBinding MinHeight}">
                         <!-- ToggleButton provides the border, background and dropdown arrow -->
                         <ToggleButton x:Name="ToggleButton"
                                       Focusable="False"
@@ -164,7 +167,7 @@
 
                         <!-- Selected item display (overlays the ToggleButton, non-interactive) -->
                         <ContentPresenter x:Name="ContentSite"
-                                          Margin="8,4,24,4"
+                                          Margin="10,0,30,0"
                                           IsHitTestVisible="False"
                                           HorizontalAlignment="Left"
                                           VerticalAlignment="Center"
@@ -175,19 +178,21 @@
                         <!-- Dropdown popup -->
                         <Popup x:Name="PART_Popup"
                                Placement="Bottom"
-                               PlacementTarget="{Binding ElementName=ToggleButton}"
+                               PlacementTarget="{Binding ElementName=TemplateRoot}"
                                IsOpen="{TemplateBinding IsDropDownOpen}"
                                AllowsTransparency="True"
                                Focusable="False"
-                               PopupAnimation="Slide">
+                               PopupAnimation="Fade">
                             <Border MinWidth="{Binding ActualWidth, ElementName=TemplateRoot}"
-                                     MaxHeight="{TemplateBinding MaxDropDownHeight}"
-                                     Background="{DynamicResource BgSurface0Brush}"
-                                     BorderBrush="{DynamicResource BgSurface2Brush}"
-                                     BorderThickness="1"
-                                     CornerRadius="6"
-                                     Margin="0,2,0,0">
-                                <ScrollViewer SnapsToDevicePixels="True">
+                                      MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                      Background="{DynamicResource BgSurface0Brush}"
+                                      BorderBrush="{DynamicResource BgSurface2Brush}"
+                                      BorderThickness="1"
+                                      CornerRadius="6"
+                                      Margin="0,4,0,0"
+                                      SnapsToDevicePixels="True">
+                                <ScrollViewer SnapsToDevicePixels="True"
+                                              CanContentScroll="False">
                                     <StackPanel IsItemsHost="True"
                                                 KeyboardNavigation.DirectionalNavigation="Contained" />
                                 </ScrollViewer>

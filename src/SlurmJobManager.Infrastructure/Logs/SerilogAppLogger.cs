@@ -52,6 +52,7 @@ public sealed class SerilogAppLogger : IAppLogger, IDisposable
                 logFilePath,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 14,
+                shared: true,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
     }

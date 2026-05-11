@@ -14,7 +14,9 @@
         <conv:StyleKeyToStyleConverter x:Key="StyleKeyToStyle" />
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0"
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  Padding="0,0,4,0"
                   b:SmoothScrollBehavior.IsEnabled="True"
                   b:SmoothScrollBehavior.ScrollAmount="60"
                   b:MouseWheelRoutingBehavior.IsEnabled="True">
@@ -126,30 +128,34 @@
                              </Style>
                          </TextBlock.Style>
                      </TextBlock>
-                     <ItemsControl ItemsSource="{Binding ActiveUnit.Commands}">
-                         <ItemsControl.Style>
-                             <Style TargetType="ItemsControl">
-                                 <Setter Property="Visibility" Value="Visible" />
-                                 <Style.Triggers>
-                                     <DataTrigger Binding="{Binding ActiveUnit.Commands.Count}" Value="0">
-                                         <Setter Property="Visibility" Value="Collapsed" />
-                                     </DataTrigger>
-                                 </Style.Triggers>
-                             </Style>
-                         </ItemsControl.Style>
-                         <ItemsControl.ItemTemplate>
-                             <DataTemplate DataType="{x:Type vm:CommandEntryViewModel}">
-                                  <TextBlock Text="{Binding CommandLine}"
-                                            FontFamily="Consolas" FontSize="11"
-                                            Foreground="{DynamicResource AccentYellowBrush}"
-                                            TextTrimming="CharacterEllipsis"
-                                            ToolTip="{Binding CommandLine}"
-                                            Margin="0,1" />
-                             </DataTemplate>
-                         </ItemsControl.ItemTemplate>
-                     </ItemsControl>
-                 </DockPanel>
-             </Border>
+                      <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                    VerticalScrollBarVisibility="Auto"
+                                    MaxHeight="160">
+                          <ItemsControl ItemsSource="{Binding ActiveUnit.Commands}">
+                              <ItemsControl.Style>
+                                  <Style TargetType="ItemsControl">
+                                      <Setter Property="Visibility" Value="Visible" />
+                                      <Style.Triggers>
+                                          <DataTrigger Binding="{Binding ActiveUnit.Commands.Count}" Value="0">
+                                              <Setter Property="Visibility" Value="Collapsed" />
+                                          </DataTrigger>
+                                      </Style.Triggers>
+                                  </Style>
+                              </ItemsControl.Style>
+                              <ItemsControl.ItemTemplate>
+                                  <DataTemplate DataType="{x:Type vm:CommandEntryViewModel}">
+                                       <TextBlock Text="{Binding CommandLine}"
+                                                 FontFamily="Consolas" FontSize="11"
+                                                 Foreground="{DynamicResource AccentYellowBrush}"
+                                                 TextWrapping="NoWrap"
+                                                 ToolTip="{Binding CommandLine}"
+                                                 Margin="0,1" />
+                                  </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                      </ScrollViewer>
+                  </DockPanel>
+              </Border>
 
             <TextBlock Text="{DynamicResource Task.SaveLoadScopeHint}"
                        Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,4" />

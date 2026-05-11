@@ -29,7 +29,18 @@ public sealed class LogFileService : ILogFileService
     }
 
     public string ReadFileText(string filePath)
-        => File.ReadAllText(filePath);
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentException("Log file path cannot be empty.", nameof(filePath));
+
+        using var stream = new FileStream(
+            filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream, detectEncodingFromByteOrderMarks: true);
+        return reader.ReadToEnd();
+    }
 
     public string ExportLogsZip(string destinationZipPath)
     {
