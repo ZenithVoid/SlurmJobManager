@@ -169,15 +169,19 @@ try {
         Remove-Item -Force
 
     $staleDirs = @(
-        (Join-Path $tempPublishCopy ".updater-backup"),
-        (Join-Path $tempPublishCopy "logs"),
-        (Join-Path $tempPublishCopy "Data\logs")
+        (Join-Path $tempPublishCopy ".updater-backup")
     )
     foreach ($dir in $staleDirs) {
         if (Test-Path -LiteralPath $dir) {
             Remove-Item -LiteralPath $dir -Recurse -Force
         }
     }
+
+    Get-ChildItem -LiteralPath $tempPublishCopy -Recurse -Directory |
+        Where-Object { $_.Name -ieq "logs" } |
+        ForEach-Object {
+            Remove-Item -LiteralPath $_.FullName -Recurse -Force
+        }
 
     [System.IO.Compression.ZipFile]::CreateFromDirectory(
         $tempPublishCopy,

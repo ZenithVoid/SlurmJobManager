@@ -328,7 +328,7 @@
                         Text="{DynamicResource Settings.UpdateProxyModeCustomDesc}"
                         Style="{StaticResource MutedTextStyle}"
                         TextWrapping="Wrap"
-                        Visibility="{Binding IsUpdateProxyDetailVisible, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                        Visibility="{Binding ShouldShowCustomProxyFields, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
 
                     <StackPanel Visibility="{Binding ShouldShowCustomProxyFields, Mode=OneWay, Converter={StaticResource BoolToVis}}">
                         <TextBlock Text="{DynamicResource Settings.UpdateProxyHostLabel}" Style="{StaticResource FieldLabelStyle}" />

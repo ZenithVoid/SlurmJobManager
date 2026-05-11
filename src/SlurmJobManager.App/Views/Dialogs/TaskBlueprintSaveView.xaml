@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
     mc:Ignorable="d"
     Title="{DynamicResource Task.BlueprintSaveTitle}"
     Width="480"
@@ -11,16 +12,67 @@
     MinWidth="420"
     MinHeight="260"
     WindowStartupLocation="CenterOwner"
-    Background="{DynamicResource BgBaseBrush}">
-    <Grid Margin="14">
+    WindowStyle="None"
+    AllowsTransparency="False"
+    ResizeMode="CanResize"
+    Background="{DynamicResource BgBaseBrush}"
+    Foreground="{DynamicResource TextPrimaryBrush}">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome
+            CaptionHeight="36"
+            ResizeBorderThickness="5"
+            GlassFrameThickness="0,0,0,1"
+            CornerRadius="0" />
+    </shell:WindowChrome.WindowChrome>
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="36" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Background="{DynamicResource BgPanelBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Border Background="Transparent"
+                        HorizontalAlignment="Stretch"
+                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown" />
+                <TextBlock Text="{DynamicResource Task.BlueprintSaveTitle}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           IsHitTestVisible="False" />
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top">
+                    <Button x:Name="BtnMinimize"
+                            Style="{StaticResource TitleBarButtonStyle}"
+                            ToolTip="{DynamicResource TitleBar.Minimize}"
+                            Click="BtnMinimize_Click">
+                        <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+                    </Button>
+                    <Button x:Name="BtnClose"
+                            Style="{StaticResource TitleBarCloseButtonStyle}"
+                            ToolTip="{DynamicResource TitleBar.Close}"
+                            Click="BtnClose_Click">
+                        <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="14">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0"
                    Text="{DynamicResource Task.BlueprintName}"
@@ -44,18 +96,19 @@
                    Margin="0,8,0,8"
                    TextWrapping="Wrap" />
 
-        <StackPanel Grid.Row="5"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right">
-            <Button Content="{DynamicResource Btn.Save}"
-                    Style="{StaticResource SuccessButtonStyle}"
-                    Padding="12,5"
-                    Margin="0,0,8,0"
-                    Click="BtnSave_Click" />
-            <Button Content="{DynamicResource Btn.Cancel}"
-                    Style="{StaticResource NeutralButtonStyle}"
-                    Padding="12,5"
-                    Click="BtnCancel_Click" />
-        </StackPanel>
+            <StackPanel Grid.Row="5"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <Button Content="{DynamicResource Btn.Save}"
+                        Style="{StaticResource SuccessButtonStyle}"
+                        Padding="12,5"
+                        Margin="0,0,8,0"
+                        Click="BtnSave_Click" />
+                <Button Content="{DynamicResource Btn.Cancel}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        Padding="12,5"
+                        Click="BtnCancel_Click" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>
