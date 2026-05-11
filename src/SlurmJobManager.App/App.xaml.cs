@@ -43,7 +43,7 @@ public partial class App : Application
         // Logging (must be initialised early so the crash handler can write to it)
         var logger = new SerilogAppLogger();
         _logger = logger;
-        logger.Info("SlurmJobManager starting up.");
+        logger.Info("SlurmPilot starting up.");
 
         // Wire global unhandled-exception hooks after logging is ready
         RegisterCrashHandlers();
@@ -53,7 +53,7 @@ public partial class App : Application
         ILogFileService logFileService = new LogFileService();
         IExternalTargetOpener externalTargetOpener = new ShellExternalTargetOpener();
         IApplicationVersionService versionService = new ApplicationVersionService();
-        logger.Info($"SlurmJobManager version: {versionService.CurrentVersionDisplay} (Comparable={versionService.CurrentVersion})");
+        logger.Info($"SlurmPilot version: {versionService.CurrentVersionDisplay} (Comparable={versionService.CurrentVersion})");
         IUpdateCheckService updateCheckService = new UpdateCheckService(versionService, logger);
         IUpdateLaunchService updateLaunchService = new UpdateLaunchService(versionService);
         IPackagingFeatureAuthorizationService packagingFeatureAuthorizationService = new PackagingFeatureAuthorizationService(logger);
@@ -385,7 +385,7 @@ public partial class App : Application
             if (_sshService != null)
                 await RunBoundedAsync(() => Task.Run(_sshService.Dispose), TimeSpan.FromSeconds(3));
 
-            _logger?.Info("SlurmJobManager shut down.");
+            _logger?.Info("SlurmPilot shut down.");
             try { _logger?.Dispose(); } catch { /* best effort */ }
         }
         finally

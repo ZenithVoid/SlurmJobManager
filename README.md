@@ -1,4 +1,4 @@
-# SlurmJobManager
+# SlurmPilot
 
 A Windows WPF desktop application for submitting, monitoring, and debugging Slurm HPC jobs over SSH.
 
@@ -31,7 +31,7 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 > - 若未找到 Updater 关键产物（`.exe` / `.deps.json` / `.runtimeconfig.json`），构建会输出包含已搜索路径、Configuration、RID 的诊断错误信息。
 
 脚本输出目录包含：
-- `SlurmJobManager-<version>-<rid>.zip`
+- `SlurmPilot-<version>-<rid>.zip`
 - `latest.json`
 
 可选参数：

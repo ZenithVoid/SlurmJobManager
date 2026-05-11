@@ -19,9 +19,9 @@
     <sys:String x:Key="Nav.About">About</sys:String>
 
     <!-- ── App title ──────────────────────────────────────────────────── -->
-    <sys:String x:Key="App.Title">Slurm Job Manager</sys:String>
-    <sys:String x:Key="App.TitleLine1">Slurm Job</sys:String>
-    <sys:String x:Key="App.TitleLine2">Manager</sys:String>
+    <sys:String x:Key="App.Title">SlurmPilot</sys:String>
+    <sys:String x:Key="App.TitleLine1">SlurmPilot</sys:String>
+    <sys:String x:Key="App.TitleLine2"></sys:String>
 
     <!-- ── Common buttons ───────────────────────────────────────────────── -->
     <sys:String x:Key="Btn.Refresh">Refresh</sys:String>
@@ -284,8 +284,8 @@
     <sys:String x:Key="Settings.ReleasePackagingOpenOutputFailed">Failed to open release output directory.</sys:String>
     <sys:String x:Key="Settings.ReleasePackagingOpenOutputFailedFormat">Failed to open release output directory: {0}</sys:String>
     <sys:String x:Key="Settings.About">About</sys:String>
-    <sys:String x:Key="Settings.AppName">Slurm Job Manager</sys:String>
-    <sys:String x:Key="Settings.AppDesc">A modern WPF application for submitting, monitoring, and debugging Slurm HPC jobs over SSH.</sys:String>
+    <sys:String x:Key="Settings.AppName">SlurmPilot</sys:String>
+    <sys:String x:Key="Settings.AppDesc">SlurmPilot 集群作业管理软件 is a modern WPF desktop application for submitting, monitoring, and debugging Slurm HPC jobs over SSH.</sys:String>
 
     <!-- ── About view ────────────────────────────────────────────────────── -->
     <sys:String x:Key="About.Title">About</sys:String>
@@ -298,7 +298,7 @@
     <sys:String x:Key="About.LicenseLabel">License: </sys:String>
     <sys:String x:Key="About.RepositoryLabel">Repository: </sys:String>
     <sys:String x:Key="About.DescriptionTitle">Product Description</sys:String>
-    <sys:String x:Key="About.DescriptionBody">Slurm Job Manager is a WPF desktop application for standardized Slurm task setup, submission, monitoring, and troubleshooting in HPC environments.</sys:String>
+    <sys:String x:Key="About.DescriptionBody">SlurmPilot 集群作业管理软件 is a WPF desktop application for standardized Slurm task setup, submission, monitoring, and troubleshooting in HPC environments.</sys:String>
     <sys:String x:Key="About.FeaturesTitle">Key Features</sys:String>
     <sys:String x:Key="About.Feature1">SSH-based remote cluster connection and profile management</sys:String>
     <sys:String x:Key="About.Feature2">Structured sbatch configuration and script generation</sys:String>

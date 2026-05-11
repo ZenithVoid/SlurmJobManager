@@ -7,7 +7,7 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>SlurmJobManager.App</RootNamespace>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <ApplicationIcon>Assets\AppIcon\server-palm.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\AppIcon\slurmpilot.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,7 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Assets\AppIcon\server-palm.ico" />
+    <Resource Include="Assets\AppIcon\slurmpilot.ico" />
+    <Resource Include="Assets\AppIcon\slurmpilot.png" />
   </ItemGroup>
 
   <ItemGroup>

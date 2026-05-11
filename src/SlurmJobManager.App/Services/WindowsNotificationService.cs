@@ -58,7 +58,7 @@ public sealed class WindowsNotificationService : INotificationService
     private static string BuildPowerShellScript(string xml)
     {
         var escapedXml = xml.Replace("'", "''", StringComparison.Ordinal);
-        const string appId = "SlurmJobManager";
+        const string appId = "SlurmPilot";
         return string.Join("; ", new[]
         {
             "$ErrorActionPreference = 'Stop'",

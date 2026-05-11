@@ -41,7 +41,7 @@ internal static class Program
     {
         MessageBox.Show(
             $"{message}{Environment.NewLine}{Environment.NewLine}日志：{logPath}",
-            "SlurmJobManager Updater",
+            "SlurmPilot Updater",
             MessageBoxButton.OK,
             MessageBoxImage.Error);
     }
