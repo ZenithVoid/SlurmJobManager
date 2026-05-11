@@ -40,8 +40,9 @@ public partial class App : Application
         var settings = new AppSettings();
 
         // Logging (must be initialised early so the crash handler can write to it)
-        _logger = new SerilogAppLogger();
-        _logger.Info("SlurmJobManager starting up.");
+        var logger = new SerilogAppLogger();
+        _logger = logger;
+        logger.Info("SlurmJobManager starting up.");
 
         // Wire global unhandled-exception hooks after logging is ready
         RegisterCrashHandlers();
@@ -50,37 +51,37 @@ public partial class App : Application
         var prefs = new AppPreferencesService();
         ILogFileService logFileService = new LogFileService();
         IApplicationVersionService versionService = new ApplicationVersionService();
-        _logger?.Info($"SlurmJobManager version: {versionService.CurrentVersionDisplay} (Comparable={versionService.CurrentVersion})");
-        IUpdateCheckService updateCheckService = new UpdateCheckService(versionService, _logger);
+        logger.Info($"SlurmJobManager version: {versionService.CurrentVersionDisplay} (Comparable={versionService.CurrentVersion})");
+        IUpdateCheckService updateCheckService = new UpdateCheckService(versionService, logger);
         IUpdateLaunchService updateLaunchService = new UpdateLaunchService(versionService);
-        IPackagingFeatureAuthorizationService packagingFeatureAuthorizationService = new PackagingFeatureAuthorizationService(_logger);
+        IPackagingFeatureAuthorizationService packagingFeatureAuthorizationService = new PackagingFeatureAuthorizationService(logger);
 
         // Infrastructure services (one SSH client shared across all consumers)
-        var ssh      = new SshClientService(settings, _logger);
+        var ssh      = new SshClientService(settings, logger);
         _sshService = ssh;
-        var slurm    = new SlurmService(ssh, settings, _logger);
+        var slurm    = new SlurmService(ssh, settings, logger);
         var storage  = new TaskStorageService();
         var blueprints = new TaskBlueprintService();
         var taskValidationService = new TaskValidationService(ssh);
-        ILastTaskContextService lastTaskContextService = new LastTaskContextService(_logger);
-        var logChunk = new SshLogChunkService(ssh, settings, _logger);
-        INotificationService notificationService = new WindowsNotificationService(_logger);
+        ILastTaskContextService lastTaskContextService = new LastTaskContextService(logger);
+        var logChunk = new SshLogChunkService(ssh, settings, logger);
+        INotificationService notificationService = new WindowsNotificationService(logger);
 
         // Credential protection (DPAPI, Windows-only)
         IConnectionProfileStore? profileStore = null;
         if (DpapiCredentialProtector.IsSupported)
         {
             var protector = new DpapiCredentialProtector();
-            profileStore  = new ConnectionProfileStore(protector, _logger);
+            profileStore  = new ConnectionProfileStore(protector, logger);
         }
-        IRecentConnectionService recentConnectionService = new RecentConnectionService(_logger);
+        IRecentConnectionService recentConnectionService = new RecentConnectionService(logger);
 
         // ViewModels
-        var connectionVm = new ConnectionViewModel(ssh, profileStore, recentConnectionService, _logger);
-        var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints, taskValidationService, prefs, lastTaskContextService, logger: _logger);
-        var monitorVm    = new MonitorViewModel(slurm, settings, _logger, connectionVm, notificationService);
-        var logViewerVm  = new LogViewerViewModel(logChunk, _logger);
-        var consoleVm    = new ConsoleViewModel(ssh, _logger, connectionVm);
+        var connectionVm = new ConnectionViewModel(ssh, profileStore, recentConnectionService, logger);
+        var taskEditorVm = new TaskEditorViewModel(ssh, slurm, storage, blueprints, taskValidationService, prefs, lastTaskContextService, logger: logger);
+        var monitorVm    = new MonitorViewModel(slurm, settings, logger, connectionVm, notificationService);
+        var logViewerVm  = new LogViewerViewModel(logChunk, logger);
+        var consoleVm    = new ConsoleViewModel(ssh, logger, connectionVm);
 
         // Wire SSH connection → TaskEditor auto-fill and optional task auto-restore
         connectionVm.ConnectionEstablished += username =>
@@ -100,7 +101,7 @@ public partial class App : Application
             updateLaunchService,
             packagingFeatureAuthorizationService,
             logFileService,
-            _logger);
+            logger);
 
         // Default locale: zh-CN (loaded regardless of system language)
         _mainVm.ApplyLocale("zh-CN");

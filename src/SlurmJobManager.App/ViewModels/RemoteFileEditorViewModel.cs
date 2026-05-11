@@ -37,6 +37,8 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     private bool _isStructuredModeAvailable;
     private StructuredParameterFileFormat? _structuredFormat;
     private string _structuredRoundTripBaseline = string.Empty;
+    private bool _saveCompleted;
+    private bool _loadSucceeded;
     private TextEncodingDetectionResult _encodingDetection = new()
     {
         Encoding = new System.Text.UTF8Encoding(false),
@@ -63,11 +65,31 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         }
     }
 
-    public bool IsBusy { get => _isBusy; private set => SetField(ref _isBusy, value); }
+    public bool IsBusy
+    {
+        get => _isBusy;
+        private set
+        {
+            if (!SetField(ref _isBusy, value))
+                return;
+            OnPropertyChanged(nameof(CanSave));
+            OnPropertyChanged(nameof(CanReload));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
     public string StatusMessage { get => _statusMessage; set => SetField(ref _statusMessage, value); }
     public string StatusStyleKey { get => _statusStyleKey; private set => SetField(ref _statusStyleKey, value); }
     public string EncodingName { get => _encodingName; private set => SetField(ref _encodingName, value); }
-    public bool IsBinaryFile { get => _isBinaryFile; private set => SetField(ref _isBinaryFile, value); }
+    public bool IsBinaryFile
+    {
+        get => _isBinaryFile;
+        private set
+        {
+            if (!SetField(ref _isBinaryFile, value))
+                return;
+            OnPropertyChanged(nameof(CanSave));
+        }
+    }
     public bool IsDirty
     {
         get => _isDirty;
@@ -130,8 +152,25 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     }
 
     /// <summary>Set to <c>true</c> after a successful save so the view can close.</summary>
-    public bool SaveCompleted { get; private set; }
-    public bool LoadSucceeded { get; private set; }
+    public bool SaveCompleted
+    {
+        get => _saveCompleted;
+        private set => SetField(ref _saveCompleted, value);
+    }
+
+    public bool LoadSucceeded
+    {
+        get => _loadSucceeded;
+        private set
+        {
+            if (!SetField(ref _loadSucceeded, value))
+                return;
+            OnPropertyChanged(nameof(CanSave));
+        }
+    }
+
+    public bool CanSave => !IsBusy && LoadSucceeded && !IsBinaryFile;
+    public bool CanReload => !IsBusy;
 
     public ObservableCollection<StructuredParameterItemViewModel> StructuredItems { get; } = new();
 
