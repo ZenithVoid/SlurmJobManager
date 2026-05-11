@@ -1,9 +1,9 @@
-using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.App.Services;
+using SlurmJobManager.App.Services.ExternalTargets;
 using SlurmJobManager.App.Services.Updates;
 using SlurmJobManager.Core.Services;
 
@@ -17,10 +17,15 @@ public sealed class AboutViewModel : ViewModelBase
     private const string MaintainerFallback = "ZenithVoid";
     private const string ProductNameFallback = "Slurm Job Manager";
     private readonly Action _checkUpdatesAction;
+    private readonly IExternalTargetOpener _externalTargetOpener;
 
-    public AboutViewModel(IApplicationVersionService versionService, Action checkUpdatesAction)
+    public AboutViewModel(
+        IApplicationVersionService versionService,
+        IExternalTargetOpener externalTargetOpener,
+        Action checkUpdatesAction)
     {
         if (versionService is null) throw new ArgumentNullException(nameof(versionService));
+        _externalTargetOpener = externalTargetOpener ?? throw new ArgumentNullException(nameof(externalTargetOpener));
         _checkUpdatesAction = checkUpdatesAction ?? throw new ArgumentNullException(nameof(checkUpdatesAction));
 
         var assembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
@@ -78,26 +83,15 @@ public sealed class AboutViewModel : ViewModelBase
         }
     }
 
-    private static void OpenPathOrUrl(string pathOrUrl)
+    private void OpenPathOrUrl(string pathOrUrl)
     {
-        try
-        {
-            var started = Process.Start(new ProcessStartInfo
-            {
-                FileName = pathOrUrl,
-                UseShellExecute = true,
-            });
+        if (_externalTargetOpener.TryOpen(pathOrUrl, out var errorMessage))
+            return;
 
-            if (started == null)
-                ToastService.Instance.Error(L("About.OpenTargetFailed"));
-        }
-        catch (Exception ex)
-        {
-            ToastService.Instance.Error(string.Format(L("About.OpenTargetFailedFormat"), ex.Message));
-        }
+        ToastService.Instance.Error(string.Format(L("About.OpenTargetFailedFormat"), errorMessage ?? L("Settings.UnknownError")));
     }
 
-    private static void OpenBundledDocument(string path, string missingMessageKey)
+    private void OpenBundledDocument(string path, string missingMessageKey)
     {
         try
         {

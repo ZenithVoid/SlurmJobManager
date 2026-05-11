@@ -4,6 +4,7 @@ using Microsoft.Win32;
 using System.Windows;
 using System.Windows.Input;
 using SlurmJobManager.App.Services;
+using SlurmJobManager.App.Services.ExternalTargets;
 using SlurmJobManager.App.Services.Logging;
 using SlurmJobManager.App.Services.Packaging;
 using SlurmJobManager.App.Services.Updates;
@@ -39,6 +40,7 @@ public sealed class SettingsViewModel : ViewModelBase
     private readonly IApplicationVersionService _versionService;
     private readonly IUpdateLaunchService _updateLaunchService;
     private readonly ILogFileService _logFileService;
+    private readonly IExternalTargetOpener _externalTargetOpener;
     private readonly IAppLogger? _logger;
     private readonly PackagingFeatureAuthorizationResult _packagingAuthorizationResult;
 
@@ -77,6 +79,7 @@ public sealed class SettingsViewModel : ViewModelBase
         IUpdateLaunchService updateLaunchService,
         IPackagingFeatureAuthorizationService packagingFeatureAuthorizationService,
         ILogFileService logFileService,
+        IExternalTargetOpener externalTargetOpener,
         IAppLogger? logger = null)
     {
         _main = main ?? throw new ArgumentNullException(nameof(main));
@@ -85,6 +88,7 @@ public sealed class SettingsViewModel : ViewModelBase
         _versionService = versionService ?? throw new ArgumentNullException(nameof(versionService));
         _updateLaunchService = updateLaunchService ?? throw new ArgumentNullException(nameof(updateLaunchService));
         _logFileService = logFileService ?? throw new ArgumentNullException(nameof(logFileService));
+        _externalTargetOpener = externalTargetOpener ?? throw new ArgumentNullException(nameof(externalTargetOpener));
         _logger = logger;
         _packagingAuthorizationResult = (packagingFeatureAuthorizationService ?? throw new ArgumentNullException(nameof(packagingFeatureAuthorizationService))).EvaluateAuthorization();
 
@@ -340,10 +344,14 @@ public sealed class SettingsViewModel : ViewModelBase
 
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsCustomUpdateProxyMode));
+            OnPropertyChanged(nameof(IsUpdateProxyDetailVisible));
+            OnPropertyChanged(nameof(ShouldShowCustomProxyFields));
         }
     }
 
     public bool IsCustomUpdateProxyMode => _prefs.UpdateProxyMode == UpdateProxyMode.CustomProxy;
+    public bool IsUpdateProxyDetailVisible => _prefs.UpdateProxyMode != UpdateProxyMode.NoProxy;
+    public bool ShouldShowCustomProxyFields => _prefs.UpdateProxyMode == UpdateProxyMode.CustomProxy;
 
     public string UpdateCustomProxyHost
     {
@@ -803,23 +811,21 @@ public sealed class SettingsViewModel : ViewModelBase
         OpenPathOrUrl(_prefs.UpdateFolderPath);
     }
 
-    private static void OpenPathOrUrl(string pathOrUrl)
+    private bool TryOpenPathOrUrl(string pathOrUrl, string failedResourceKey, string failedFormatResourceKey)
     {
-        try
-        {
-            var started = Process.Start(new ProcessStartInfo
-            {
-                FileName = pathOrUrl,
-                UseShellExecute = true,
-            });
+        if (_externalTargetOpener.TryOpen(pathOrUrl, out var errorMessage))
+            return true;
 
-            if (started == null)
-                ToastService.Instance.Error(L("Settings.UpdateOpenTargetFailed"));
-        }
-        catch (Exception ex)
-        {
-            ToastService.Instance.Error(string.Format(L("Settings.UpdateOpenTargetFailedFormat"), ex.Message));
-        }
+        if (string.IsNullOrWhiteSpace(errorMessage))
+            ToastService.Instance.Error(L(failedResourceKey));
+        else
+            ToastService.Instance.Error(string.Format(L(failedFormatResourceKey), errorMessage));
+        return false;
+    }
+
+    private void OpenPathOrUrl(string pathOrUrl)
+    {
+        TryOpenPathOrUrl(pathOrUrl, "Settings.UpdateOpenTargetFailed", "Settings.UpdateOpenTargetFailedFormat");
     }
 
     private void OpenDataDirectory()
@@ -827,17 +833,7 @@ public sealed class SettingsViewModel : ViewModelBase
         try
         {
             Directory.CreateDirectory(LocalDataDirectory);
-            var started = Process.Start(new ProcessStartInfo
-            {
-                FileName = LocalDataDirectory,
-                UseShellExecute = true,
-            });
-
-            if (started == null)
-            {
-                ToastService.Instance.Error(L("Settings.OpenDataDirFailed"));
-                return;
-            }
+            TryOpenPathOrUrl(LocalDataDirectory, "Settings.OpenDataDirFailed", "Settings.OpenDataDirFailedFormat");
         }
         catch (Exception ex)
         {
@@ -863,17 +859,8 @@ public sealed class SettingsViewModel : ViewModelBase
         try
         {
             _logFileService.EnsureLogsDirectory();
-            var started = Process.Start(new ProcessStartInfo
-            {
-                FileName = _logFileService.LogsDirectory,
-                UseShellExecute = true,
-            });
-
-            if (started == null)
-            {
-                ToastService.Instance.Error(L("Settings.OpenLogsDirFailed"));
+            if (!TryOpenPathOrUrl(_logFileService.LogsDirectory, "Settings.OpenLogsDirFailed", "Settings.OpenLogsDirFailedFormat"))
                 return;
-            }
 
             _logger?.Info($"Opened logs directory: {_logFileService.LogsDirectory}");
         }
@@ -1087,13 +1074,7 @@ public sealed class SettingsViewModel : ViewModelBase
         try
         {
             Directory.CreateDirectory(outputDirectory);
-            var started = Process.Start(new ProcessStartInfo
-            {
-                FileName = outputDirectory,
-                UseShellExecute = true,
-            });
-
-            if (started is null)
+            if (!TryOpenPathOrUrl(outputDirectory, "Settings.ReleasePackagingOpenOutputFailed", "Settings.ReleasePackagingOpenOutputFailedFormat"))
                 ReleasePackagingStatusMessage = L("Settings.ReleasePackagingOpenOutputFailed");
         }
         catch (Exception ex)

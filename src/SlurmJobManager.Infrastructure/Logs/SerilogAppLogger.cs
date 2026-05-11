@@ -9,7 +9,7 @@ namespace SlurmJobManager.Infrastructure.Logs;
 /// <summary>
 /// Structured application logger backed by Serilog.
 /// Writes a daily-rolling log file under
-/// <c>%AppData%\SlurmJobManager\logs\app-.log</c> and retains the last 14 files.
+/// <c>&lt;AppBaseDirectory&gt;\Data\logs\app-.log</c> and retains the last 14 files.
 /// </summary>
 public sealed class SerilogAppLogger : IAppLogger, IDisposable
 {
@@ -21,7 +21,7 @@ public sealed class SerilogAppLogger : IAppLogger, IDisposable
     /// </summary>
     /// <param name="logDirectory">
     /// Optional override for the directory that receives log files.
-    /// Defaults to <c>%AppData%\SlurmJobManager\logs</c>.
+    /// Defaults to <c>&lt;AppBaseDirectory&gt;\Data\logs</c>.
     /// </param>
     /// <param name="minimumLevel">
     /// Minimum log event level to capture.
@@ -40,7 +40,7 @@ public sealed class SerilogAppLogger : IAppLogger, IDisposable
         {
             throw new InvalidOperationException(
                 $"Failed to create log directory '{dir}'. " +
-                "Ensure the application has write permission to %AppData%\\SlurmJobManager\\logs " +
+                "Ensure the application has write permission to <AppBaseDirectory>\\Data\\logs " +
                 "or supply an accessible path via the logDirectory parameter.", ex);
         }
 

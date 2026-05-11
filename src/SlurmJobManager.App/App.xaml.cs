@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Threading;
 using SlurmJobManager.App.Services;
 using SlurmJobManager.App.Services.CrashHandling;
+using SlurmJobManager.App.Services.ExternalTargets;
 using SlurmJobManager.App.Services.Logging;
 using SlurmJobManager.App.Services.Packaging;
 using SlurmJobManager.App.Services.Updates;
@@ -50,6 +51,7 @@ public partial class App : Application
         // App-level user preferences (auto-connect on startup, etc.)
         var prefs = new AppPreferencesService();
         ILogFileService logFileService = new LogFileService();
+        IExternalTargetOpener externalTargetOpener = new ShellExternalTargetOpener();
         IApplicationVersionService versionService = new ApplicationVersionService();
         logger.Info($"SlurmJobManager version: {versionService.CurrentVersionDisplay} (Comparable={versionService.CurrentVersion})");
         IUpdateCheckService updateCheckService = new UpdateCheckService(versionService, logger);
@@ -101,6 +103,7 @@ public partial class App : Application
             updateLaunchService,
             packagingFeatureAuthorizationService,
             logFileService,
+            externalTargetOpener,
             logger);
 
         // Default locale: zh-CN (loaded regardless of system language)
