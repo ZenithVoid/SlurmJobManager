@@ -220,8 +220,7 @@
                             Foreground="{DynamicResource TextMutedBrush}"
                             FontSize="12"
                             FontWeight="SemiBold"
-                            Text="ⓘ"
-                            ToolTipService.ShowDuration="60000">
+                            Text="ⓘ">
                             <TextBlock.ToolTip>
                                 <ToolTip Style="{StaticResource AppToolTipStyle}" MaxWidth="720">
                                     <StackPanel>

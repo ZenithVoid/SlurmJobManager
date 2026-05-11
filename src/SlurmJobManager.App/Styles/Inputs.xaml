@@ -180,16 +180,16 @@
                                AllowsTransparency="True"
                                Focusable="False"
                                PopupAnimation="Slide">
-                            <Border Width="{Binding ActualWidth, ElementName=TemplateRoot}"
+                            <Border MinWidth="{Binding ActualWidth, ElementName=TemplateRoot}"
                                      MaxHeight="{TemplateBinding MaxDropDownHeight}"
                                      Background="{DynamicResource BgSurface0Brush}"
                                      BorderBrush="{DynamicResource BgSurface2Brush}"
                                      BorderThickness="1"
                                      CornerRadius="6"
                                      Margin="0,2,0,0">
-                                <ScrollViewer SnapsToDevicePixels="True"
-                                              CanContentScroll="True">
-                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                                <ScrollViewer SnapsToDevicePixels="True">
+                                    <StackPanel IsItemsHost="True"
+                                                KeyboardNavigation.DirectionalNavigation="Contained" />
                                 </ScrollViewer>
                             </Border>
                         </Popup>
