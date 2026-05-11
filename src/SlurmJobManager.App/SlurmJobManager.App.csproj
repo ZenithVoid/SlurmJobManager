@@ -13,7 +13,6 @@
   <ItemGroup>
     <ProjectReference Include="..\SlurmJobManager.Core\SlurmJobManager.Core.csproj" />
     <ProjectReference Include="..\SlurmJobManager.Infrastructure\SlurmJobManager.Infrastructure.csproj" />
-    <ProjectReference Include="..\SlurmJobManager.Updater\SlurmJobManager.Updater.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,15 +29,44 @@
     <None Include="..\..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <Target Name="CopyUpdaterArtifacts" AfterTargets="Build">
-    <MSBuild Projects="..\SlurmJobManager.Updater\SlurmJobManager.Updater.csproj"
+  <PropertyGroup>
+    <UpdaterProjectPath>$(MSBuildProjectDirectory)/../SlurmJobManager.Updater/SlurmJobManager.Updater.csproj</UpdaterProjectPath>
+    <UpdaterOutputBaseDirectory>$(MSBuildProjectDirectory)/../SlurmJobManager.Updater/bin/$(Configuration)/net8.0-windows</UpdaterOutputBaseDirectory>
+    <UpdaterOutputRidDirectory>$(UpdaterOutputBaseDirectory)/$(RuntimeIdentifier)</UpdaterOutputRidDirectory>
+  </PropertyGroup>
+
+  <Target Name="_ResolveUpdaterArtifacts">
+    <MSBuild Projects="$(UpdaterProjectPath)"
              Targets="Build"
-             Properties="Configuration=$(Configuration)" />
+             Properties="Configuration=$(Configuration);RuntimeIdentifier=$(RuntimeIdentifier)" />
+    <PropertyGroup>
+      <UpdaterResolvedOutputDirectory Condition="'$(RuntimeIdentifier)' != '' and Exists('$(UpdaterOutputRidDirectory)')">$(UpdaterOutputRidDirectory)</UpdaterResolvedOutputDirectory>
+      <UpdaterResolvedOutputDirectory Condition="'$(UpdaterResolvedOutputDirectory)' == '' and Exists('$(UpdaterOutputBaseDirectory)')">$(UpdaterOutputBaseDirectory)</UpdaterResolvedOutputDirectory>
+    </PropertyGroup>
+    <Error Condition="'$(UpdaterResolvedOutputDirectory)' == ''"
+           Text="Unable to locate SlurmJobManager.Updater build output. Searched '$(UpdaterOutputRidDirectory)' and '$(UpdaterOutputBaseDirectory)'. App Configuration='$(Configuration)', RuntimeIdentifier='$(RuntimeIdentifier)', SelfContained='$(SelfContained)'. Ensure updater build/publish settings are compatible." />
     <ItemGroup>
-      <UpdaterBuildOutput Include="..\SlurmJobManager.Updater\bin\$(Configuration)\net8.0-windows\**\*.*" />
+      <UpdaterRequiredArtifact Include="$(UpdaterResolvedOutputDirectory)/SlurmJobManager.Updater.exe" />
+      <UpdaterRequiredArtifact Include="$(UpdaterResolvedOutputDirectory)/SlurmJobManager.Updater.deps.json" />
+      <UpdaterRequiredArtifact Include="$(UpdaterResolvedOutputDirectory)/SlurmJobManager.Updater.runtimeconfig.json" />
+      <MissingUpdaterRequiredArtifact Include="@(UpdaterRequiredArtifact)" Condition="!Exists('%(UpdaterRequiredArtifact.Identity)')" />
+      <UpdaterArtifactsToCopy Include="$(UpdaterResolvedOutputDirectory)/**/*.*" />
     </ItemGroup>
-    <Copy SourceFiles="@(UpdaterBuildOutput)"
-          DestinationFiles="@(UpdaterBuildOutput->'$(OutDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')"
+    <Error Condition="'@(MissingUpdaterRequiredArtifact)' != ''"
+           Text="Missing required updater artifacts from '$(UpdaterResolvedOutputDirectory)'. Missing: @(MissingUpdaterRequiredArtifact, ', '). App Configuration='$(Configuration)', RuntimeIdentifier='$(RuntimeIdentifier)'. Rebuild SlurmJobManager.Updater with matching publish/build settings." />
+  </Target>
+
+  <Target Name="CopyUpdaterArtifactsToBuildOutput" AfterTargets="Build">
+    <CallTarget Targets="_ResolveUpdaterArtifacts" />
+    <Copy SourceFiles="@(UpdaterArtifactsToCopy)"
+          DestinationFiles="@(UpdaterArtifactsToCopy->'$(OutDir)Updater/%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyUpdaterArtifactsToPublishOutput" AfterTargets="Publish">
+    <CallTarget Targets="_ResolveUpdaterArtifacts" />
+    <Copy SourceFiles="@(UpdaterArtifactsToCopy)"
+          DestinationFiles="@(UpdaterArtifactsToCopy->'$(PublishDir)Updater/%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 </Project>
