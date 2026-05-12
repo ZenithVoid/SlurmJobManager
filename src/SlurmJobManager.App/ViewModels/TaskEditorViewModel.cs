@@ -48,6 +48,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private const string RemoteTemplateDir = "/env/preprocess/out/config";
     private const int MaxTaskIdLength = 200;
     private const string DefaultValidationAccount = "preproc";
+    private const string StableSbatchFileName = "submit.sbatch";
 
     // ── Scalar backing fields ────────────────────────────────────────────────
     private string _rootDirectory = string.Empty;
@@ -3025,11 +3026,13 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             }
 
             _ = await MaterializeUnitParamFilesToWorkDirAsync(unit, normalizedWorkDir, ct);
-            var stableSbatchPath = $"{normalizedWorkDir.TrimEnd('/')}/submit.sbatch";
+            var stableSbatchPath = BuildStableRemoteSbatchPath(normalizedWorkDir);
             var stableSbatchContent = !string.IsNullOrWhiteSpace(unit.SbatchTemplate)
                 ? unit.SbatchTemplate!
                 : SbatchTemplate;
             await _ssh.WriteTextFileAsync(stableSbatchPath, stableSbatchContent, ct);
+            _logger?.Info(
+                $"Task save wrote sbatch file. TaskId='{workspace.TaskId}', Unit='{unit.TaskName}', FileName='{StableSbatchFileName}', RemotePath='{stableSbatchPath}'.");
         }
     }
 
@@ -3200,10 +3203,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             throw new SubmitStageException(SubmitFailureStage.LocalContextMissing, ex.Message, ex);
         }
 
-        var localScript = Path.Combine(scriptsDir, "submit.sbatch");
+        var localScript = Path.Combine(scriptsDir, StableSbatchFileName);
         try
         {
             await File.WriteAllTextAsync(localScript, rendered, ct);
+            _logger?.Info(
+                $"Task submit generated local sbatch file. TaskId='{TaskId}', Unit='{unit.TaskName}', FileName='{StableSbatchFileName}', LocalPath='{localScript}'.");
         }
         catch (Exception ex)
         {
@@ -3241,8 +3246,10 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         try
         {
-            var remoteSbatchPath = $"{normalizedWorkDir.TrimEnd('/')}/submit.sbatch";
+            var remoteSbatchPath = BuildStableRemoteSbatchPath(normalizedWorkDir);
             await _ssh.WriteTextFileAsync(remoteSbatchPath, rendered, ct);
+            _logger?.Info(
+                $"Task submit uploaded sbatch file. TaskId='{TaskId}', Unit='{unit.TaskName}', FileName='{StableSbatchFileName}', RemotePath='{remoteSbatchPath}'.");
         }
         catch (Exception ex)
         {
@@ -3252,7 +3259,10 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         long jobId;
         try
         {
-            jobId = await _slurm.SubmitSbatchAsync(localScript, normalizedWorkDir, ct);
+            var remoteSbatchPath = BuildStableRemoteSbatchPath(normalizedWorkDir);
+            _logger?.Info(
+                $"Task submit invoking sbatch with remote file. TaskId='{TaskId}', Unit='{unit.TaskName}', RemotePath='{remoteSbatchPath}', WorkDir='{normalizedWorkDir}'.");
+            jobId = await _slurm.SubmitSbatchAsync(remoteSbatchPath, normalizedWorkDir, ct);
         }
         catch (Exception ex) when (IsConnectionRelated(ex))
         {
@@ -3268,7 +3278,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         var localSubmitLog = Path.Combine(localLogsDir, "submit.log");
         await File.WriteAllTextAsync(
             localSubmitLog,
-            $"Submitted at {DateTime.UtcNow:u}\nJob ID: {jobId}\n",
+            $"Submitted at {DateTime.UtcNow:u}\nJob ID: {jobId}\nSbatch file name: {StableSbatchFileName}\nRemote sbatch path: {BuildStableRemoteSbatchPath(normalizedWorkDir)}\nSbatch command: sbatch '{BuildStableRemoteSbatchPath(normalizedWorkDir)}'\n",
             ct);
 
         LastSubmitUnitName = unit.TaskName;
@@ -3569,7 +3579,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         LastSubmitRemoteWorkDir = normalizedWorkDir;
         LastSubmitRemoteStdoutPath = string.IsNullOrWhiteSpace(normalizedWorkDir) ? string.Empty : $"{normalizedWorkDir.TrimEnd('/')}/logs/job.out";
         LastSubmitRemoteStderrPath = string.IsNullOrWhiteSpace(normalizedWorkDir) ? string.Empty : $"{normalizedWorkDir.TrimEnd('/')}/logs/job.err";
-        LastSubmitLocalScriptPath = Path.Combine(localTaskDir, unitName, "scripts", "submit.sbatch");
+        LastSubmitLocalScriptPath = Path.Combine(localTaskDir, unitName, "scripts", StableSbatchFileName);
         LastSubmitLocalSubmitLogPath = Path.Combine(localTaskDir, unitName, "logs", "submit.log");
         OnPropertyChanged(nameof(LastSubmitRemoteWorkDirDisplay));
         OnPropertyChanged(nameof(LastSubmitRemoteStdoutPathDisplay));
@@ -3755,6 +3765,9 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             return unit.RemoteWorkDirectory.Trim();
         return string.Empty;
     }
+
+    private static string BuildStableRemoteSbatchPath(string workDir)
+        => $"{NormalizeRemotePath(workDir)}/{StableSbatchFileName}";
 
     private enum SubmitFailureStage
     {

@@ -25,19 +25,21 @@ public sealed class SlurmService : ISlurmService
 
     /// <inheritdoc/>
     public async Task<long> SubmitSbatchAsync(
-        string localScriptPath,
+        string remoteScriptPath,
         string? remoteWorkDir = null,
         CancellationToken ct = default)
     {
-        _logger?.Info($"Submitting sbatch script: {localScriptPath}");
+        var normalizedScriptPath = NormalizeRemotePath(remoteScriptPath);
+        if (string.IsNullOrWhiteSpace(normalizedScriptPath))
+            throw new ArgumentException("Remote sbatch script path must not be empty.", nameof(remoteScriptPath));
 
-        // Upload the script to a user-private temp location to avoid world-readable /tmp
-        var remoteScript = $"$HOME/.sjm_tmp/sjm_{Guid.NewGuid():N}.sh";
-        await _ssh.ExecuteAsync("mkdir -p $HOME/.sjm_tmp && chmod 700 $HOME/.sjm_tmp", ct);
-        await _ssh.UploadFileAsync(localScriptPath, remoteScript, ct);
+        var normalizedWorkDir = NormalizeRemotePath(remoteWorkDir);
+        _logger?.Info($"Submitting remote sbatch script: {normalizedScriptPath}");
 
-        var cdPart  = string.IsNullOrEmpty(remoteWorkDir) ? string.Empty : $"cd {remoteWorkDir} && ";
-        var command = $"{cdPart}sbatch {remoteScript}";
+        var cdPart = string.IsNullOrEmpty(normalizedWorkDir)
+            ? string.Empty
+            : $"cd {EscapeShellArg(normalizedWorkDir)} && ";
+        var command = $"{cdPart}sbatch {EscapeShellArg(normalizedScriptPath)}";
 
         var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(command, ct);
 
@@ -274,4 +276,17 @@ public sealed class SlurmService : ISlurmService
 
     private static string EscapeShellArg(string value)
         => "'" + (value ?? string.Empty).Replace("'", "'\"'\"'") + "'";
+
+    private static string NormalizeRemotePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        var normalized = path.Trim().Replace('\\', '/');
+        while (normalized.Contains("//", StringComparison.Ordinal))
+            normalized = normalized.Replace("//", "/", StringComparison.Ordinal);
+        if (normalized.Length > 1 && normalized.EndsWith("/", StringComparison.Ordinal))
+            normalized = normalized[..^1];
+        return normalized;
+    }
 }
