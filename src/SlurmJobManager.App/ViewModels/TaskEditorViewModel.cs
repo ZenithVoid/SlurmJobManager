@@ -3278,7 +3278,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         var localSubmitLog = Path.Combine(localLogsDir, "submit.log");
         await File.WriteAllTextAsync(
             localSubmitLog,
-            $"Submitted at {DateTime.UtcNow:u}\nJob ID: {jobId}\nSbatch file name: {StableSbatchFileName}\nRemote sbatch path: {BuildStableRemoteSbatchPath(normalizedWorkDir)}\nSbatch command path: {BuildStableRemoteSbatchPath(normalizedWorkDir)}\n",
+            $"Submitted at {DateTime.UtcNow:u}\nJob ID: {jobId}\nSbatch file name: {StableSbatchFileName}\nRemote sbatch path: {BuildStableRemoteSbatchPath(normalizedWorkDir)}\nSbatch command: sbatch '{BuildStableRemoteSbatchPath(normalizedWorkDir)}'\n",
             ct);
 
         LastSubmitUnitName = unit.TaskName;
@@ -3767,7 +3767,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     }
 
     private static string BuildStableRemoteSbatchPath(string workDir)
-        => $"{NormalizeRemotePath(workDir).TrimEnd('/')}/{StableSbatchFileName}";
+        => $"{NormalizeRemotePath(workDir)}/{StableSbatchFileName}";
 
     private enum SubmitFailureStage
     {
