@@ -393,18 +393,22 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         _logger?.Info($"Remote editor saving file. Path='{RemotePath}', Source='{saveSource}', Length={contentToSave.Length}.");
         try
         {
-            var bytes = TextEncodingDetector.Encode(contentToSave, _encodingDetection);
+            // Normalize to Unix line endings (LF only) before writing to the remote Linux file
+            // system. Content typed or pasted on Windows may contain CRLF (\r\n). Standalone
+            // CR (\r) from Mac Classic line endings is also normalized for completeness.
+            var normalizedContent = contentToSave.Replace("\r\n", "\n").Replace("\r", "\n");
+            var bytes = TextEncodingDetector.Encode(normalizedContent, _encodingDetection);
             await _ssh.WriteFileBytesAsync(RemotePath, bytes, ct);
             _suppressDirtyTracking = true;
-            Content = contentToSave;
+            Content = normalizedContent;
             _suppressDirtyTracking = false;
-            _lastSavedContent = contentToSave;
-            _structuredRoundTripBaseline = contentToSave;
+            _lastSavedContent = normalizedContent;
+            _structuredRoundTripBaseline = normalizedContent;
             IsDirty = false;
             ReinitializeStructuredStateFromContent(preferCurrentMode: IsStructuredMode);
             SetStatus($"{L("RemoteEditor.Saved")}{DateTime.Now:HH:mm:ss}", "SuccessTextStyle", localize: false);
             SaveCompleted = true;
-            _logger?.Info($"Remote editor saved file successfully. Path='{RemotePath}', Source='{saveSource}'.");
+            _logger?.Info($"Remote editor saved file successfully. Path='{RemotePath}', Source='{saveSource}' (line endings normalized to LF).");
             return true;
         }
         catch (Exception ex)

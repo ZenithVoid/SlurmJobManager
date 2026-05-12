@@ -327,10 +327,15 @@ public sealed class SshClientService : ISshClientService
             try
             {
                 ct.ThrowIfCancellationRequested();
-                var bytes = Encoding.UTF8.GetBytes(content);
+                // Normalize to Unix line endings (LF only) before writing to the remote Linux file
+                // system. Without this step, content generated or edited on Windows would contain
+                // CRLF (\r\n), which causes tools such as sbatch to reject the file. Standalone
+                // CR (\r) from Mac Classic line endings is also normalized for completeness.
+                var normalized = content.Replace("\r\n", "\n").Replace("\r", "\n");
+                var bytes = Encoding.UTF8.GetBytes(normalized);
                 using var ms = new MemoryStream(bytes);
                 _sftpClient!.UploadFile(ms, remotePath, canOverride: true);
-                _logger?.Info($"Wrote remote text file: {remotePath}");
+                _logger?.Info($"Wrote remote text file: {remotePath} (line endings normalized to LF)");
             }
             catch (Exception ex)
             {
