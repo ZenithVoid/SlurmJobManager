@@ -5,8 +5,8 @@ namespace SlurmJobManager.Core.Interfaces;
 /// <summary>High-level Slurm operations (submit, query, cancel).</summary>
 public interface ISlurmService
 {
-    /// <summary>Submits an sbatch script from a local path and returns the Slurm Job ID.</summary>
-    Task<long> SubmitSbatchAsync(string localScriptPath, string? remoteWorkDir = null, CancellationToken ct = default);
+    /// <summary>Submits an sbatch script from a remote path and returns the Slurm Job ID.</summary>
+    Task<long> SubmitSbatchAsync(string remoteScriptPath, string? remoteWorkDir = null, CancellationToken ct = default);
 
     /// <summary>Returns the current status of a single job.</summary>
     Task<SlurmJobStatus?> GetJobStatusAsync(long jobId, CancellationToken ct = default);
