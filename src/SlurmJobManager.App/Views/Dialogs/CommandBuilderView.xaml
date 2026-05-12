@@ -463,10 +463,17 @@
 
                             <TextBlock Text="{DynamicResource CmdBuilder.SbatchNodes}" Style="{StaticResource FieldLabelStyle}" />
                             <TextBox Text="{Binding SbatchNodes, UpdateSourceTrigger=PropertyChanged}"
+                                     b:DigitsOnlyTextBoxBehavior.IsEnabled="True"
+                                     FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
+
+                            <TextBlock Text="{DynamicResource CmdBuilder.SbatchTaskCount}" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding SbatchTaskCount, UpdateSourceTrigger=PropertyChanged}"
+                                     b:DigitsOnlyTextBoxBehavior.IsEnabled="True"
                                      FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
 
                             <TextBlock Text="{DynamicResource CmdBuilder.SbatchCpuCount}" Style="{StaticResource FieldLabelStyle}" />
                             <TextBox Text="{Binding SbatchCpuCount, UpdateSourceTrigger=PropertyChanged}"
+                                     b:DigitsOnlyTextBoxBehavior.IsEnabled="True"
                                      FontFamily="Consolas" FontSize="11" Margin="0,0,0,4" />
 
                             <TextBlock Text="{DynamicResource CmdBuilder.SbatchTimeLimit}" Style="{StaticResource FieldLabelStyle}" />

@@ -27,6 +27,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private const string RemoteParamDir = "/env/preprocess/out/config";
     private const string InterfaceProbeIp = "10.10.10.202";
     private const string DefaultNodes = "1";
+    private const string DefaultTaskCount = "1";
     private const string DefaultTimeLimit = "";
     private const string DefaultAccount = "preproc";
 
@@ -49,6 +50,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private string _sbatchJobName = string.Empty;
     private string _sbatchPartition = string.Empty;
     private string _sbatchNodes = DefaultNodes;
+    private string _sbatchTaskCount = DefaultTaskCount;
     private string _sbatchCpuCount = string.Empty;
     private string _sbatchTimeLimit = DefaultTimeLimit;
     private int _sbatchTimeYears;
@@ -186,6 +188,16 @@ public sealed class CommandBuilderViewModel : ViewModelBase
                 ApplyMpiBindingPolicy();
                 RegenerateSbatch();
             }
+        }
+    }
+
+    public string SbatchTaskCount
+    {
+        get => _sbatchTaskCount;
+        set
+        {
+            if (SetField(ref _sbatchTaskCount, value))
+                RegenerateSbatch();
         }
     }
 
@@ -967,6 +979,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             _sbatchJobName = initialSbatchOptions.JobName ?? string.Empty;
             _sbatchPartition = initialSbatchOptions.Partition ?? string.Empty;
             _sbatchNodes = NormalizeNodes(initialSbatchOptions.Nodes);
+            _sbatchTaskCount = NormalizeTaskCount(initialSbatchOptions.TaskCount);
             _sbatchCpuCount = initialSbatchOptions.CpuCount ?? string.Empty;
             SetSbatchTimeLimit(initialSbatchOptions.TimeLimit, regenerate: false);
             _sbatchAccount = NormalizeAccount(initialSbatchOptions.Account);
@@ -975,6 +988,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         }
 
         _sbatchNodes = DefaultNodes;
+        _sbatchTaskCount = DefaultTaskCount;
         _sbatchCpuCount = string.Empty;
         SetSbatchTimeLimit(DefaultTimeLimit, regenerate: false);
         _sbatchAccount = DefaultAccount;
@@ -1016,6 +1030,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         JobName = _sbatchJobName.Trim(),
         Partition = _sbatchPartition.Trim(),
         Nodes = NormalizeNodes(_sbatchNodes),
+        TaskCount = NormalizeTaskCount(_sbatchTaskCount),
         CpuCount = _sbatchCpuCount.Trim(),
         TimeLimit = NormalizeTimeLimit(_sbatchTimeLimit),
         Account = NormalizeAccount(_sbatchAccount),
@@ -1033,6 +1048,8 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             _sbatchPartition = partition;
         if (TryReadDirective(lines, "--nodes", out var nodes))
             _sbatchNodes = nodes;
+        if (TryReadDirective(lines, "--ntasks", out var taskCount))
+            _sbatchTaskCount = taskCount;
         if (TryReadDirective(lines, "--cpus-per-task", out var cpus))
             _sbatchCpuCount = cpus;
         if (TryReadDirective(lines, "--time", out var timeLimit))
@@ -1079,6 +1096,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         var stdout  = $"{workDir}/logs/job.out";
         var stderr  = $"{workDir}/logs/job.err";
         var nodes = NormalizeNodes(_sbatchNodes);
+        var taskCount = NormalizeTaskCount(_sbatchTaskCount);
         var timeLimit = NormalizeTimeLimit(_sbatchTimeLimit);
         var account = NormalizeAccount(_sbatchAccount);
         var partition = _sbatchPartition.Trim();
@@ -1089,7 +1107,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         sb.AppendLine($"#SBATCH --job-name={jobName}");
         sb.AppendLine($"#SBATCH --partition={partition}");
         sb.AppendLine($"#SBATCH --nodes={nodes}");
-        sb.AppendLine("#SBATCH --ntasks=1");
+        sb.AppendLine($"#SBATCH --ntasks={taskCount}");
         if (!string.IsNullOrWhiteSpace(cpuCount))
             sb.AppendLine($"#SBATCH --cpus-per-task={cpuCount}");
         if (!string.IsNullOrWhiteSpace(timeLimit))
@@ -1125,6 +1143,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             ? (string.IsNullOrEmpty(_taskId) ? "job" : _taskId)
             : _sbatchJobName.Trim();
         var nodes = NormalizeNodes(_sbatchNodes);
+        var taskCount = NormalizeTaskCount(_sbatchTaskCount);
         var timeLimit = NormalizeTimeLimit(_sbatchTimeLimit);
         var account = NormalizeAccount(_sbatchAccount);
         var partition = _sbatchPartition.Trim();
@@ -1134,7 +1153,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             $"#SBATCH --job-name={jobName}\n" +
             $"#SBATCH --partition={partition}\n" +
             $"#SBATCH --nodes={nodes}\n" +
-            "#SBATCH --ntasks=1\n" +
+            $"#SBATCH --ntasks={taskCount}\n" +
             (string.IsNullOrWhiteSpace(cpuCount) ? string.Empty : $"#SBATCH --cpus-per-task={cpuCount}\n") +
             (string.IsNullOrWhiteSpace(timeLimit) ? string.Empty : $"#SBATCH --time={timeLimit}\n") +
             $"#SBATCH --account={account}\n" +
@@ -1233,6 +1252,9 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
     private static string NormalizeNodes(string? value)
         => string.IsNullOrWhiteSpace(value) ? DefaultNodes : value.Trim();
+
+    private static string NormalizeTaskCount(string? value)
+        => string.IsNullOrWhiteSpace(value) ? DefaultTaskCount : value.Trim();
 
     private static string NormalizeTimeLimit(string? value)
         => string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();

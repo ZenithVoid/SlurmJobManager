@@ -147,6 +147,17 @@ public sealed class TaskValidationService : ITaskValidationService
                 detailIsResourceKey: false));
         }
 
+        if (!IsPositiveInteger(sbatchOptions.TaskCount))
+        {
+            issues.Add(CreateIssue(
+                "sbatch.taskCount.invalid",
+                "Task.Validation.TaskCountInvalidTitle",
+                string.Format(L("Task.Validation.TaskCountInvalidDetail"), sbatchOptions.TaskCount ?? string.Empty),
+                TaskValidationSeverity.Error,
+                isBlocking: true,
+                detailIsResourceKey: false));
+        }
+
         if (!string.IsNullOrWhiteSpace(sbatchOptions.CpuCount) && !IsPositiveInteger(sbatchOptions.CpuCount))
         {
             issues.Add(CreateIssue(
@@ -205,6 +216,7 @@ public sealed class TaskValidationService : ITaskValidationService
         if (!IsSbatchOptionSynchronized(sbatchTemplate, "--job-name", sbatchOptions.JobName)
             || !IsSbatchOptionSynchronized(sbatchTemplate, "--partition", sbatchOptions.Partition)
             || !IsSbatchOptionSynchronized(sbatchTemplate, "--nodes", sbatchOptions.Nodes)
+            || !IsSbatchOptionSynchronized(sbatchTemplate, "--ntasks", sbatchOptions.TaskCount)
             || !IsSbatchOptionSynchronized(sbatchTemplate, "--account", sbatchOptions.Account))
         {
             issues.Add(CreateIssue(

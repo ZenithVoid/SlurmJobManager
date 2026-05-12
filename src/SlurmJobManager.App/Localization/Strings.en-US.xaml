@@ -616,6 +616,8 @@
     <sys:String x:Key="Task.Validation.QueueRequiredDetail">Sbatch partition is empty. Please select a queue.</sys:String>
     <sys:String x:Key="Task.Validation.NodesInvalidTitle">Node count is invalid</sys:String>
     <sys:String x:Key="Task.Validation.NodesInvalidDetail">Sbatch nodes must be a positive integer. Current value: “{0}”.</sys:String>
+    <sys:String x:Key="Task.Validation.TaskCountInvalidTitle">Task count is invalid</sys:String>
+    <sys:String x:Key="Task.Validation.TaskCountInvalidDetail">Sbatch task count must be a positive integer. Current value: “{0}”.</sys:String>
     <sys:String x:Key="Task.Validation.CpuInvalidTitle">CPU count is invalid</sys:String>
     <sys:String x:Key="Task.Validation.CpuInvalidDetail">Sbatch CPU count must be empty or a positive integer. Current value: “{0}”.</sys:String>
     <sys:String x:Key="Task.Validation.AccountRequiredTitle">Account is required</sys:String>
@@ -802,6 +804,7 @@
     <sys:String x:Key="CmdBuilder.SbatchJobName">Job Name</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchQueue">Select Queue</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchNodes">Nodes</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchTaskCount">Task count (ntasks)</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchCpuCount">CPU count (cpus-per-task)</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchTimeLimit">Time limit</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchTimeYears">Year(s)</sys:String>

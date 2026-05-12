@@ -90,6 +90,7 @@ public sealed class TaskUnitViewModel : ViewModelBase
         JobName = source?.JobName ?? string.Empty,
         Partition = source?.Partition ?? string.Empty,
         Nodes = source?.Nodes ?? "1",
+        TaskCount = source?.TaskCount ?? "1",
         CpuCount = source?.CpuCount ?? string.Empty,
         TimeLimit = source?.TimeLimit ?? string.Empty,
         Account = source?.Account ?? "preproc",

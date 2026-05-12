@@ -616,6 +616,8 @@
     <sys:String x:Key="Task.Validation.QueueRequiredDetail">sbatch 分区为空，请先选择队列。</sys:String>
     <sys:String x:Key="Task.Validation.NodesInvalidTitle">节点数不合法</sys:String>
     <sys:String x:Key="Task.Validation.NodesInvalidDetail">sbatch 节点数必须为正整数，当前值：“{0}”。</sys:String>
+    <sys:String x:Key="Task.Validation.TaskCountInvalidTitle">任务数不合法</sys:String>
+    <sys:String x:Key="Task.Validation.TaskCountInvalidDetail">sbatch 任务数必须为正整数，当前值：“{0}”。</sys:String>
     <sys:String x:Key="Task.Validation.CpuInvalidTitle">CPU 数不合法</sys:String>
     <sys:String x:Key="Task.Validation.CpuInvalidDetail">sbatch CPU 数应为空或正整数，当前值：“{0}”。</sys:String>
     <sys:String x:Key="Task.Validation.AccountRequiredTitle">account 不能为空</sys:String>
@@ -802,6 +804,7 @@
     <sys:String x:Key="CmdBuilder.SbatchJobName">任务名字</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchQueue">选择队列</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchNodes">节点数量</sys:String>
+    <sys:String x:Key="CmdBuilder.SbatchTaskCount">任务数量（ntasks）</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchCpuCount">CPU 数量（cpus-per-task）</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchTimeLimit">时间限制</sys:String>
     <sys:String x:Key="CmdBuilder.SbatchTimeYears">年</sys:String>
