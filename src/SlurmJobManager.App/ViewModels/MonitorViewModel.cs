@@ -901,12 +901,13 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
             try
             {
+                var isSuccessfulCompletion = row.State.Equals(SlurmJobState.Completed, StringComparison.OrdinalIgnoreCase);
                 _notificationService?.Show(
-                    row.State.Equals(SlurmJobState.Completed, StringComparison.OrdinalIgnoreCase)
+                    isSuccessfulCompletion
                         ? L("Monitor.JobCompletionNotificationTitle")
                         : L("Monitor.JobTerminalNotificationTitle"),
                     string.Format(
-                        row.State.Equals(SlurmJobState.Completed, StringComparison.OrdinalIgnoreCase)
+                        isSuccessfulCompletion
                             ? L("Monitor.JobCompletionNotificationBody")
                             : L("Monitor.JobTerminalNotificationBody"),
                         row.JobId,
@@ -1001,7 +1002,10 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
     private void SyncWatchedUserToConnection(bool force)
     {
-        if (ShowAllUsers || string.IsNullOrWhiteSpace(_connection?.Username))
+        if (ShowAllUsers)
+            return;
+
+        if (string.IsNullOrWhiteSpace(_connection?.Username))
             return;
 
         if (force || string.IsNullOrWhiteSpace(WatchedUser))
