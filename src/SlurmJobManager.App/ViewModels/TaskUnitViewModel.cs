@@ -34,6 +34,8 @@ public sealed class TaskUnitViewModel : ViewModelBase
 
         RemoteWorkDirectory = model.RemoteWorkDirectory;
         SlurmJobId          = model.SlurmJobId;
+        SourceBlueprintId   = model.SourceBlueprintId;
+        SourceBlueprintName = model.SourceBlueprintName;
         SbatchTemplate      = model.SbatchTemplate;
     }
 
@@ -53,6 +55,8 @@ public sealed class TaskUnitViewModel : ViewModelBase
 
     public string? RemoteWorkDirectory { get; set; }
     public long?   SlurmJobId          { get; set; }
+    public string? SourceBlueprintId   { get; set; }
+    public string? SourceBlueprintName { get; set; }
     public string? SbatchTemplate      { get; set; }
     public SbatchJobOptions SbatchOptions
     {
@@ -75,6 +79,8 @@ public sealed class TaskUnitViewModel : ViewModelBase
         Enabled             = Enabled,
         RemoteWorkDirectory = RemoteWorkDirectory,
         SlurmJobId          = SlurmJobId,
+        SourceBlueprintId   = SourceBlueprintId,
+        SourceBlueprintName = SourceBlueprintName,
         SbatchTemplate      = SbatchTemplate,
         SbatchOptions       = CloneSbatchOptions(SbatchOptions),
         ProgramEntries      = Programs.Select(p => p.ToModel()).ToList(),

@@ -47,6 +47,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private static readonly string[] AppSourceDirs = { "/env/preprocess/out", "/env/preprocess/bin" };
     private const string RemoteTemplateDir = "/env/preprocess/out/config";
     private const int MaxTaskIdLength = 200;
+    private const int MaxSubmitScriptSegmentLength = 48;
     private const string DefaultValidationAccount = "preproc";
     private const string StableSbatchFileName = "submit.sbatch";
 
@@ -2647,6 +2648,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         {
             var adapted = CloneTaskUnit(source);
             adapted.SlurmJobId = null;
+            adapted.SourceBlueprintId = blueprint.BlueprintId;
+            adapted.SourceBlueprintName = blueprint.Name;
 
             AdaptTaskUnitForNewTask(
                 adapted,
@@ -2860,6 +2863,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         Enabled = source.Enabled,
         RemoteWorkDirectory = source.RemoteWorkDirectory,
         SlurmJobId = source.SlurmJobId,
+        SourceBlueprintId = source.SourceBlueprintId,
+        SourceBlueprintName = source.SourceBlueprintName,
         SbatchTemplate = source.SbatchTemplate,
         SbatchOptions = CloneSbatchOptions(source.SbatchOptions),
         ProgramEntries = source.ProgramEntries.Select(p => new ProgramEntry
@@ -3112,13 +3117,14 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             }
 
             _ = await MaterializeUnitParamFilesToWorkDirAsync(unit, normalizedWorkDir, ct);
-            var stableSbatchPath = BuildStableRemoteSbatchPath(normalizedWorkDir);
+            var stableSbatchPath = BuildRemoteSbatchPath(normalizedWorkDir, unit);
+            var sbatchFileName = GetSubmitScriptFileName(unit);
             var stableSbatchContent = !string.IsNullOrWhiteSpace(unit.SbatchTemplate)
                 ? unit.SbatchTemplate!
                 : SbatchTemplate;
             await _ssh.WriteTextFileAsync(stableSbatchPath, stableSbatchContent, ct);
             _logger?.Info(
-                $"Task save wrote sbatch file. TaskId='{workspace.TaskId}', Unit='{unit.TaskName}', FileName='{StableSbatchFileName}', RemotePath='{stableSbatchPath}'.");
+                $"Task save wrote sbatch file. TaskId='{workspace.TaskId}', Unit='{unit.TaskName}', FileName='{sbatchFileName}', RemotePath='{stableSbatchPath}'.");
         }
     }
 
@@ -3279,6 +3285,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         var unitNameForPath = ResolveUnitNameForPath(unit);
         var scriptsDir   = Path.Combine(localTaskDir, unitNameForPath, "scripts");
         var localLogsDir = Path.Combine(localTaskDir, unitNameForPath, "logs");
+        var scriptFileName = ResolveSubmitScriptFileNameOrThrow(unit);
+        var remoteSbatchPath = BuildRemoteSbatchPath(normalizedWorkDir, scriptFileName);
         try
         {
             Directory.CreateDirectory(scriptsDir);
@@ -3289,17 +3297,19 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             throw new SubmitStageException(SubmitFailureStage.LocalContextMissing, ex.Message, ex);
         }
 
-        var localScript = Path.Combine(scriptsDir, StableSbatchFileName);
+        var localScript = Path.Combine(scriptsDir, scriptFileName);
         try
         {
             await File.WriteAllTextAsync(localScript, rendered, ct);
             _logger?.Info(
-                $"Task submit generated local sbatch file. TaskId='{TaskId}', Unit='{unit.TaskName}', FileName='{StableSbatchFileName}', LocalPath='{localScript}'.");
+                $"Task submit generated local sbatch file. TaskId='{TaskId}', Unit='{unit.TaskName}', FileName='{scriptFileName}', LocalPath='{localScript}'.");
         }
         catch (Exception ex)
         {
             throw new SubmitStageException(SubmitFailureStage.LocalContextMissing, ex.Message, ex);
         }
+
+        EnsureLocalSubmitScriptSelection(unit, scriptFileName, scriptsDir);
 
         SetStatus(string.Format(L("Task.SubmittingUnit"), unit.TaskName), "InfoTextStyle", localize: false);
         try
@@ -3332,20 +3342,20 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         try
         {
-            var remoteSbatchPath = BuildStableRemoteSbatchPath(normalizedWorkDir);
             await _ssh.WriteTextFileAsync(remoteSbatchPath, rendered, ct);
             _logger?.Info(
-                $"Task submit uploaded sbatch file. TaskId='{TaskId}', Unit='{unit.TaskName}', FileName='{StableSbatchFileName}', RemotePath='{remoteSbatchPath}'.");
+                $"Task submit uploaded sbatch file. TaskId='{TaskId}', Unit='{unit.TaskName}', FileName='{scriptFileName}', RemotePath='{remoteSbatchPath}'.");
         }
         catch (Exception ex)
         {
             throw new SubmitStageException(SubmitFailureStage.RemoteWorkDirFailed, ex.Message, ex);
         }
 
+        await ConfirmRemoteSubmitScriptSelectionAsync(unit, scriptFileName, normalizedWorkDir, remoteSbatchPath, ct);
+
         long jobId;
         try
         {
-            var remoteSbatchPath = BuildStableRemoteSbatchPath(normalizedWorkDir);
             _logger?.Info(
                 $"Task submit invoking sbatch with remote file. TaskId='{TaskId}', Unit='{unit.TaskName}', RemotePath='{remoteSbatchPath}', WorkDir='{normalizedWorkDir}'.");
             jobId = await _slurm.SubmitSbatchAsync(remoteSbatchPath, normalizedWorkDir, ct);
@@ -3364,7 +3374,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         var localSubmitLog = Path.Combine(localLogsDir, "submit.log");
         await File.WriteAllTextAsync(
             localSubmitLog,
-            $"Submitted at {DateTime.UtcNow:u}\nJob ID: {jobId}\nSbatch file name: {StableSbatchFileName}\nRemote sbatch path: {BuildStableRemoteSbatchPath(normalizedWorkDir)}\nSbatch command: sbatch '{BuildStableRemoteSbatchPath(normalizedWorkDir)}'\n",
+            $"Submitted at {DateTime.UtcNow:u}\nJob ID: {jobId}\nSbatch file name: {scriptFileName}\nRemote sbatch path: {remoteSbatchPath}\nSbatch command: sbatch '{remoteSbatchPath}'\n",
             ct);
 
         LastSubmitUnitName = unit.TaskName;
@@ -3661,11 +3671,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         var unitName = ResolveUnitNameForPath(unit);
         var localTaskDir = GetLocalTaskDir();
         var normalizedWorkDir = NormalizeRemotePath(ResolveWorkDirForSubmit(unit));
+        var scriptFileName = GetSubmitScriptFileName(unit);
         LastSubmitUnitName = unit?.TaskName ?? string.Empty;
         LastSubmitRemoteWorkDir = normalizedWorkDir;
         LastSubmitRemoteStdoutPath = string.IsNullOrWhiteSpace(normalizedWorkDir) ? string.Empty : $"{normalizedWorkDir.TrimEnd('/')}/logs/job.out";
         LastSubmitRemoteStderrPath = string.IsNullOrWhiteSpace(normalizedWorkDir) ? string.Empty : $"{normalizedWorkDir.TrimEnd('/')}/logs/job.err";
-        LastSubmitLocalScriptPath = Path.Combine(localTaskDir, unitName, "scripts", StableSbatchFileName);
+        LastSubmitLocalScriptPath = Path.Combine(localTaskDir, unitName, "scripts", scriptFileName);
         LastSubmitLocalSubmitLogPath = Path.Combine(localTaskDir, unitName, "logs", "submit.log");
         OnPropertyChanged(nameof(LastSubmitRemoteWorkDirDisplay));
         OnPropertyChanged(nameof(LastSubmitRemoteStdoutPathDisplay));
@@ -3796,6 +3807,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     {
         SubmitFailureStage.LocalContextMissing => L("Task.SubmitStageLocalContext"),
         SubmitFailureStage.ScriptRenderFailed => L("Task.SubmitStageRender"),
+        SubmitFailureStage.ScriptSelectionFailed => L("Task.SubmitStageScriptSelection"),
         SubmitFailureStage.SshConnectionFailed => L("Task.SubmitStageConnection"),
         SubmitFailureStage.RemoteWorkDirFailed => L("Task.SubmitStageRemoteDir"),
         SubmitFailureStage.SbatchSubmitFailed => L("Task.SubmitStageSbatchSubmit"),
@@ -3807,6 +3819,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     {
         SubmitFailureStage.LocalContextMissing => L("Task.SubmitAdviceLocalContext"),
         SubmitFailureStage.ScriptRenderFailed => L("Task.SubmitAdviceRender"),
+        SubmitFailureStage.ScriptSelectionFailed => L("Task.SubmitAdviceScriptSelection"),
         SubmitFailureStage.SshConnectionFailed => L("Task.SubmitAdviceConnection"),
         SubmitFailureStage.RemoteWorkDirFailed => L("Task.SubmitAdviceRemoteDir"),
         SubmitFailureStage.SbatchSubmitFailed => L("Task.SubmitAdviceSbatch"),
@@ -3852,13 +3865,159 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         return string.Empty;
     }
 
-    private static string BuildStableRemoteSbatchPath(string workDir)
-        => $"{NormalizeRemotePath(workDir)}/{StableSbatchFileName}";
+    private string ResolveSubmitScriptFileNameOrThrow(TaskUnitViewModel unit)
+    {
+        if (TryResolveSubmitScriptFileName(unit.SourceBlueprintId, unit.SourceBlueprintName, unit.TaskName, out var fileName))
+            return fileName;
+
+        throw new SubmitStageException(SubmitFailureStage.ScriptSelectionFailed, L("Task.SubmitScriptMappingMissing"));
+    }
+
+    private string GetSubmitScriptFileName(TaskUnitViewModel? unit)
+        => TryResolveSubmitScriptFileName(unit?.SourceBlueprintId, unit?.SourceBlueprintName, unit?.TaskName, out var fileName)
+            ? fileName
+            : StableSbatchFileName;
+
+    private static string GetSubmitScriptFileName(TaskUnit unit)
+        => TryResolveSubmitScriptFileName(unit.SourceBlueprintId, unit.SourceBlueprintName, unit.TaskName, out var fileName)
+            ? fileName
+            : StableSbatchFileName;
+
+    private static bool TryResolveSubmitScriptFileName(string? blueprintId, string? blueprintName, string? unitName, out string fileName)
+    {
+        var hasBlueprintBinding = !string.IsNullOrWhiteSpace(blueprintId) || !string.IsNullOrWhiteSpace(blueprintName);
+        if (!hasBlueprintBinding)
+        {
+            fileName = StableSbatchFileName;
+            return true;
+        }
+
+        var blueprintSlug = SanitizeScriptFileSegment(blueprintName);
+        if (string.IsNullOrWhiteSpace(blueprintSlug))
+        {
+            fileName = string.Empty;
+            return false;
+        }
+
+        var unitSlug = SanitizeScriptFileSegment(unitName);
+        fileName = string.IsNullOrWhiteSpace(unitSlug) || string.Equals(unitSlug, blueprintSlug, StringComparison.Ordinal)
+            ? $"submit-{blueprintSlug}.sbatch"
+            : $"submit-{blueprintSlug}-{unitSlug}.sbatch";
+        return true;
+    }
+
+    private static string SanitizeScriptFileSegment(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var normalized = value.Trim().ToLowerInvariant();
+        normalized = Regex.Replace(normalized, @"\s+", "-");
+        normalized = Regex.Replace(normalized, @"[^\p{L}\p{N}._-]+", "-");
+        normalized = Regex.Replace(normalized, @"-+", "-").Trim('-', '.');
+        if (normalized.Length > MaxSubmitScriptSegmentLength)
+            normalized = normalized[..MaxSubmitScriptSegmentLength].Trim('-', '.');
+        return normalized;
+    }
+
+    private static string BuildRemoteSbatchPath(string workDir, TaskUnit unit)
+        => BuildRemoteSbatchPath(workDir, GetSubmitScriptFileName(unit));
+
+    private static string BuildRemoteSbatchPath(string workDir, string fileName)
+        => $"{NormalizeRemotePath(workDir).TrimEnd('/')}/{fileName}";
+
+    private void EnsureLocalSubmitScriptSelection(TaskUnitViewModel unit, string expectedFileName, string scriptsDir)
+    {
+        var localCandidates = Directory.Exists(scriptsDir)
+            ? Directory.EnumerateFiles(scriptsDir, "*.sbatch", SearchOption.TopDirectoryOnly)
+                .Select(Path.GetFileName)
+                .Where(static name => !string.IsNullOrWhiteSpace(name))
+                .Select(static name => name!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(static name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList()
+            : new List<string>();
+
+        if (!localCandidates.Contains(expectedFileName, StringComparer.OrdinalIgnoreCase))
+            throw new SubmitStageException(
+                SubmitFailureStage.ScriptSelectionFailed,
+                string.Format(L("Task.SubmitScriptExpectedMissingLocal"), expectedFileName));
+
+        if (HasBlueprintBinding(unit) && string.IsNullOrWhiteSpace(unit.SourceBlueprintName))
+            throw new SubmitStageException(SubmitFailureStage.ScriptSelectionFailed, L("Task.SubmitScriptMappingMissing"));
+    }
+
+    private async Task ConfirmRemoteSubmitScriptSelectionAsync(
+        TaskUnitViewModel unit,
+        string expectedFileName,
+        string normalizedWorkDir,
+        string remoteSbatchPath,
+        CancellationToken ct)
+    {
+        var remoteCandidates = await ListRemoteSubmitScriptsAsync(normalizedWorkDir, ct);
+        if (!remoteCandidates.Contains(expectedFileName, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new SubmitStageException(
+                SubmitFailureStage.ScriptSelectionFailed,
+                string.Format(L("Task.SubmitScriptExpectedMissingRemote"), remoteSbatchPath));
+        }
+
+        var otherCandidates = remoteCandidates
+            .Where(name => !string.Equals(name, expectedFileName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (otherCandidates.Count == 0)
+            return;
+
+        var candidateLines = string.Join(
+            Environment.NewLine,
+            remoteCandidates.Select(name => string.Equals(name, expectedFileName, StringComparison.OrdinalIgnoreCase)
+                ? $"- {name} {L("Task.SubmitScriptTargetTag")}"
+                : $"- {name}"));
+        var details = string.Format(
+            L("Task.SubmitScriptConfirmDetails"),
+            string.IsNullOrWhiteSpace(unit.SourceBlueprintName) ? L("Task.SubmitScriptNoBlueprint") : unit.SourceBlueprintName.Trim(),
+            expectedFileName,
+            CollapseHomePath(normalizedWorkDir),
+            candidateLines);
+        var confirmVm = new ConfirmationDialogViewModel(
+            title: L("Task.SubmitScriptConfirmTitle"),
+            message: string.Format(L("Task.SubmitScriptConfirmMessage"), expectedFileName),
+            details: details,
+            confirmButtonText: L("Task.Validation.ContinueSubmit"),
+            cancelButtonText: L("Btn.Cancel"),
+            isWarning: true);
+        if (!ShowConfirmationDialog(confirmVm))
+            throw new SubmitStageException(SubmitFailureStage.ScriptSelectionFailed, L("Task.SubmitScriptCancelled"));
+    }
+
+    private async Task<IReadOnlyList<string>> ListRemoteSubmitScriptsAsync(string normalizedWorkDir, CancellationToken ct)
+    {
+        var escapedWorkDir = EscapeShellArg(normalizedWorkDir);
+        var command = $"cd {escapedWorkDir} || exit $?; set -- *.sbatch; if [ \"$1\" = \"*.sbatch\" ]; then exit 0; fi; printf '%s\\n' \"$@\" | sort";
+        var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(command, ct);
+        if (exitCode != 0)
+            throw new SubmitStageException(
+                SubmitFailureStage.ScriptSelectionFailed,
+                string.IsNullOrWhiteSpace(stderr) ? L("Task.SubmitScriptListFailed") : stderr.Trim());
+
+        return stdout
+            .Replace("\r\n", "\n")
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(line => line, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static bool HasBlueprintBinding(TaskUnitViewModel unit)
+        => !string.IsNullOrWhiteSpace(unit.SourceBlueprintId) || !string.IsNullOrWhiteSpace(unit.SourceBlueprintName);
 
     private enum SubmitFailureStage
     {
         LocalContextMissing,
         ScriptRenderFailed,
+        ScriptSelectionFailed,
         SshConnectionFailed,
         RemoteWorkDirFailed,
         SbatchSubmitFailed,

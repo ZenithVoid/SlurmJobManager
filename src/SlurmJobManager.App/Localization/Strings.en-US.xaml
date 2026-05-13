@@ -657,6 +657,7 @@
     <sys:String x:Key="Task.SubmitStageReady">Ready</sys:String>
     <sys:String x:Key="Task.SubmitStageLocalContext">Local context preparation</sys:String>
     <sys:String x:Key="Task.SubmitStageRender">sbatch rendering/local script generation</sys:String>
+    <sys:String x:Key="Task.SubmitStageScriptSelection">sbatch script selection</sys:String>
     <sys:String x:Key="Task.SubmitStageConnection">SSH/remote connection</sys:String>
     <sys:String x:Key="Task.SubmitStageRemoteDir">Remote work directory preparation</sys:String>
     <sys:String x:Key="Task.SubmitStageSbatchSubmit">sbatch submission command</sys:String>
@@ -665,7 +666,8 @@
     <sys:String x:Key="Task.SubmitAdviceReady">You can submit now. After submission, use the diagnostics section to inspect submit.log / job.out / job.err.</sys:String>
     <sys:String x:Key="Task.SubmitAdviceSuccess">Next: monitor state, open submit.log for submission details, and open stderr first when a run fails.</sys:String>
     <sys:String x:Key="Task.SubmitAdviceLocalContext">Check TaskId, RootDirectory, RemoteWorkDir, and AppPath. Save the task, then retry.</sys:String>
-    <sys:String x:Key="Task.SubmitAdviceRender">Open the generated submit.sbatch and verify template placeholders and command content.</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceRender">Open the generated submit script and verify template placeholders and command content.</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceScriptSelection">Check the blueprint-to-script mapping, confirm the intended sbatch file, and retry only after the target script is unambiguous.</sys:String>
     <sys:String x:Key="Task.SubmitAdviceConnection">Reconnect SSH, verify host/user credentials, then retry submit.</sys:String>
     <sys:String x:Key="Task.SubmitAdviceRemoteDir">Check whether RemoteWorkDir exists and is writable, then refresh task files and retry.</sys:String>
     <sys:String x:Key="Task.SubmitAdviceSbatch">Open submit.log and stderr, then verify cluster-side sbatch constraints and script syntax.</sys:String>
@@ -678,7 +680,7 @@
     <sys:String x:Key="Task.DiagnosticsLabelStdout">Remote stdout</sys:String>
     <sys:String x:Key="Task.DiagnosticsLabelStderr">Remote stderr</sys:String>
     <sys:String x:Key="Task.DiagnosticsLabelWorkDir">Remote work directory</sys:String>
-    <sys:String x:Key="Task.DiagnosticsOpenSubmitScript">Open submit.sbatch</sys:String>
+    <sys:String x:Key="Task.DiagnosticsOpenSubmitScript">Open submit script</sys:String>
     <sys:String x:Key="Task.DiagnosticsOpenSubmitLog">Open submit.log</sys:String>
     <sys:String x:Key="Task.DiagnosticsOpenStdout">Open stdout (job.out)</sys:String>
     <sys:String x:Key="Task.DiagnosticsOpenStderr">Open stderr (job.err)</sys:String>
@@ -758,6 +760,16 @@
     <sys:String x:Key="Task.BlueprintSbatchNeedsReview">Sbatch --job-name was adapted; please review remaining script content for old task references.</sys:String>
     <sys:String x:Key="Task.BlueprintParameterPathNeedsReview">Some parameter file paths could not be safely inferred and were kept unchanged. Please review them.</sys:String>
     <sys:String x:Key="Task.BlueprintContainsOldTaskIdPathWarning">Current blueprint may still contain old TaskId-related paths. Please review.</sys:String>
+    <sys:String x:Key="Task.SubmitScriptMappingMissing">The current blueprint does not provide a clear sbatch script mapping. Re-apply the blueprint or rename it before submitting.</sys:String>
+    <sys:String x:Key="Task.SubmitScriptExpectedMissingLocal">The sbatch script for the current blueprint is missing locally: {0}</sys:String>
+    <sys:String x:Key="Task.SubmitScriptExpectedMissingRemote">The sbatch script to submit is missing in the work directory: {0}</sys:String>
+    <sys:String x:Key="Task.SubmitScriptListFailed">Failed to inspect sbatch scripts in the current work directory.</sys:String>
+    <sys:String x:Key="Task.SubmitScriptConfirmTitle">Confirm sbatch submission</sys:String>
+    <sys:String x:Key="Task.SubmitScriptConfirmMessage">Multiple sbatch scripts were found in the current directory. The app is about to submit “{0}”.</sys:String>
+    <sys:String x:Key="Task.SubmitScriptConfirmDetails">Current blueprint: {0}\nTarget script: {1}\nWork directory: {2}\n\nDetected sbatch scripts:\n{3}\n\nPlease confirm that the highlighted target is the script you want to submit.</sys:String>
+    <sys:String x:Key="Task.SubmitScriptCancelled">Submission cancelled. No sbatch script was submitted.</sys:String>
+    <sys:String x:Key="Task.SubmitScriptNoBlueprint">(not from a blueprint)</sys:String>
+    <sys:String x:Key="Task.SubmitScriptTargetTag">(target)</sys:String>
     <sys:String x:Key="Task.SavedRemoteAssets">Task saved and remote assets materialized in: {0}</sys:String>
     <sys:String x:Key="Task.ParamCopyFailed">Failed to materialize parameter file: {0}</sys:String>
     <sys:String x:Key="Task.ParamCopyFailedNoDetail">Unknown error while materializing parameter file.</sys:String>
