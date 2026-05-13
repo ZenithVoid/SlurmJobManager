@@ -2,6 +2,8 @@ using System.Windows;
 using System.ComponentModel;
 using System.Windows.Input;
 using SlurmJobManager.App.ViewModels;
+using SlurmJobManager.App.ViewModels.Dialogs;
+using SlurmJobManager.App.Views.Dialogs;
 
 namespace SlurmJobManager.App.Views;
 
@@ -150,12 +152,16 @@ public partial class RemoteFileEditorView : Window
                          ?? "当前存在未保存修改，重载将覆盖这些内容。是否继续？";
             var title = Application.Current?.TryFindResource("RemoteEditor.ReloadTitle") as string
                         ?? "重新加载文件";
-            var confirm = MessageBox.Show(
-                prompt,
-                title,
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-            if (confirm != MessageBoxResult.Yes)
+            var confirmText = Application.Current?.TryFindResource("RemoteEditor.BtnReload") as string ?? "重新加载";
+            var cancelText = Application.Current?.TryFindResource("Btn.Cancel") as string ?? "取消";
+            var confirmVm = new ConfirmationDialogViewModel(
+                title: title,
+                message: prompt,
+                confirmButtonText: confirmText,
+                cancelButtonText: cancelText,
+                isWarning: true);
+            var dialog = new ConfirmationDialogView { DataContext = confirmVm, Owner = this };
+            if (dialog.ShowDialog() != true)
                 return;
         }
 
@@ -180,22 +186,32 @@ public partial class RemoteFileEditorView : Window
                    ?? "检测到未保存修改。是否保存后关闭？";
         var title = Application.Current?.TryFindResource("RemoteEditor.UnsavedTitle") as string
                     ?? "未保存更改";
+        var saveAndClose = Application.Current?.TryFindResource("RemoteEditor.BtnSaveAndClose") as string ?? "保存并关闭";
+        var discardAndClose = Application.Current?.TryFindResource("RemoteEditor.BtnDiscardAndClose") as string ?? "不保存直接关闭";
+        var cancel = Application.Current?.TryFindResource("Btn.Cancel") as string ?? "取消";
 
-        var result = MessageBox.Show(
-            text,
-            title,
-            MessageBoxButton.YesNoCancel,
-            MessageBoxImage.Warning);
+        var confirmVm = new ConfirmationDialogViewModel(
+            title: title,
+            message: text,
+            confirmButtonText: saveAndClose,
+            cancelButtonText: cancel,
+            discardButtonText: discardAndClose,
+            isWarning: true);
+        var dialog = new ConfirmationDialogView { DataContext = confirmVm, Owner = this };
+        var result = dialog.ShowDialog();
 
-        if (result == MessageBoxResult.Cancel)
+        // result != true means Cancel (Cancel button, X button, or Escape)
+        if (result != true)
             return;
 
-        if (result == MessageBoxResult.Yes)
+        if (!dialog.DiscardChosen)
         {
+            // Confirm (Save & Close) was chosen
             var saved = await vm.SaveChangesAsync(Editor.Text);
             if (!saved)
                 return;
         }
+        // DiscardChosen == true means close without saving
 
         _allowClose = true;
         Close();

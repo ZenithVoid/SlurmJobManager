@@ -87,10 +87,22 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             {
                 OnPropertyChanged(nameof(MonitorContextSummary));
                 OnPropertyChanged(nameof(EffectiveStatusStyleKey));
+                OnPropertyChanged(nameof(TogglePollingButtonText));
+                OnPropertyChanged(nameof(TogglePollingButtonStyleKey));
                 CommandManager.InvalidateRequerySuggested();
             }
         }
     }
+
+    /// <summary>Button text for the toggle-polling button, switches with <see cref="IsPolling"/>.</summary>
+    public string TogglePollingButtonText => IsPolling
+        ? L("Btn.StopPoll")
+        : L("Btn.StartPoll");
+
+    /// <summary>Style key for the toggle-polling button, highlights the button while polling is active.</summary>
+    public string TogglePollingButtonStyleKey => IsPolling
+        ? "AccentButtonStyle"
+        : "NeutralButtonStyle";
 
     public string StatusMessage
     {
@@ -224,6 +236,9 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     public ICommand StopPollingCommand { get; }
     public ICommand CancelJobCommand { get; }
 
+    /// <summary>Single toggle command that starts or stops polling based on current <see cref="IsPolling"/> state.</summary>
+    public ICommand TogglePollingCommand { get; }
+
     // New split-view commands.
     public ICommand RefreshCurrentJobsCommand { get; }
     public ICommand RefreshHistoryJobsCommand { get; }
@@ -254,6 +269,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         RefreshHistoryJobsCommand = new AsyncRelayCommand(RefreshHistoryJobsAsync, () => CanQueryHistory);
         StartPollingCommand = new RelayCommand(StartPolling, () => !IsPolling);
         StopPollingCommand = new RelayCommand(StopPolling, () => IsPolling);
+        TogglePollingCommand = new RelayCommand(TogglePolling);
         CancelJobCommand = new AsyncRelayCommand(ct => CancelJobAsync(SelectedCurrentJob, ct), () => SelectedCurrentJob != null);
         CancelCurrentJobCommand = new AsyncRelayCommand<JobRow>((row, ct) => CancelJobAsync(row, ct), row => row is not null);
         ViewHistoryDetailCommand = new RelayCommand<JobRow>(ShowHistoryDetail, row => row is not null);
@@ -355,6 +371,11 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     }
 
     // ── Polling (current jobs only) ────────────────────────────────────────
+
+    private void TogglePolling()
+    {
+        if (IsPolling) StopPolling(); else StartPolling();
+    }
 
     private void StartPolling()
     {

@@ -28,12 +28,13 @@
     <sys:String x:Key="Dialog.Confirm">确认</sys:String>
     <sys:String x:Key="Dialog.OK">确定</sys:String>
     <sys:String x:Key="Btn.Cancel">取消</sys:String>
+    <sys:String x:Key="Btn.Confirm">确定</sys:String>
     <sys:String x:Key="Btn.Connect">连接</sys:String>
     <sys:String x:Key="Btn.Disconnect">断开</sys:String>
     <sys:String x:Key="Btn.Save">保存</sys:String>
     <sys:String x:Key="Btn.Close">关闭</sys:String>
-    <sys:String x:Key="Btn.StartPoll">▶ 轮询</sys:String>
-    <sys:String x:Key="Btn.StopPoll">■ 停止</sys:String>
+    <sys:String x:Key="Btn.StartPoll">▶ 开始轮询</sys:String>
+    <sys:String x:Key="Btn.StopPoll">⏸ 暂停轮询</sys:String>
     <sys:String x:Key="Btn.CancelJob">取消所选作业</sys:String>
     <sys:String x:Key="Btn.ClearCache">🗑 清缓存</sys:String>
     <sys:String x:Key="Btn.LoadOlder">▲ 较旧</sys:String>
@@ -488,7 +489,7 @@
     <sys:String x:Key="Task.UnsavedActionApplyBlueprint">应用蓝图</sys:String>
     <sys:String x:Key="Task.UnsavedActionCloseApplication">关闭应用</sys:String>
     <sys:String x:Key="Task.UnsavedActionCancelled">已取消当前操作，请先保存需要保留的修改。</sys:String>
-    <sys:String x:Key="App.UnsavedClosePrompt">应用即将关闭，以下未保存修改将被丢弃：\n{0}\n\n点击“确定”继续关闭，或点击“取消”返回后保存。</sys:String>
+    <sys:String x:Key="App.UnsavedClosePrompt">应用即将关闭，以下未保存修改将被丢弃：&#10;{0}&#10;&#10;点击“确定”继续关闭，或点击“取消”返回后保存。</sys:String>
     <sys:String x:Key="App.UnsavedSourceRemoteEditors">远程文件编辑器（{0} 个）</sys:String>
     <!-- Multi-task workspace -->
     <sys:String x:Key="Task.TaskUnits">任务单元</sys:String>
@@ -912,6 +913,9 @@
     <sys:String x:Key="RemoteEditor.StateDirty">未保存修改</sys:String>
     <sys:String x:Key="RemoteEditor.UnsavedTitle">未保存更改</sys:String>
     <sys:String x:Key="RemoteEditor.UnsavedPrompt">检测到未保存修改。是否保存后关闭？</sys:String>
+    <sys:String x:Key="RemoteEditor.BtnSaveAndClose">保存并关闭</sys:String>
+    <sys:String x:Key="RemoteEditor.BtnDiscardAndClose">不保存直接关闭</sys:String>
+    <sys:String x:Key="RemoteEditor.BtnReload">重新加载</sys:String>
 
     <!-- ── 终端视图 ──────────────────────────────────────────────────────── -->
     <sys:String x:Key="Console.Title">远程终端</sys:String>

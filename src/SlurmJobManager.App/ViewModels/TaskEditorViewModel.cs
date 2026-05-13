@@ -654,12 +654,13 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         if (!HasUnsavedChanges)
             return true;
 
-        var result = MessageBox.Show(
-            string.Format(L("Task.UnsavedDiscardPrompt"), L("Task.UnsavedActionCloseApplication"), L("Task.UnsavedSourceTaskConfig")),
-            L("Task.UnsavedTitle"),
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Warning);
-        return result == MessageBoxResult.OK;
+        var vm = new ConfirmationDialogViewModel(
+            title: L("Task.UnsavedTitle"),
+            message: string.Format(L("Task.UnsavedDiscardPrompt"), L("Task.UnsavedActionCloseApplication"), L("Task.UnsavedSourceTaskConfig")),
+            confirmButtonText: L("Btn.Confirm"),
+            cancelButtonText: L("Btn.Cancel"),
+            isWarning: true);
+        return ShowConfirmationDialog(vm);
     }
 
     private void InitializeTaskConfigurationDirtyTracking()
@@ -975,12 +976,13 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             return true;
 
         await Task.Yield();
-        var result = MessageBox.Show(
-            string.Format(L("Task.UnsavedDiscardPrompt"), L(actionResourceKey), L("Task.UnsavedSourceTaskConfig")),
-            L("Task.UnsavedTitle"),
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Warning);
-        if (result == MessageBoxResult.OK)
+        var vm = new ConfirmationDialogViewModel(
+            title: L("Task.UnsavedTitle"),
+            message: string.Format(L("Task.UnsavedDiscardPrompt"), L(actionResourceKey), L("Task.UnsavedSourceTaskConfig")),
+            confirmButtonText: L("Btn.Confirm"),
+            cancelButtonText: L("Btn.Cancel"),
+            isWarning: true);
+        if (ShowConfirmationDialog(vm))
             return true;
 
         SetStatus("Task.UnsavedActionCancelled", "InfoTextStyle");

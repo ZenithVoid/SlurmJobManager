@@ -9,7 +9,8 @@ public sealed class ConfirmationDialogViewModel : ViewModelBase
         string? confirmButtonText = null,
         string? cancelButtonText = null,
         bool isWarning = false,
-        bool showCancelButton = true)
+        bool showCancelButton = true,
+        string? discardButtonText = null)
     {
         Title = title;
         Message = message;
@@ -18,6 +19,7 @@ public sealed class ConfirmationDialogViewModel : ViewModelBase
         CancelButtonText = string.IsNullOrWhiteSpace(cancelButtonText) ? "Cancel" : cancelButtonText;
         IsWarning = isWarning;
         ShowCancelButton = showCancelButton;
+        DiscardButtonText = discardButtonText ?? string.Empty;
     }
 
     public string Title { get; }
@@ -27,5 +29,12 @@ public sealed class ConfirmationDialogViewModel : ViewModelBase
     public string CancelButtonText { get; }
     public bool IsWarning { get; }
     public bool ShowCancelButton { get; }
+
+    /// <summary>Optional text for a neutral "discard" button shown between Cancel and Confirm.
+    /// When empty, no discard button is shown. When clicked, <see cref="Views.Dialogs.ConfirmationDialogView.DiscardChosen"/>
+    /// is set to <c>true</c> and the dialog closes with <c>DialogResult = true</c>.</summary>
+    public string DiscardButtonText { get; }
+    public bool ShowDiscardButton => !string.IsNullOrEmpty(DiscardButtonText);
+
     public string IconText => IsWarning ? "⚠" : "ℹ";
 }

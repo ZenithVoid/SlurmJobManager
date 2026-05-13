@@ -93,7 +93,6 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <TextBox Grid.Column="0"
@@ -113,16 +112,9 @@
                 </CheckBox>
 
                 <Button Grid.Column="2"
-                        Content="{DynamicResource Btn.StartPoll}"
-                        Command="{Binding StartPollingCommand}"
-                        Style="{StaticResource NeutralButtonStyle}"
-                        Margin="4,0,0,0"
-                        Padding="8,4" />
-
-                <Button Grid.Column="3"
-                        Content="{DynamicResource Btn.StopPoll}"
-                        Command="{Binding StopPollingCommand}"
-                        Style="{StaticResource NeutralButtonStyle}"
+                        Content="{Binding TogglePollingButtonText}"
+                        Command="{Binding TogglePollingCommand}"
+                        Style="{Binding TogglePollingButtonStyleKey, Converter={StaticResource StyleKeyToStyle}}"
                         Margin="4,0,0,0"
                         Padding="8,4" />
             </Grid>
