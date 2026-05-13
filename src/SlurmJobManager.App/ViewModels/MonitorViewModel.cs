@@ -494,11 +494,16 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private static void SyncVisibleCollection<T>(ObservableCollection<T> target, IReadOnlyList<T> desired)
         where T : class
     {
+        var desiredSet = new HashSet<T>(desired);
         for (var index = target.Count - 1; index >= 0; index--)
         {
-            if (!desired.Contains(target[index]))
+            if (!desiredSet.Contains(target[index]))
                 target.RemoveAt(index);
         }
+
+        var indexByItem = new Dictionary<T, int>(target.Count);
+        for (var index = 0; index < target.Count; index++)
+            indexByItem[target[index]] = index;
 
         for (var index = 0; index < desired.Count; index++)
         {
@@ -506,12 +511,24 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             if (index < target.Count && ReferenceEquals(target[index], item))
                 continue;
 
-            var existingIndex = target.IndexOf(item);
-            if (existingIndex >= 0)
+            if (indexByItem.TryGetValue(item, out var existingIndex))
+            {
                 target.Move(existingIndex, index);
+                RefreshIndexLookup(target, indexByItem, Math.Min(index, existingIndex));
+            }
             else
+            {
                 target.Insert(index, item);
+                RefreshIndexLookup(target, indexByItem, index);
+            }
         }
+    }
+
+    private static void RefreshIndexLookup<T>(ObservableCollection<T> collection, IDictionary<T, int> indexByItem, int startIndex)
+        where T : class
+    {
+        for (var index = startIndex; index < collection.Count; index++)
+            indexByItem[collection[index]] = index;
     }
 
     private async Task CancelJobAsync(JobRow? job, CancellationToken ct)
