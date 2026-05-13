@@ -3018,9 +3018,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        await _autoLoadGate.WaitAsync(ct);
+        var lockTaken = false;
         try
         {
+            await _autoLoadGate.WaitAsync(ct);
+            lockTaken = true;
+
             if (IsDisposed || IsBusy)
                 return;
 
@@ -3034,9 +3037,13 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             _lastAutoLoadAttemptContextKey = contextKey;
             _ = await LoadTaskCoreAsync(ct, promptForUnsavedChanges: true, suppressNotFoundStatus: true);
         }
+        catch (OperationCanceledException)
+        {
+        }
         finally
         {
-            _autoLoadGate.Release();
+            if (lockTaken)
+                _autoLoadGate.Release();
         }
     }
 
