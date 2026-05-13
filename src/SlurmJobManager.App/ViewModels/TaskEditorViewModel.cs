@@ -47,6 +47,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private static readonly string[] AppSourceDirs = { "/env/preprocess/out", "/env/preprocess/bin" };
     private const string RemoteTemplateDir = "/env/preprocess/out/config";
     private const int MaxTaskIdLength = 200;
+    private const int MaxSubmitScriptSegmentLength = 48;
     private const string DefaultValidationAccount = "preproc";
     private const string StableSbatchFileName = "submit.sbatch";
 
@@ -3914,8 +3915,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         normalized = Regex.Replace(normalized, @"\s+", "-");
         normalized = Regex.Replace(normalized, @"[^\p{L}\p{N}._-]+", "-");
         normalized = Regex.Replace(normalized, @"-+", "-").Trim('-', '.');
-        if (normalized.Length > 48)
-            normalized = normalized[..48].Trim('-', '.');
+        if (normalized.Length > MaxSubmitScriptSegmentLength)
+            normalized = normalized[..MaxSubmitScriptSegmentLength].Trim('-', '.');
         return normalized;
     }
 
@@ -3992,7 +3993,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private async Task<IReadOnlyList<string>> ListRemoteSubmitScriptsAsync(string normalizedWorkDir, CancellationToken ct)
     {
         var escapedWorkDir = EscapeShellArg(normalizedWorkDir);
-        var command = $"find {escapedWorkDir} -maxdepth 1 -type f -name '*.sbatch' -printf '%f\\n' | sort";
+        var command = $"cd {escapedWorkDir} || exit $?; set -- *.sbatch; if [ \"$1\" = \"*.sbatch\" ]; then exit 0; fi; printf '%s\\n' \"$@\" | sort";
         var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(command, ct);
         if (exitCode != 0)
             throw new SubmitStageException(
