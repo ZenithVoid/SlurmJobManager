@@ -658,6 +658,7 @@
     <sys:String x:Key="Task.SubmitStageReady">就绪</sys:String>
     <sys:String x:Key="Task.SubmitStageLocalContext">本地任务上下文准备</sys:String>
     <sys:String x:Key="Task.SubmitStageRender">sbatch 模板渲染/本地脚本生成</sys:String>
+    <sys:String x:Key="Task.SubmitStageScriptSelection">sbatch 脚本选择校验</sys:String>
     <sys:String x:Key="Task.SubmitStageConnection">SSH/远程连接</sys:String>
     <sys:String x:Key="Task.SubmitStageRemoteDir">远程工作目录准备</sys:String>
     <sys:String x:Key="Task.SubmitStageSbatchSubmit">sbatch 提交命令执行</sys:String>
@@ -666,7 +667,8 @@
     <sys:String x:Key="Task.SubmitAdviceReady">可直接提交。提交后可在“运行诊断”区域快速查看 submit.log / job.out / job.err。</sys:String>
     <sys:String x:Key="Task.SubmitAdviceSuccess">下一步建议：先查看提交日志，再看监控状态；运行失败时优先打开 stderr。</sys:String>
     <sys:String x:Key="Task.SubmitAdviceLocalContext">请检查 TaskId、RootDirectory、RemoteWorkDir 和 AppPath，保存任务后重试。</sys:String>
-    <sys:String x:Key="Task.SubmitAdviceRender">请打开生成的 submit.sbatch，检查模板占位符和命令内容是否正确。</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceRender">请打开生成的提交脚本，检查模板占位符和命令内容是否正确。</sys:String>
+    <sys:String x:Key="Task.SubmitAdviceScriptSelection">请检查蓝图与脚本的对应关系，确认当前要提交的 sbatch 文件无歧义后再重试。</sys:String>
     <sys:String x:Key="Task.SubmitAdviceConnection">请重新建立 SSH 连接并确认主机/账号信息后重试提交。</sys:String>
     <sys:String x:Key="Task.SubmitAdviceRemoteDir">请确认 RemoteWorkDir 存在且可写，刷新目录后再提交。</sys:String>
     <sys:String x:Key="Task.SubmitAdviceSbatch">请查看 submit.log 和 stderr，并检查集群侧 sbatch 约束与脚本语法。</sys:String>
@@ -679,7 +681,7 @@
     <sys:String x:Key="Task.DiagnosticsLabelStdout">远程 stdout</sys:String>
     <sys:String x:Key="Task.DiagnosticsLabelStderr">远程 stderr</sys:String>
     <sys:String x:Key="Task.DiagnosticsLabelWorkDir">远程工作目录</sys:String>
-    <sys:String x:Key="Task.DiagnosticsOpenSubmitScript">打开 submit.sbatch</sys:String>
+    <sys:String x:Key="Task.DiagnosticsOpenSubmitScript">打开提交脚本</sys:String>
     <sys:String x:Key="Task.DiagnosticsOpenSubmitLog">打开 submit.log</sys:String>
     <sys:String x:Key="Task.DiagnosticsOpenStdout">打开 stdout (job.out)</sys:String>
     <sys:String x:Key="Task.DiagnosticsOpenStderr">打开 stderr (job.err)</sys:String>
@@ -759,6 +761,16 @@
     <sys:String x:Key="Task.BlueprintSbatchNeedsReview">sbatch 已处理 --job-name；其余脚本内容请检查是否仍引用旧任务信息。</sys:String>
     <sys:String x:Key="Task.BlueprintParameterPathNeedsReview">部分参数文件路径无法自动判断，已保留原值，请检查。</sys:String>
     <sys:String x:Key="Task.BlueprintContainsOldTaskIdPathWarning">当前蓝图可能包含旧 TaskId 相关路径，请检查。</sys:String>
+    <sys:String x:Key="Task.SubmitScriptMappingMissing">当前蓝图与 sbatch 脚本的对应关系不明确，请重新应用蓝图或调整蓝图名称后再提交。</sys:String>
+    <sys:String x:Key="Task.SubmitScriptExpectedMissingLocal">当前蓝图对应的 sbatch 脚本在本地不存在：{0}</sys:String>
+    <sys:String x:Key="Task.SubmitScriptExpectedMissingRemote">当前将要提交的 sbatch 脚本在工作目录中不存在：{0}</sys:String>
+    <sys:String x:Key="Task.SubmitScriptListFailed">检查当前工作目录中的 sbatch 脚本失败。</sys:String>
+    <sys:String x:Key="Task.SubmitScriptConfirmTitle">确认 sbatch 提交</sys:String>
+    <sys:String x:Key="Task.SubmitScriptConfirmMessage">当前目录中检测到多个 sbatch 脚本，程序即将提交“{0}”。</sys:String>
+    <sys:String x:Key="Task.SubmitScriptConfirmDetails">当前蓝图：{0}\n目标脚本：{1}\n工作目录：{2}\n\n检测到的 sbatch 脚本：\n{3}\n\n请确认高亮目标脚本就是本次要提交的脚本。</sys:String>
+    <sys:String x:Key="Task.SubmitScriptCancelled">已取消提交，本次不会执行 sbatch。</sys:String>
+    <sys:String x:Key="Task.SubmitScriptNoBlueprint">（非蓝图任务）</sys:String>
+    <sys:String x:Key="Task.SubmitScriptTargetTag">（本次目标）</sys:String>
     <sys:String x:Key="Task.SavedRemoteAssets">任务已保存，远程执行资产已落地到：{0}</sys:String>
     <sys:String x:Key="Task.ParamCopyFailed">参数文件落地失败：{0}</sys:String>
     <sys:String x:Key="Task.ParamCopyFailedNoDetail">参数文件落地失败（无详细错误）。</sys:String>

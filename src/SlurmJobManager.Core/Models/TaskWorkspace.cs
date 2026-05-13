@@ -32,6 +32,12 @@ public class TaskUnit
     /// <summary>Slurm Job ID from the most recent submission of this unit.</summary>
     public long? SlurmJobId { get; set; }
 
+    /// <summary>Blueprint identifier that most recently materialized this unit, when applicable.</summary>
+    public string? SourceBlueprintId { get; set; }
+
+    /// <summary>Blueprint name used to derive the preferred sbatch script name for this unit.</summary>
+    public string? SourceBlueprintName { get; set; }
+
     /// <summary>Custom sbatch script template (falls back to workspace default when null).</summary>
     public string? SbatchTemplate { get; set; }
 
