@@ -170,6 +170,9 @@
     <sys:String x:Key="Settings.PollIntervalDesc">越低的数值更新越快，但会增加 SSH 负载。</sys:String>
     <sys:String x:Key="Settings.PollIntervalEffect">会立即影响监控刷新频率，并复用当前 SSH 连接。</sys:String>
     <sys:String x:Key="Settings.HistoryQueryRangeDesc">历史查询每次请求都会限制返回数量，以避免对远端造成过高负载。</sys:String>
+    <sys:String x:Key="Settings.MonitorAllUsersJobsLabel">监控所有用户任务</sys:String>
+    <sys:String x:Key="Settings.MonitorAllUsersJobsDesc">开启后，监控将查询当前集群中所有用户的活动任务。</sys:String>
+    <sys:String x:Key="Settings.MonitorAllUsersJobsEffect">会立即影响登录初始化拉取与轮询范围。</sys:String>
     <sys:String x:Key="Settings.Language">语言</sys:String>
     <sys:String x:Key="Settings.LanguageLabel">界面语言：</sys:String>
     <sys:String x:Key="Settings.CurrentLanguage">当前语言：</sys:String>
@@ -996,8 +999,10 @@
     <sys:String x:Key="Monitor.HistoryNoTaskContext">未找到该历史任务可关联的当前任务上下文，请手动打开任务目录 logs 排查。</sys:String>
     <sys:String x:Key="Monitor.HistoryOpenedPath">已打开：{0}</sys:String>
     <sys:String x:Key="Monitor.HistoryOpenPathFailed">无法打开：{0}</sys:String>
-    <sys:String x:Key="Monitor.JobCompletionNotificationTitle">任务已结束</sys:String>
-    <sys:String x:Key="Monitor.JobCompletionNotificationBody">Job {0}（{1}）状态：{2}</sys:String>
+    <sys:String x:Key="Monitor.JobCompletionNotificationTitle">任务已成功完成</sys:String>
+    <sys:String x:Key="Monitor.JobCompletionNotificationBody">Job {0}（{1}）已成功完成。</sys:String>
+    <sys:String x:Key="Monitor.JobTerminalNotificationTitle">任务已结束（非成功）</sys:String>
+    <sys:String x:Key="Monitor.JobTerminalNotificationBody">Job {0}（{1}）结束状态：{2}</sys:String>
     <sys:String x:Key="Monitor.PollingEvery">轮询间隔 {0}s…</sys:String>
     <sys:String x:Key="Monitor.PollingStopped">已停止轮询。</sys:String>
     <sys:String x:Key="Monitor.PollingHalted">连续失败 {0} 次后已停止轮询。请检查连接后手动重启。</sys:String>

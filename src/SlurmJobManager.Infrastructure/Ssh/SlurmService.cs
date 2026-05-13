@@ -157,6 +157,34 @@ public sealed class SlurmService : ISlurmService
     }
 
     /// <inheritdoc/>
+    public async Task<SlurmJobStatus?> GetJobAccountingStatusAsync(long jobId, CancellationToken ct = default)
+    {
+        if (jobId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(jobId));
+
+        return await RetryHelper.ExecuteAsync(
+            async token =>
+            {
+                var command = string.Join(" ", new[]
+                {
+                    $"sacct -X -j {jobId}",
+                    "--starttime now-7days",
+                    "--noheader --parsable2",
+                    "--format=\"JobIDRaw,JobName,User,State,Partition,NodeList,Start,End,Elapsed,ExitCode,Reason\"",
+                    "--sort=-End"
+                });
+
+                var (stdout, _, _) = await _ssh.ExecuteAsync(command, token);
+                var status = stdout
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(line => ParseSacctLine(line.Trim()))
+                    .FirstOrDefault(parsed => parsed is not null && parsed.JobId == jobId);
+                return status;
+            },
+            _settings, _logger, $"GetJobAccountingStatus({jobId})", ct);
+    }
+
+    /// <inheritdoc/>
     public async Task CancelJobAsync(long jobId, CancellationToken ct = default)
     {
         var (_, stderr, exitCode) = await _ssh.ExecuteAsync($"scancel {jobId}", ct);
