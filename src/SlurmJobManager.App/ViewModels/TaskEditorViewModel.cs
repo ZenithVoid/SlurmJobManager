@@ -1435,6 +1435,13 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 return;
             }
 
+            // The new directory is empty — reset the editor to a blank task state so
+            // the previous task's content is not shown as if it belongs here.
+            PauseTaskConfigurationDirtyTracking();
+            TaskUnits.Clear();
+            EnsureAtLeastOneTaskUnit();
+            ResumeTaskConfigurationDirtyTracking(commitSnapshot: true);
+
             refreshTaskIdDirectoryState = true;
             await RefreshTaskIdDirectoryStateAsync(ct);
             SetStatus(string.Format(L("Task.TaskIdDirCreateSucceeded"), CollapseHomePath(targetPath)), "SuccessTextStyle", localize: false);
