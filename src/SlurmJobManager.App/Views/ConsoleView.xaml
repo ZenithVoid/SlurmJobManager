@@ -55,6 +55,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <TextBlock
@@ -101,6 +102,13 @@
                 Padding="8,4" />
             <Button
                 Grid.Column="6"
+                Content="{DynamicResource Btn.Paste}"
+                Style="{StaticResource NeutralButtonStyle}"
+                Click="PasteTerminal_Click"
+                Margin="4,0,0,0"
+                Padding="8,4" />
+            <Button
+                Grid.Column="7"
                 Content="{DynamicResource Btn.Clear}"
                 Command="{Binding ClearCommand}"
                 Style="{StaticResource NeutralButtonStyle}"
@@ -118,7 +126,20 @@
                 <controls:TerminalSurfaceControl
                     x:Name="TerminalSurface"
                     InputGenerated="TerminalSurface_InputGenerated"
-                    TerminalResized="TerminalSurface_TerminalResized" />
+                    TerminalResized="TerminalSurface_TerminalResized"
+                    ToolTip="{DynamicResource Console.TerminalInteractionHint}">
+                    <controls:TerminalSurfaceControl.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="{DynamicResource Btn.Copy}"
+                                      Click="CopyTerminal_Click" />
+                            <MenuItem Header="{DynamicResource Btn.Paste}"
+                                      Click="PasteTerminal_Click" />
+                            <Separator />
+                            <MenuItem Header="{DynamicResource Btn.Clear}"
+                                      Command="{Binding ClearCommand}" />
+                        </ContextMenu>
+                    </controls:TerminalSurfaceControl.ContextMenu>
+                </controls:TerminalSurfaceControl>
                 <Border Background="#66000000"
                         Visibility="{Binding IsConnected, Converter={StaticResource InvBoolToVis}}">
                     <TextBlock Text="{DynamicResource Console.TerminalDisconnectedPlaceholder}"
