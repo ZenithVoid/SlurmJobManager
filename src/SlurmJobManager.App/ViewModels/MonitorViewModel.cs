@@ -491,6 +491,10 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         _allCurrentJobs = merged;
     }
 
+    /// <summary>
+    /// Synchronizes an on-screen collection in place so DataGrid rows can be moved/updated
+    /// without clearing and rebuilding the entire ItemsSource during polling refreshes.
+    /// </summary>
     private static void SyncVisibleCollection<T>(ObservableCollection<T> target, IReadOnlyList<T> desired)
         where T : class
     {
@@ -524,6 +528,9 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Rebuilds the item-to-index lookup from the first changed position after inserts or moves.
+    /// </summary>
     private static void RefreshIndexLookup<T>(ObservableCollection<T> collection, IDictionary<T, int> indexByItem, int startIndex)
         where T : class
     {
@@ -1036,6 +1043,10 @@ public sealed class JobRow : ViewModelBase
         EndTimeDisplay = FormatDateTime(EndTime);
     }
 
+    /// <summary>
+    /// Copies the latest snapshot values into this row instance so bindings stay attached
+    /// while the displayed content updates in place.
+    /// </summary>
     public void UpdateFrom(JobRow latest, DateTime now)
     {
         JobName = latest.JobName;
