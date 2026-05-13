@@ -62,6 +62,7 @@
     <sys:String x:Key="Btn.StopCmd">⏹ 停止</sys:String>
     <sys:String x:Key="Btn.ResetTerminal">重置终端</sys:String>
     <sys:String x:Key="Btn.Copy">复制</sys:String>
+    <sys:String x:Key="Btn.Paste">粘贴</sys:String>
     <sys:String x:Key="Btn.Clear">清除</sys:String>
     <sys:String x:Key="Btn.OpenInTerminal">在终端中打开</sys:String>
 
@@ -936,6 +937,7 @@
     <sys:String x:Key="Console.CdFailedNoDetail">[cd] 切换目录失败。</sys:String>
     <sys:String x:Key="Console.CdFailed">[cd] 切换目录失败：{0}</sys:String>
     <sys:String x:Key="Console.TerminalDisconnectedPlaceholder">SSH 未连接。请先建立连接后再使用终端。</sys:String>
+    <sys:String x:Key="Console.TerminalInteractionHint">可用鼠标拖动选中终端文本；复制/粘贴可使用 Ctrl+Shift+C、Ctrl+Shift+V、Shift+Insert 或右键菜单。</sys:String>
 
     <!-- ── 崩溃对话框 ────────────────────────────────────────────────────── -->
     <sys:String x:Key="Crash.Title">程序发生严重错误</sys:String>

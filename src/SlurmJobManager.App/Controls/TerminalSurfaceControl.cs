@@ -1,5 +1,6 @@
-using System.Globalization;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -24,11 +25,14 @@ public sealed class TerminalResizedEventArgs : EventArgs
     }
 }
 
+internal readonly record struct TerminalSelectionPoint(int Col, int Row);
+
 public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 {
     private static readonly Color DefaultForeground = Color.FromRgb(0xD9, 0xE1, 0xE8);
     private static readonly Color DefaultBackground = Color.FromRgb(0x0F, 0x14, 0x1A);
     private static readonly Color CursorColor = Color.FromArgb(180, 0x9D, 0xCB, 0xFF);
+    private static readonly Color SelectionFill = Color.FromArgb(120, 0x4E, 0x8F, 0xE6);
     private static readonly Typeface MonoTypeface = new(new FontFamily("Cascadia Mono"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
     private static readonly TimeSpan MinRenderInterval = TimeSpan.FromMilliseconds(16);
     private const double PixelsPerDipTolerance = 0.0001;
@@ -41,6 +45,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     private readonly SolidColorBrush _defaultForegroundBrush;
     private readonly SolidColorBrush _defaultBackgroundBrush;
     private readonly SolidColorBrush _cursorBrush;
+    private readonly SolidColorBrush _selectionBrush;
     private readonly Dictionary<uint, SolidColorBrush> _brushCache = new();
     private readonly int _fontSize = 14;
     private ulong[] _rowHashes = Array.Empty<ulong>();
@@ -53,6 +58,10 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     private bool _lastCursorVisible;
     private int _lastCursorX = -1;
     private int _lastCursorY = -1;
+    private TerminalSelectionPoint? _selectionAnchor;
+    private TerminalSelectionPoint? _selectionActive;
+    private bool _isSelecting;
+    private bool _selectionMoved;
 
     public event EventHandler<string>? InputGenerated;
     public event EventHandler<TerminalResizedEventArgs>? TerminalResized;
@@ -70,6 +79,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         _defaultForegroundBrush = CreateFrozenBrush(DefaultForeground);
         _defaultBackgroundBrush = CreateFrozenBrush(DefaultBackground);
         _cursorBrush = CreateFrozenBrush(CursorColor);
+        _selectionBrush = CreateFrozenBrush(SelectionFill);
 
         _renderTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
@@ -141,6 +151,54 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
     public string GetVisibleText()
         => string.Join(Environment.NewLine, _terminal.GetVisibleLines());
 
+    public string GetSelectedText()
+    {
+        if (!TryGetNormalizedSelection(out var start, out var end))
+            return string.Empty;
+
+        var rows = new List<string>(Math.Max(1, end.Row - start.Row + 1));
+        for (var row = start.Row; row <= end.Row; row++)
+        {
+            var lineText = GetVisibleLineText(row);
+            var startCol = row == start.Row ? start.Col : 0;
+            var endExclusive = row == end.Row ? end.Col + 1 : lineText.Length;
+            if (startCol >= lineText.Length)
+            {
+                rows.Add(string.Empty);
+                continue;
+            }
+
+            var safeEnd = Math.Clamp(endExclusive, startCol, lineText.Length);
+            rows.Add(lineText[startCol..safeEnd]);
+        }
+
+        return string.Join(Environment.NewLine, rows);
+    }
+
+    public void CopySelectionOrVisibleTextToClipboard()
+    {
+        var text = GetSelectedText();
+        if (string.IsNullOrEmpty(text))
+            text = GetVisibleText();
+
+        if (!string.IsNullOrEmpty(text))
+            Clipboard.SetText(text);
+    }
+
+    public bool PasteFromClipboard()
+    {
+        if (!Clipboard.ContainsText())
+            return false;
+
+        var text = NormalizeClipboardText(Clipboard.GetText());
+        if (string.IsNullOrEmpty(text))
+            return false;
+
+        EmitInput(text);
+        ClearSelection();
+        return true;
+    }
+
     protected override int VisualChildrenCount => _visuals.Count;
 
     protected override Visual GetVisualChild(int index) => _visuals[index];
@@ -150,10 +208,17 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         base.OnPreviewKeyDown(e);
         if (_isDisposed) return;
 
+        if (TryHandleClipboardShortcut(e.Key, Keyboard.Modifiers))
+        {
+            e.Handled = true;
+            return;
+        }
+
         var modifiers = ConvertModifiers(Keyboard.Modifiers);
 
         if (TryMapCtrlChord(e.Key, Keyboard.Modifiers, out var ctrlData))
         {
+            ClearSelection();
             EmitInput(ctrlData);
             e.Handled = true;
             return;
@@ -162,6 +227,7 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         if (TryMapKey(e.Key, out var terminalKey))
         {
             var data = _terminal.GenerateKeyInput(terminalKey, modifiers);
+            ClearSelection();
             EmitInput(data);
             e.Handled = true;
         }
@@ -173,12 +239,64 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         if (_isDisposed || string.IsNullOrEmpty(e.Text)) return;
 
         var modifiers = ConvertModifiers(Keyboard.Modifiers);
+        ClearSelection();
         foreach (var ch in e.Text)
         {
             var data = _terminal.GenerateCharInput(ch, modifiers);
             EmitInput(data);
         }
         e.Handled = true;
+    }
+
+    protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
+    {
+        base.OnMouseLeftButtonDown(e);
+        if (_isDisposed)
+            return;
+
+        Focus();
+        CaptureMouse();
+        _isSelecting = true;
+        _selectionMoved = false;
+        var cell = GetCellFromPoint(e.GetPosition(this));
+        _selectionAnchor = cell;
+        _selectionActive = cell;
+        e.Handled = true;
+        RequestRender(forceFull: true);
+    }
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        base.OnMouseMove(e);
+        if (!_isSelecting || !_selectionAnchor.HasValue || _isDisposed)
+            return;
+
+        var cell = GetCellFromPoint(e.GetPosition(this));
+        if (_selectionActive != cell)
+        {
+            _selectionMoved = true;
+            _selectionActive = cell;
+            RequestRender(forceFull: true);
+        }
+    }
+
+    protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
+    {
+        base.OnMouseLeftButtonUp(e);
+        if (!_isSelecting)
+            return;
+
+        _isSelecting = false;
+        ReleaseMouseCapture();
+        if (!_selectionMoved)
+            ClearSelection();
+        e.Handled = true;
+    }
+
+    protected override void OnLostMouseCapture(MouseEventArgs e)
+    {
+        base.OnLostMouseCapture(e);
+        _isSelecting = false;
     }
 
     protected override void OnRender(DrawingContext dc)
@@ -292,6 +410,21 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
         if (line == null)
             return;
 
+        for (var col = 0; col < Math.Min(cols, line.Length); col++)
+        {
+            var cell = line[col];
+            if (cell.Width == 0) continue;
+
+            var attrs = cell.Attributes;
+            var rect = new Rect(col * _cellWidth, y, Math.Max(_cellWidth * cell.Width, _cellWidth), _cellHeight);
+            var (_, bg) = ResolveColors(attrs);
+
+            if (bg != DefaultBackground)
+                dc.DrawRectangle(GetBrush(bg), null, rect);
+        }
+
+        DrawSelection(row, cols, y, dc);
+
         var pixelsPerDip = _pixelsPerDip;
         for (var col = 0; col < Math.Min(cols, line.Length); col++)
         {
@@ -299,12 +432,8 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
             if (cell.Width == 0) continue;
 
             var attrs = cell.Attributes;
-            var (fg, bg) = ResolveColors(attrs);
+            var (fg, _) = ResolveColors(attrs);
             var rect = new Rect(col * _cellWidth, y, Math.Max(_cellWidth * cell.Width, _cellWidth), _cellHeight);
-
-            if (bg != DefaultBackground)
-                dc.DrawRectangle(GetBrush(bg), null, rect);
-
             var content = string.IsNullOrEmpty(cell.Content) ? " " : cell.Content;
             var formatted = new FormattedText(
                 content,
@@ -519,6 +648,148 @@ public sealed class TerminalSurfaceControl : FrameworkElement, IDisposable
 
         return false;
     }
+
+    private bool TryHandleClipboardShortcut(System.Windows.Input.Key key, ModifierKeys modifiers)
+    {
+        if ((modifiers & ModifierKeys.Shift) == ModifierKeys.Shift && key == System.Windows.Input.Key.Insert)
+            return PasteFromClipboard();
+
+        if ((modifiers & ModifierKeys.Control) != ModifierKeys.Control ||
+            (modifiers & ModifierKeys.Shift) != ModifierKeys.Shift ||
+            (modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+        {
+            return false;
+        }
+
+        switch (key)
+        {
+            case System.Windows.Input.Key.C:
+                CopySelectionOrVisibleTextToClipboard();
+                return true;
+            case System.Windows.Input.Key.V:
+                return PasteFromClipboard();
+            default:
+                return false;
+        }
+    }
+
+    private TerminalSelectionPoint GetCellFromPoint(Point point)
+    {
+        EnsureCellMetrics();
+        var col = _cellWidth > 0
+            ? Math.Clamp((int)(point.X / _cellWidth), 0, Math.Max(0, _terminal.Cols - 1))
+            : 0;
+        var row = _cellHeight > 0
+            ? Math.Clamp((int)(point.Y / _cellHeight), 0, Math.Max(0, _terminal.Rows - 1))
+            : 0;
+        return new TerminalSelectionPoint(col, row);
+    }
+
+    private void DrawSelection(int row, int cols, double y, DrawingContext dc)
+    {
+        if (!TryGetSelectionRangeForRow(row, cols, out var startCol, out var endExclusive))
+            return;
+
+        var width = Math.Max(_cellWidth, (endExclusive - startCol) * _cellWidth);
+        dc.DrawRectangle(_selectionBrush, null, new Rect(startCol * _cellWidth, y, width, _cellHeight));
+    }
+
+    private bool TryGetSelectionRangeForRow(int row, int cols, out int startCol, out int endExclusive)
+    {
+        startCol = 0;
+        endExclusive = 0;
+        if (!TryGetNormalizedSelection(out var start, out var end))
+            return false;
+
+        if (row < start.Row || row > end.Row)
+            return false;
+
+        startCol = row == start.Row ? start.Col : 0;
+        endExclusive = row == end.Row ? Math.Min(cols, end.Col + 1) : cols;
+        return endExclusive > startCol;
+    }
+
+    private bool TryGetNormalizedSelection(out TerminalSelectionPoint start, out TerminalSelectionPoint end)
+    {
+        start = default;
+        end = default;
+        if (!_selectionAnchor.HasValue || !_selectionActive.HasValue)
+            return false;
+
+        var first = _selectionAnchor.Value;
+        var second = _selectionActive.Value;
+        if (!HasSelectionRange(first, second))
+            return false;
+
+        if (CompareSelectionPoints(first, second) <= 0)
+        {
+            start = first;
+            end = second;
+        }
+        else
+        {
+            start = second;
+            end = first;
+        }
+
+        return true;
+    }
+
+    private static bool HasSelectionRange(TerminalSelectionPoint first, TerminalSelectionPoint second)
+        => first.Row != second.Row || first.Col != second.Col;
+
+    private static int CompareSelectionPoints(TerminalSelectionPoint left, TerminalSelectionPoint right)
+    {
+        var rowCompare = left.Row.CompareTo(right.Row);
+        return rowCompare != 0 ? rowCompare : left.Col.CompareTo(right.Col);
+    }
+
+    public void ClearSelection()
+    {
+        if (!_selectionAnchor.HasValue && !_selectionActive.HasValue)
+            return;
+
+        _selectionAnchor = null;
+        _selectionActive = null;
+        _selectionMoved = false;
+        RequestRender(forceFull: true);
+    }
+
+    private string GetVisibleLineText(int row)
+    {
+        var line = _terminal.Buffer.GetLine(_terminal.Buffer.YDisp + row);
+        if (line == null)
+            return string.Empty;
+
+        var cols = _terminal.Cols;
+        var cells = new string?[cols];
+        var lastUsedCol = -1;
+        var length = Math.Min(cols, line.Length);
+        for (var col = 0; col < length; col++)
+        {
+            var cell = line[col];
+            if (cell.Width == 0)
+                continue;
+
+            var content = string.IsNullOrEmpty(cell.Content) ? " " : cell.Content;
+            cells[col] = content;
+            lastUsedCol = Math.Max(lastUsedCol, Math.Min(cols - 1, col + Math.Max(1, cell.Width) - 1));
+            for (var span = 1; span < cell.Width && col + span < cols; span++)
+                cells[col + span] = string.Empty;
+        }
+
+        if (lastUsedCol < 0)
+            return string.Empty;
+
+        var builder = new StringBuilder(lastUsedCol + 1);
+        for (var col = 0; col <= lastUsedCol; col++)
+            builder.Append(cells[col] ?? " ");
+        return builder.ToString();
+    }
+
+    private static string NormalizeClipboardText(string text)
+        => text.Replace("\r\n", "\n", StringComparison.Ordinal)
+               .Replace("\r", "\n", StringComparison.Ordinal);
 
     private void RequestRender(bool forceFull = false)
     {

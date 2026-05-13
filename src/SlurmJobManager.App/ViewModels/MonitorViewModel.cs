@@ -300,7 +300,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
             Application.Current.Dispatcher.Invoke(() =>
             {
-                _allCurrentJobs = mappedJobs;
+                RefreshCurrentJobsSnapshot(mappedJobs);
                 ApplyCurrentFilter();
                 UpdateCurrentElapsedDisplays();
             });
@@ -440,7 +440,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
     private void ApplyCurrentFilter()
     {
-        var filtered = _allCurrentJobs.AsEnumerable();
+        IEnumerable<JobRow> filtered = _allCurrentJobs;
 
         if (StatusFilter != _allStatusFilter)
             filtered = filtered.Where(j => j.State.Equals(StatusFilter, StringComparison.OrdinalIgnoreCase));
@@ -461,12 +461,57 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             }
         }
 
-        CurrentJobs.Clear();
-        foreach (var row in filtered)
-            CurrentJobs.Add(row);
+        var filteredRows = filtered.ToList();
+        SyncVisibleCollection(CurrentJobs, filteredRows);
 
-        if (SelectedCurrentJob is not null && !CurrentJobs.Contains(SelectedCurrentJob))
+        if (SelectedCurrentJob is not null && !filteredRows.Contains(SelectedCurrentJob))
             SelectedCurrentJob = null;
+    }
+
+    private void RefreshCurrentJobsSnapshot(IReadOnlyList<JobRow> latestJobs)
+    {
+        var existingById = _allCurrentJobs.ToDictionary(row => row.JobId);
+        var merged = new List<JobRow>(latestJobs.Count);
+        var now = DateTime.Now;
+
+        foreach (var latest in latestJobs)
+        {
+            if (existingById.TryGetValue(latest.JobId, out var existing))
+            {
+                existing.UpdateFrom(latest, now);
+                merged.Add(existing);
+                existingById.Remove(latest.JobId);
+                continue;
+            }
+
+            latest.RefreshDisplays(now);
+            merged.Add(latest);
+        }
+
+        _allCurrentJobs = merged;
+    }
+
+    private static void SyncVisibleCollection<T>(ObservableCollection<T> target, IReadOnlyList<T> desired)
+        where T : class
+    {
+        for (var index = target.Count - 1; index >= 0; index--)
+        {
+            if (!desired.Contains(target[index]))
+                target.RemoveAt(index);
+        }
+
+        for (var index = 0; index < desired.Count; index++)
+        {
+            var item = desired[index];
+            if (index < target.Count && ReferenceEquals(target[index], item))
+                continue;
+
+            var existingIndex = target.IndexOf(item);
+            if (existingIndex >= 0)
+                target.Move(existingIndex, index);
+            else
+                target.Insert(index, item);
+        }
     }
 
     private async Task CancelJobAsync(JobRow? job, CancellationToken ct)
@@ -919,24 +964,34 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 /// <summary>Display row for a single Slurm job in the monitor tables.</summary>
 public sealed class JobRow : ViewModelBase
 {
+    private string _jobName = string.Empty;
+    private string _user = string.Empty;
     private string _state = string.Empty;
+    private string _partition = string.Empty;
+    private string _nodeList = string.Empty;
+    private DateTime? _startTime;
+    private DateTime? _endTime;
+    private TimeSpan? _elapsed;
+    private string? _exitCode;
+    private string? _reason;
+    private bool _isHistorical;
     private string _runTimeDisplay = string.Empty;
     private string _startTimeDisplay = string.Empty;
     private string _endTimeDisplay = string.Empty;
 
     public long JobId { get; set; }
-    public string JobName { get; set; } = string.Empty;
-    public string User { get; set; } = string.Empty;
+    public string JobName { get => _jobName; set => SetField(ref _jobName, value); }
+    public string User { get => _user; set => SetField(ref _user, value); }
     public string State { get => _state; set => SetField(ref _state, value); }
-    public string Partition { get; set; } = string.Empty;
-    public string NodeList { get; set; } = string.Empty;
+    public string Partition { get => _partition; set => SetField(ref _partition, value); }
+    public string NodeList { get => _nodeList; set => SetField(ref _nodeList, value); }
 
-    public DateTime? StartTime { get; set; }
-    public DateTime? EndTime { get; set; }
-    public TimeSpan? Elapsed { get; set; }
-    public string? ExitCode { get; set; }
-    public string? Reason { get; set; }
-    public bool IsHistorical { get; set; }
+    public DateTime? StartTime { get => _startTime; set => SetField(ref _startTime, value); }
+    public DateTime? EndTime { get => _endTime; set => SetField(ref _endTime, value); }
+    public TimeSpan? Elapsed { get => _elapsed; set => SetField(ref _elapsed, value); }
+    public string? ExitCode { get => _exitCode; set => SetField(ref _exitCode, value); }
+    public string? Reason { get => _reason; set => SetField(ref _reason, value); }
+    public bool IsHistorical { get => _isHistorical; set => SetField(ref _isHistorical, value); }
 
     public string RunTimeDisplay
     {
@@ -962,6 +1017,22 @@ public sealed class JobRow : ViewModelBase
         RunTimeDisplay = elapsed.HasValue ? FormatElapsed(elapsed.Value) : string.Empty;
         StartTimeDisplay = FormatDateTime(StartTime);
         EndTimeDisplay = FormatDateTime(EndTime);
+    }
+
+    public void UpdateFrom(JobRow latest, DateTime now)
+    {
+        JobName = latest.JobName;
+        User = latest.User;
+        State = latest.State;
+        Partition = latest.Partition;
+        NodeList = latest.NodeList;
+        StartTime = latest.StartTime;
+        EndTime = latest.EndTime;
+        Elapsed = latest.Elapsed;
+        ExitCode = latest.ExitCode;
+        Reason = latest.Reason;
+        IsHistorical = latest.IsHistorical;
+        RefreshDisplays(now);
     }
 
     private TimeSpan? ResolveElapsed(DateTime now)

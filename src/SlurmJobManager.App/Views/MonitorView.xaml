@@ -203,7 +203,7 @@
                                   b:SmoothScrollBehavior.IsEnabled="True"
                                   b:SmoothScrollBehavior.ScrollAmount="60">
                         <Grid Background="{DynamicResource BgSurface0Brush}"
-                              MinWidth="1090"
+                              MinWidth="1020"
                               Width="{Binding ElementName=CurrentJobsScrollHost, Path=ViewportWidth}">
                             <shared:EmptyStateView
                                 Icon="📭"
@@ -224,12 +224,21 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="90" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />
 
-                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="2*" MinWidth="230">
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="1.45*" MinWidth="170">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding JobName}"
-                                                       Style="{StaticResource TrimmedJobCellTextStyle}"
-                                                       ToolTip="{Binding JobName}" />
+                                                       Style="{StaticResource TrimmedJobCellTextStyle}">
+                                                <TextBlock.ToolTip>
+                                                    <ToolTip Style="{StaticResource AppToolTipStyle}"
+                                                             Placement="Mouse"
+                                                             ToolTipService.ShowDuration="60000">
+                                                        <TextBlock Text="{Binding JobName}"
+                                                                   TextWrapping="Wrap"
+                                                                   MaxWidth="480" />
+                                                    </ToolTip>
+                                                </TextBlock.ToolTip>
+                                            </TextBlock>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -255,7 +264,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColPartition}" Width="110">
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColPartition}" Width="72">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding Partition}"
@@ -339,7 +348,7 @@
                                   b:SmoothScrollBehavior.IsEnabled="True"
                                   b:SmoothScrollBehavior.ScrollAmount="60">
                         <Grid Background="{DynamicResource BgSurface0Brush}"
-                              MinWidth="980"
+                              MinWidth="940"
                               Width="{Binding ElementName=HistoryJobsScrollHost, Path=ViewportWidth}">
                             <shared:EmptyStateView
                                 Icon="🗂"
@@ -360,12 +369,21 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColJobId}" Binding="{Binding JobId}" Width="90" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />
 
-                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="2*">
+                                <DataGridTemplateColumn Header="{DynamicResource Monitor.ColName}" Width="1.35*" MinWidth="170">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding JobName}"
-                                                        Style="{StaticResource TrimmedJobCellTextStyle}"
-                                                        ToolTip="{Binding JobName}" />
+                                                        Style="{StaticResource TrimmedJobCellTextStyle}">
+                                                <TextBlock.ToolTip>
+                                                    <ToolTip Style="{StaticResource AppToolTipStyle}"
+                                                             Placement="Mouse"
+                                                             ToolTipService.ShowDuration="60000">
+                                                        <TextBlock Text="{Binding JobName}"
+                                                                   TextWrapping="Wrap"
+                                                                   MaxWidth="480" />
+                                                    </ToolTip>
+                                                </TextBlock.ToolTip>
+                                            </TextBlock>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>

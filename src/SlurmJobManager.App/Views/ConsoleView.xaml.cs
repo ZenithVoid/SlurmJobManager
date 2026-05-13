@@ -118,7 +118,13 @@ public partial class ConsoleView : UserControl
 
     private void CopyTerminal_Click(object sender, RoutedEventArgs e)
     {
-        Clipboard.SetText(TerminalSurface.GetVisibleText());
+        TerminalSurface.CopySelectionOrVisibleTextToClipboard();
+    }
+
+    private void PasteTerminal_Click(object sender, RoutedEventArgs e)
+    {
+        if (TerminalSurface.PasteFromClipboard())
+            FocusTerminal();
     }
 
     private void CmdInput_KeyDown(object sender, KeyEventArgs e)

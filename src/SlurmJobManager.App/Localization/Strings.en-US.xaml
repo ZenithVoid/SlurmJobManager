@@ -62,6 +62,7 @@
     <sys:String x:Key="Btn.StopCmd">⏹ Stop</sys:String>
     <sys:String x:Key="Btn.ResetTerminal">Reset Terminal</sys:String>
     <sys:String x:Key="Btn.Copy">Copy</sys:String>
+    <sys:String x:Key="Btn.Paste">Paste</sys:String>
     <sys:String x:Key="Btn.Clear">Clear</sys:String>
     <sys:String x:Key="Btn.OpenInTerminal">Open in Terminal</sys:String>
 
@@ -936,6 +937,7 @@
     <sys:String x:Key="Console.CdFailedNoDetail">[cd] Failed to change directory.</sys:String>
     <sys:String x:Key="Console.CdFailed">[cd] Failed to change directory: {0}</sys:String>
     <sys:String x:Key="Console.TerminalDisconnectedPlaceholder">SSH is disconnected. Reconnect first to use the terminal.</sys:String>
+    <sys:String x:Key="Console.TerminalInteractionHint">Drag to select terminal text. Use Ctrl+Shift+C / Ctrl+Shift+V, Shift+Insert, or right-click menu for copy and paste.</sys:String>
 
     <!-- ── Crash dialog ─────────────────────────────────────────────────── -->
     <sys:String x:Key="Crash.Title">Fatal Application Error</sys:String>
