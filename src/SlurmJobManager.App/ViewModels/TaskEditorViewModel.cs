@@ -96,6 +96,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private bool _isTaskConfigurationDirty;
     private bool _hasUnsavedChanges;
     private int _dirtyTrackingPauseDepth;
+    private readonly SemaphoreSlim _autoLoadGate = new(1, 1);
+    private string _lastAutoLoadAttemptContextKey = string.Empty;
 
     // ── Workspace / active task-unit state ──────────────────────────────────
     // Each TaskId has exactly ONE active task unit.  Legacy workspaces with
@@ -1175,6 +1177,10 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
             await RefreshAppCandidatesAsync(CancellationToken.None);
             await RefreshTemplateCandidatesAsync(CancellationToken.None);
+
+            if (restoredTaskId)
+                await TryAutoLoadTaskForCurrentContextAsync(CancellationToken.None);
+
             if (!IsDisposed)
                 CommandManager.InvalidateRequerySuggested();
         }
@@ -1197,6 +1203,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         var normalizedWorkDir = NormalizePathForRestore(record.RemoteWorkDir);
         var normalizedCurrentPath = NormalizePathForRestore(record.CurrentTaskFilesPath);
 
+        var hadUnsavedChanges = HasUnsavedChanges;
+        PauseTaskConfigurationDirtyTracking();
         _suppressLastTaskContextCapture = true;
         try
         {
@@ -1217,6 +1225,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         finally
         {
             _suppressLastTaskContextCapture = false;
+            ResumeTaskConfigurationDirtyTracking(commitSnapshot: !hadUnsavedChanges);
         }
     }
 
@@ -1488,6 +1497,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                         ? L("Task.TaskIdDirExists")
                         : L("Task.TaskIdDirNotExists");
                     CommandManager.InvalidateRequerySuggested();
+                    if (exists)
+                        _ = TryAutoLoadTaskForCurrentContextAsync(CancellationToken.None);
                 });
             }
             catch (OperationCanceledException) { }
@@ -1529,6 +1540,8 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             _taskIdDirectoryExists = exists;
             TaskIdDirectoryStatus = exists ? L("Task.TaskIdDirExists") : L("Task.TaskIdDirNotExists");
             CommandManager.InvalidateRequerySuggested();
+            if (exists)
+                _ = TryAutoLoadTaskForCurrentContextAsync(CancellationToken.None);
         }
         catch (OperationCanceledException)
         {
@@ -2933,10 +2946,13 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     }
 
     private async Task LoadTaskAsync(CancellationToken ct)
+        => _ = await LoadTaskCoreAsync(ct, promptForUnsavedChanges: true, suppressNotFoundStatus: false);
+
+    private async Task<bool> LoadTaskCoreAsync(CancellationToken ct, bool promptForUnsavedChanges, bool suppressNotFoundStatus)
     {
-        if (!await ConfirmDiscardUnsavedChangesAsync("Task.UnsavedActionLoadTask", ct))
-            return;
-        if (!ValidateRootAndId()) return;
+        if (promptForUnsavedChanges && !await ConfirmDiscardUnsavedChangesAsync("Task.UnsavedActionLoadTask", ct))
+            return false;
+        if (!ValidateRootAndId()) return false;
         IsBusy = true;
         SetStatus("Task.Loading", "InfoTextStyle");
         _logger?.Info($"Task load started. TaskId='{TaskId}', Root='{RootDirectory}'.");
@@ -2947,12 +2963,19 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             {
                 // Try legacy path
                 var record = await _storage.LoadAsync(LocalDataRoot, TaskId, ct);
-                if (record == null) { SetStatus("Task.LoadNotFound", "WarningTextStyle"); return; }
+                if (record == null)
+                {
+                    if (!suppressNotFoundStatus)
+                        SetStatus("Task.LoadNotFound", "WarningTextStyle");
+                    return false;
+                }
                 PauseTaskConfigurationDirtyTracking();
                 ApplyTaskRecord(record);
                 ResumeTaskConfigurationDirtyTracking(commitSnapshot: true);
                 SetStatus(string.Format(L("Task.LoadedLegacy"), TaskId), "SuccessTextStyle", localize: false);
-                return;
+                var legacyContextKey = BuildCurrentTaskContextKey();
+                _lastAutoLoadAttemptContextKey = legacyContextKey;
+                return true;
             }
 
             PauseTaskConfigurationDirtyTracking();
@@ -2960,14 +2983,68 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             ResumeTaskConfigurationDirtyTracking(commitSnapshot: true);
             SetStatus(string.Format(L("Task.WorkspaceLoaded"), TaskId, workspace.Tasks.Count), "SuccessTextStyle", localize: false);
             _logger?.Info($"Task load completed. TaskId='{TaskId}', UnitCount={workspace.Tasks.Count}.");
+            var contextKey = BuildCurrentTaskContextKey();
+            _lastAutoLoadAttemptContextKey = contextKey;
+            return true;
         }
         catch (Exception ex)
         {
             ResumeTaskConfigurationDirtyTracking(commitSnapshot: false);
             SetStatus(string.Format(L("Task.LoadFailed"), ex.Message), "ErrorTextStyle", localize: false);
             _logger?.Error($"Task load failed. TaskId='{TaskId}', Root='{RootDirectory}'.", ex);
+            return false;
         }
         finally { IsBusy = false; }
+    }
+
+    private string BuildCurrentTaskContextKey()
+    {
+        var normalizedRoot = NormalizeRemotePath(RootDirectory);
+        var normalizedTaskId = NormalizeTaskIdForRestore(TaskId);
+        if (string.IsNullOrWhiteSpace(normalizedRoot) || string.IsNullOrWhiteSpace(normalizedTaskId))
+            return string.Empty;
+        return $"{normalizedRoot}::{normalizedTaskId}";
+    }
+
+    private async Task TryAutoLoadTaskForCurrentContextAsync(CancellationToken ct)
+    {
+        if (IsDisposed || IsBusy)
+            return;
+
+        var contextKey = BuildCurrentTaskContextKey();
+        if (string.IsNullOrWhiteSpace(contextKey)
+            || string.Equals(contextKey, _lastAutoLoadAttemptContextKey, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var lockTaken = false;
+        try
+        {
+            await _autoLoadGate.WaitAsync(ct);
+            lockTaken = true;
+
+            if (IsDisposed || IsBusy)
+                return;
+
+            contextKey = BuildCurrentTaskContextKey();
+            if (string.IsNullOrWhiteSpace(contextKey)
+                || string.Equals(contextKey, _lastAutoLoadAttemptContextKey, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _lastAutoLoadAttemptContextKey = contextKey;
+            _ = await LoadTaskCoreAsync(ct, promptForUnsavedChanges: true, suppressNotFoundStatus: true);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (lockTaken)
+                _autoLoadGate.Release();
+        }
     }
 
     private void ApplyWorkspace(TaskWorkspace w)
@@ -4174,6 +4251,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         _taskIdValidationCts?.Cancel();
         _taskIdValidationCts?.Dispose();
         _taskIdValidationCts = null;
+        _autoLoadGate.Dispose();
         Parameters.CollectionChanged -= OnParametersCollectionChanged;
         foreach (var parameter in Parameters)
             parameter.PropertyChanged -= OnTrackedPropertyChanged;
