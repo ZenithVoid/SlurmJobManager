@@ -9,7 +9,9 @@ using SlurmJobManager.App.Services.Packaging;
 using SlurmJobManager.App.Services.Updates;
 using SlurmJobManager.App.Services.Validation;
 using SlurmJobManager.App.ViewModels;
+using SlurmJobManager.App.ViewModels.Dialogs;
 using SlurmJobManager.App.Views;
+using SlurmJobManager.App.Views.Dialogs;
 using SlurmJobManager.Core.Interfaces;
 using SlurmJobManager.Core.Models;
 using SlurmJobManager.Infrastructure.Logs;
@@ -234,13 +236,22 @@ public partial class App : Application
         if (dirtyRemoteEditors > 0)
             unsavedItems.Add($"- {string.Format(L("App.UnsavedSourceRemoteEditors"), dirtyRemoteEditors)}");
 
-        var prompt = string.Format(L("App.UnsavedClosePrompt"), string.Join(Environment.NewLine, unsavedItems));
-        var result = MessageBox.Show(
-            prompt,
-            L("Task.UnsavedTitle"),
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Warning);
-        return result == MessageBoxResult.OK;
+        var prompt = string.Format(L("App.UnsavedClosePrompt"), string.Join("\n", unsavedItems));
+        var vm = new ConfirmationDialogViewModel(
+            title: L("Task.UnsavedTitle"),
+            message: prompt,
+            confirmButtonText: L("Btn.Confirm"),
+            cancelButtonText: L("Btn.Cancel"),
+            isWarning: true);
+        return ShowConfirmationDialog(vm);
+    }
+
+    private static bool ShowConfirmationDialog(ConfirmationDialogViewModel vm)
+    {
+        var dialog = new ConfirmationDialogView { DataContext = vm };
+        if (Current.MainWindow is { } mainWindow)
+            dialog.Owner = mainWindow;
+        return dialog.ShowDialog() == true;
     }
 
     // ── Global exception hooks ───────────────────────────────────────────────
