@@ -19,6 +19,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
     private readonly ISlurmService _slurm;
     private readonly AppSettings _settings;
+    private readonly AppPreferencesService? _prefs;
     private readonly IAppLogger? _logger;
     private readonly ConnectionViewModel? _connection;
     private readonly INotificationService? _notificationService;
@@ -36,6 +37,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private List<JobRow> _allCurrentJobs = new();
     private Dictionary<long, JobRow> _lastCurrentSnapshot = new();
     private readonly HashSet<long> _notifiedCompletedJobIds = new();
+    private readonly HashSet<long> _terminalConfirmationAttemptedJobIds = new();
     private readonly object _completionNotificationGate = new();
 
     private string _watchedUser = string.Empty;
@@ -158,6 +160,9 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         {
             if (SetField(ref _showAllUsers, value))
             {
+                _prefs?.TrySetMonitorAllUsersJobs(value, out _);
+                if (!value)
+                    SyncWatchedUserToConnection(force: true);
                 OnPropertyChanged(nameof(IsEmptyState));
                 OnPropertyChanged(nameof(CanQueryHistory));
                 OnPropertyChanged(nameof(MonitorContextSummary));
@@ -251,12 +256,14 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     public MonitorViewModel(
         ISlurmService slurm,
         AppSettings? settings = null,
+        AppPreferencesService? prefs = null,
         IAppLogger? logger = null,
         ConnectionViewModel? connection = null,
         INotificationService? notificationService = null)
     {
         _slurm = slurm ?? throw new ArgumentNullException(nameof(slurm));
         _settings = settings ?? new AppSettings();
+        _prefs = prefs;
         _logger = logger;
         _connection = connection;
         _notificationService = notificationService;
@@ -281,11 +288,13 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         _elapsedTimer.Tick += OnElapsedTick;
         _elapsedTimer.Start();
 
+        _showAllUsers = _prefs?.MonitorAllUsersJobs ?? false;
+
         if (_connection != null)
         {
             _connection.PropertyChanged += OnConnectionPropertyChanged;
-            if (_connection.IsConnected && !string.IsNullOrWhiteSpace(_connection.Username) && string.IsNullOrWhiteSpace(WatchedUser))
-                WatchedUser = _connection.Username;
+            if (_connection.IsConnected)
+                SyncWatchedUserToConnection(force: true);
         }
 
         SetStatus("Monitor.EmptyState", "InfoTextStyle");
@@ -810,23 +819,13 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
         var readyToNotify = new Dictionary<long, JobRow>();
 
-        foreach (var row in currentById.Values)
-        {
-            if (notifiedSnapshot.Contains(row.JobId))
-                continue;
-
-            var hasPrevious = previousSnapshot.TryGetValue(row.JobId, out var previous);
-            if (IsTerminalState(row.State) && (!hasPrevious || !IsTerminalState(previous!.State)))
-                readyToNotify[row.JobId] = row;
-        }
-
         var disappeared = previousSnapshot.Values
             .Where(previous => !currentById.ContainsKey(previous.JobId))
             .ToList();
 
         if (disappeared.Count > 0)
         {
-            var resolved = await ResolveTerminalRowsFromHistoryAsync(disappeared, ct);
+            var resolved = await ResolveTerminalRowsFromAccountingAsync(disappeared, ct);
             foreach (var row in resolved)
             {
                 if (!notifiedSnapshot.Contains(row.JobId))
@@ -839,7 +838,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         return readyToNotify.Values.ToList();
     }
 
-    private async Task<IReadOnlyList<JobRow>> ResolveTerminalRowsFromHistoryAsync(
+    private async Task<IReadOnlyList<JobRow>> ResolveTerminalRowsFromAccountingAsync(
         IReadOnlyList<JobRow> disappearedJobs,
         CancellationToken ct)
     {
@@ -850,24 +849,28 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             return Array.Empty<JobRow>();
 
         var terminalById = new Dictionary<long, JobRow>();
-        var users = disappearedJobs
-            .Select(row => row.User?.Trim())
-            .Where(user => !string.IsNullOrWhiteSpace(user))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        foreach (var user in users)
+        foreach (var pair in disappearedById)
         {
+            var jobId = pair.Key;
             try
             {
-                var history = await _slurm.GetUserJobHistoryAsync(user!, HistoryFetchLimit, ct);
-                foreach (var historyStatus in history)
+                var shouldQuery = false;
+                lock (_completionNotificationGate)
                 {
-                    if (!disappearedById.ContainsKey(historyStatus.JobId) || !IsTerminalState(historyStatus.State))
-                        continue;
-                    if (!terminalById.ContainsKey(historyStatus.JobId))
-                        terminalById[historyStatus.JobId] = MapHistoricalJob(historyStatus);
+                    if (!_notifiedCompletedJobIds.Contains(jobId)
+                        && !_terminalConfirmationAttemptedJobIds.Contains(jobId))
+                    {
+                        _terminalConfirmationAttemptedJobIds.Add(jobId);
+                        shouldQuery = true;
+                    }
                 }
+
+                if (!shouldQuery)
+                    continue;
+
+                var accounting = await _slurm.GetJobAccountingStatusAsync(jobId, ct);
+                if (accounting is not null && IsTerminalState(accounting.State))
+                    terminalById[jobId] = MapHistoricalJob(accounting);
             }
             catch (OperationCanceledException)
             {
@@ -875,7 +878,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             }
             catch (Exception ex)
             {
-                _logger?.Warning($"Monitor completion history lookup failed for user '{user}': {ex.Message}");
+                _logger?.Warning($"Monitor completion accounting lookup failed for job {jobId}: {ex.Message}");
             }
         }
 
@@ -898,10 +901,15 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
             try
             {
+                var isSuccessfulCompletion = row.State.Equals(SlurmJobState.Completed, StringComparison.OrdinalIgnoreCase);
                 _notificationService?.Show(
-                    L("Monitor.JobCompletionNotificationTitle"),
+                    isSuccessfulCompletion
+                        ? L("Monitor.JobCompletionNotificationTitle")
+                        : L("Monitor.JobTerminalNotificationTitle"),
                     string.Format(
-                        L("Monitor.JobCompletionNotificationBody"),
+                        isSuccessfulCompletion
+                            ? L("Monitor.JobCompletionNotificationBody")
+                            : L("Monitor.JobTerminalNotificationBody"),
                         row.JobId,
                         ValueOrDash(row.JobName),
                         ValueOrDash(row.State)));
@@ -987,10 +995,21 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         if (e.PropertyName is not nameof(ConnectionViewModel.IsConnected)) return;
         if (_connection is null || !_connection.IsConnected) return;
 
-        if (!string.IsNullOrWhiteSpace(_connection.Username) && string.IsNullOrWhiteSpace(WatchedUser))
-            WatchedUser = _connection.Username;
+        SyncWatchedUserToConnection(force: true);
 
         RefreshCurrentJobsCommand.Execute(null);
+    }
+
+    private void SyncWatchedUserToConnection(bool force)
+    {
+        if (ShowAllUsers)
+            return;
+
+        if (string.IsNullOrWhiteSpace(_connection?.Username))
+            return;
+
+        if (force || string.IsNullOrWhiteSpace(WatchedUser))
+            WatchedUser = _connection.Username.Trim();
     }
 
     public void Dispose()

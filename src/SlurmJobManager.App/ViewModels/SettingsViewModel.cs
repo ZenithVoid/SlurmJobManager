@@ -181,6 +181,16 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
+    public bool MonitorAllUsersJobs
+    {
+        get => _main.Monitor.ShowAllUsers;
+        set
+        {
+            _main.Monitor.ShowAllUsers = value;
+            OnPropertyChanged();
+        }
+    }
+
     // ── Locale ────────────────────────────────────────────────────────────
 
     public string CurrentLocale => _main.CurrentLocale;

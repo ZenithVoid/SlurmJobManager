@@ -95,6 +95,34 @@ public sealed class AppPreferencesService
         return LastSaveSucceeded;
     }
 
+    public bool MonitorAllUsersJobs
+    {
+        get => _dto.MonitorAllUsersJobs;
+        set
+        {
+            if (_dto.MonitorAllUsersJobs == value) return;
+            _dto = _dto with { MonitorAllUsersJobs = value };
+            Save();
+        }
+    }
+
+    public bool TrySetMonitorAllUsersJobs(bool value, out string? error)
+    {
+        if (_dto.MonitorAllUsersJobs != value)
+        {
+            _dto = _dto with { MonitorAllUsersJobs = value };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
     /// <summary>
     /// Default starting directory for remote SSH file/directory picker dialogs.
     /// Falls back to <c>/gpfs/</c> when not configured.
@@ -369,6 +397,7 @@ public sealed class AppPreferencesService
     private sealed record AppPrefsDto(
         bool AutoConnectOnStartup = false,
         bool AutoRestoreLastTaskOnLogin = false,
+        bool MonitorAllUsersJobs = false,
         string? DefaultRemotePickerDirectory = DefaultRemotePickerDirectoryFallback,
         string UpdateSourceType = nameof(UpdateSourceType.GitHub),
         string? UpdateFolderPath = "",

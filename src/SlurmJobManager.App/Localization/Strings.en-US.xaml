@@ -169,6 +169,9 @@
     <sys:String x:Key="Settings.PollIntervalDesc">How often the monitor polls squeue. Lower values give faster updates but increase SSH load.</sys:String>
     <sys:String x:Key="Settings.PollIntervalEffect">Applies immediately to monitoring refresh; existing SSH connection is reused.</sys:String>
     <sys:String x:Key="Settings.HistoryQueryRangeDesc">History queries are intentionally limited per request to avoid heavy remote load.</sys:String>
+    <sys:String x:Key="Settings.MonitorAllUsersJobsLabel">Monitor all users' jobs</sys:String>
+    <sys:String x:Key="Settings.MonitorAllUsersJobsDesc">When enabled, monitoring queries all users' active jobs in the cluster.</sys:String>
+    <sys:String x:Key="Settings.MonitorAllUsersJobsEffect">Applies immediately to login initialization and polling scope.</sys:String>
     <sys:String x:Key="Settings.Language">Language</sys:String>
     <sys:String x:Key="Settings.LanguageLabel">Interface language:</sys:String>
     <sys:String x:Key="Settings.CurrentLanguage">Current language: </sys:String>
@@ -992,8 +995,10 @@
     <sys:String x:Key="Monitor.HistoryNoTaskContext">No matching task context found for this history entry. Open the related task directory logs manually.</sys:String>
     <sys:String x:Key="Monitor.HistoryOpenedPath">Opened: {0}</sys:String>
     <sys:String x:Key="Monitor.HistoryOpenPathFailed">Unable to open: {0}</sys:String>
-    <sys:String x:Key="Monitor.JobCompletionNotificationTitle">Job Finished</sys:String>
-    <sys:String x:Key="Monitor.JobCompletionNotificationBody">Job {0} ({1}) reached terminal state: {2}</sys:String>
+    <sys:String x:Key="Monitor.JobCompletionNotificationTitle">Job Completed</sys:String>
+    <sys:String x:Key="Monitor.JobCompletionNotificationBody">Job {0} ({1}) completed successfully.</sys:String>
+    <sys:String x:Key="Monitor.JobTerminalNotificationTitle">Job Ended (Not Successful)</sys:String>
+    <sys:String x:Key="Monitor.JobTerminalNotificationBody">Job {0} ({1}) ended with state: {2}</sys:String>
     <sys:String x:Key="Monitor.PollingEvery">Polling every {0}s…</sys:String>
     <sys:String x:Key="Monitor.PollingStopped">Polling stopped.</sys:String>
     <sys:String x:Key="Monitor.PollingHalted">Polling stopped after {0} consecutive failures. Check connection and restart polling manually.</sys:String>

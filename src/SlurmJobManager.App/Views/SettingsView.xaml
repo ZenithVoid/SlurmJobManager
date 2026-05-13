@@ -190,6 +190,26 @@
                         Text="{DynamicResource Settings.HistoryQueryRangeDesc}"
                         Style="{StaticResource MutedTextStyle}"
                         TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,4">
+                        <CheckBox
+                            x:Name="MonitorAllUsersJobsCheckBox"
+                            Margin="0,0,10,0"
+                            IsChecked="{Binding MonitorAllUsersJobs, Mode=TwoWay}" />
+                        <Label
+                            Padding="0"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"
+                            Target="{Binding ElementName=MonitorAllUsersJobsCheckBox}"
+                            Content="{DynamicResource Settings.MonitorAllUsersJobsLabel}"
+                            Foreground="{DynamicResource TextPrimaryBrush}" />
+                    </StackPanel>
+                    <TextBlock Text="{DynamicResource Settings.MonitorAllUsersJobsDesc}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        Text="{DynamicResource Settings.MonitorAllUsersJobsEffect}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
