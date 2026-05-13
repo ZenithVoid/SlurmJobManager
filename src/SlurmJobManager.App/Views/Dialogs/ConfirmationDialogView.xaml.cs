@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 
 namespace SlurmJobManager.App.Views.Dialogs;
 
@@ -29,5 +30,18 @@ public partial class ConfirmationDialogView : Window
     private void BtnCancel_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
+    }
+
+    private void BtnClose_Click(object sender, RoutedEventArgs e)
+    {
+        DialogResult = false;
+    }
+
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ButtonState != MouseButtonState.Pressed)
+            return;
+
+        DragMove();
     }
 }
