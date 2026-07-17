@@ -62,8 +62,8 @@ public sealed class WindowsNotificationService : INotificationService
         return string.Join("; ", new[]
         {
             "$ErrorActionPreference = 'Stop'",
-            "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null",
-            "[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] > $null",
+            "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null",
+            "[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null",
             "$doc = New-Object Windows.Data.Xml.Dom.XmlDocument",
             $"$doc.LoadXml('{escapedXml}')",
             "$toast = [Windows.UI.Notifications.ToastNotification]::new($doc)",

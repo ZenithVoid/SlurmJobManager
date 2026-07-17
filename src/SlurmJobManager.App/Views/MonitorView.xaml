@@ -83,6 +83,35 @@
             <StackPanel>
                 <TextBlock Text="{DynamicResource Monitor.Title}" Style="{StaticResource PageTitleStyle}" />
                 <TextBlock Text="{Binding MonitorContextSummary}" Style="{StaticResource PageContextSummaryStyle}" />
+                <WrapPanel Margin="0,2,0,0">
+                    <Border Style="{StaticResource MetricPillStyle}">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Monitor.MetricCurrent}" Style="{StaticResource MetricPillLabelStyle}" />
+                            <TextBlock Text="{Binding CurrentJobCount}" Style="{StaticResource MetricPillValueStyle}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource MetricPillStyle}">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Monitor.MetricRunning}" Style="{StaticResource MetricPillLabelStyle}" />
+                            <TextBlock Text="{Binding RunningJobCount}" Style="{StaticResource MetricPillValueStyle}"
+                                       Foreground="{DynamicResource AccentGreenBrush}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource MetricPillStyle}">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Monitor.MetricPending}" Style="{StaticResource MetricPillLabelStyle}" />
+                            <TextBlock Text="{Binding PendingJobCount}" Style="{StaticResource MetricPillValueStyle}"
+                                       Foreground="{DynamicResource AccentYellowBrush}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource MetricPillStyle}">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Monitor.MetricAttention}" Style="{StaticResource MetricPillLabelStyle}" />
+                            <TextBlock Text="{Binding AttentionJobCount}" Style="{StaticResource MetricPillValueStyle}"
+                                       Foreground="{DynamicResource AccentRedBrush}" />
+                        </StackPanel>
+                    </Border>
+                </WrapPanel>
             </StackPanel>
         </Border>
 

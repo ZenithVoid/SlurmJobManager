@@ -16,6 +16,7 @@ namespace SlurmJobManager.App.ViewModels;
 public sealed class MonitorViewModel : ViewModelBase, IDisposable
 {
     private const int HistoryFetchLimit = 200;
+    private const int TerminalNotificationMaxAccountingAttempts = 5;
 
     private readonly ISlurmService _slurm;
     private readonly AppSettings _settings;
@@ -37,7 +38,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private List<JobRow> _allCurrentJobs = new();
     private Dictionary<long, JobRow> _lastCurrentSnapshot = new();
     private readonly HashSet<long> _notifiedCompletedJobIds = new();
-    private readonly HashSet<long> _terminalConfirmationAttemptedJobIds = new();
+    private readonly Dictionary<long, PendingTerminalNotification> _pendingTerminalNotifications = new();
     private readonly object _completionNotificationGate = new();
 
     private string _watchedUser = string.Empty;
@@ -202,6 +203,19 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         => !string.IsNullOrWhiteSpace(StatusMessage)
             ? StatusMessage
             : (_isRefreshing ? L("Status.Loading") : string.Empty);
+
+    public int CurrentJobCount => _allCurrentJobs.Count;
+
+    public int RunningJobCount
+        => _allCurrentJobs.Count(row =>
+            row.State.Equals(SlurmJobState.Running, StringComparison.OrdinalIgnoreCase)
+            || row.State.Equals(SlurmJobState.Completing, StringComparison.OrdinalIgnoreCase));
+
+    public int PendingJobCount
+        => _allCurrentJobs.Count(row => row.State.Equals(SlurmJobState.Pending, StringComparison.OrdinalIgnoreCase));
+
+    public int AttentionJobCount
+        => _allCurrentJobs.Count(row => IsAttentionState(row.State));
 
     public string StatusFilter
     {
@@ -519,6 +533,15 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         }
 
         _allCurrentJobs = merged;
+        NotifyCurrentJobMetricsChanged();
+    }
+
+    private void NotifyCurrentJobMetricsChanged()
+    {
+        OnPropertyChanged(nameof(CurrentJobCount));
+        OnPropertyChanged(nameof(RunningJobCount));
+        OnPropertyChanged(nameof(PendingJobCount));
+        OnPropertyChanged(nameof(AttentionJobCount));
     }
 
     /// <summary>
@@ -597,6 +620,11 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         {
             await _slurm.CancelJobAsync(jobId, ct);
             SetStatus(string.Format(L("Monitor.CancelSucceeded"), jobId), "SuccessTextStyle", localize: false);
+            MarkJobNotificationDelivered(jobId);
+            ShowJobNotification(
+                L("Monitor.JobCancelNotificationTitle"),
+                string.Format(L("Monitor.JobCancelNotificationBody"), jobId, ValueOrDash(job.JobName)),
+                ToastType.Warning);
             _logger?.Info($"Job {jobId} cancelled by user.");
         }
         catch (Exception ex)
@@ -794,7 +822,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private static string ValueOrDash(string? value)
         => string.IsNullOrWhiteSpace(value) ? "-" : value;
 
-    private async Task<IReadOnlyList<JobRow>> DetectCompletionNotificationsAsync(
+    private async Task<IReadOnlyList<JobTerminalNotification>> DetectCompletionNotificationsAsync(
         IReadOnlyList<JobRow> currentSnapshot,
         CancellationToken ct)
     {
@@ -810,27 +838,34 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             .GroupBy(row => row.JobId)
             .ToDictionary(group => group.Key, group => group.First());
 
+        var readyToNotify = new Dictionary<long, JobTerminalNotification>();
+
         if (previousSnapshot.Count == 0)
         {
+            var resolvedPending = await ResolvePendingTerminalNotificationsAsync(ct);
             lock (_completionNotificationGate)
                 _lastCurrentSnapshot = currentById;
-            return Array.Empty<JobRow>();
+            return resolvedPending;
         }
 
-        var readyToNotify = new Dictionary<long, JobRow>();
+        foreach (var row in currentSnapshot.Where(row => IsTerminalState(row.State)))
+        {
+            if (!notifiedSnapshot.Contains(row.JobId))
+                readyToNotify[row.JobId] = JobTerminalNotification.FromTerminalRow(row);
+        }
 
         var disappeared = previousSnapshot.Values
             .Where(previous => !currentById.ContainsKey(previous.JobId))
             .ToList();
 
-        if (disappeared.Count > 0)
+        foreach (var row in disappeared)
+            AddPendingTerminalNotification(row);
+
+        var resolved = await ResolvePendingTerminalNotificationsAsync(ct);
+        foreach (var notification in resolved)
         {
-            var resolved = await ResolveTerminalRowsFromAccountingAsync(disappeared, ct);
-            foreach (var row in resolved)
-            {
-                if (!notifiedSnapshot.Contains(row.JobId))
-                    readyToNotify[row.JobId] = row;
-            }
+            if (!notifiedSnapshot.Contains(notification.Row.JobId))
+                readyToNotify[notification.Row.JobId] = notification;
         }
 
         lock (_completionNotificationGate)
@@ -838,39 +873,70 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         return readyToNotify.Values.ToList();
     }
 
-    private async Task<IReadOnlyList<JobRow>> ResolveTerminalRowsFromAccountingAsync(
-        IReadOnlyList<JobRow> disappearedJobs,
-        CancellationToken ct)
+    private void AddPendingTerminalNotification(JobRow row)
     {
-        var disappearedById = disappearedJobs
-            .Where(row => row.JobId > 0)
-            .ToDictionary(row => row.JobId, row => row);
-        if (disappearedById.Count == 0)
-            return Array.Empty<JobRow>();
+        if (row.JobId <= 0)
+            return;
 
-        var terminalById = new Dictionary<long, JobRow>();
-        foreach (var pair in disappearedById)
+        lock (_completionNotificationGate)
         {
-            var jobId = pair.Key;
+            if (_notifiedCompletedJobIds.Contains(row.JobId))
+                return;
+
+            if (_pendingTerminalNotifications.TryGetValue(row.JobId, out var pending))
+            {
+                pending.LastSeen = row;
+                return;
+            }
+
+            _pendingTerminalNotifications[row.JobId] = new PendingTerminalNotification(row);
+        }
+    }
+
+    private async Task<IReadOnlyList<JobTerminalNotification>> ResolvePendingTerminalNotificationsAsync(CancellationToken ct)
+    {
+        List<PendingTerminalNotification> pendingNotifications;
+        lock (_completionNotificationGate)
+        {
+            pendingNotifications = _pendingTerminalNotifications.Values
+                .Where(pending => !_notifiedCompletedJobIds.Contains(pending.JobId))
+                .ToList();
+        }
+
+        if (pendingNotifications.Count == 0)
+            return Array.Empty<JobTerminalNotification>();
+
+        var resolved = new List<JobTerminalNotification>();
+        foreach (var pending in pendingNotifications)
+        {
+            var jobId = pending.JobId;
+            var attempt = 0;
             try
             {
-                var shouldQuery = false;
                 lock (_completionNotificationGate)
                 {
-                    if (!_notifiedCompletedJobIds.Contains(jobId)
-                        && !_terminalConfirmationAttemptedJobIds.Contains(jobId))
-                    {
-                        _terminalConfirmationAttemptedJobIds.Add(jobId);
-                        shouldQuery = true;
-                    }
-                }
+                    if (_notifiedCompletedJobIds.Contains(jobId)
+                        || !_pendingTerminalNotifications.TryGetValue(jobId, out var currentPending))
+                        continue;
 
-                if (!shouldQuery)
-                    continue;
+                    currentPending.AccountingAttempts++;
+                    attempt = currentPending.AccountingAttempts;
+                }
 
                 var accounting = await _slurm.GetJobAccountingStatusAsync(jobId, ct);
                 if (accounting is not null && IsTerminalState(accounting.State))
-                    terminalById[jobId] = MapHistoricalJob(accounting);
+                {
+                    var row = MapHistoricalJob(accounting);
+                    resolved.Add(JobTerminalNotification.FromTerminalRow(row));
+                    RemovePendingTerminalNotification(jobId);
+                    continue;
+                }
+
+                if (attempt >= TerminalNotificationMaxAccountingAttempts)
+                {
+                    resolved.Add(JobTerminalNotification.MissingFromQueue(pending.LastSeen));
+                    RemovePendingTerminalNotification(jobId);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -879,45 +945,93 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             catch (Exception ex)
             {
                 _logger?.Warning($"Monitor completion accounting lookup failed for job {jobId}: {ex.Message}");
+                if (attempt >= TerminalNotificationMaxAccountingAttempts)
+                {
+                    resolved.Add(JobTerminalNotification.MissingFromQueue(pending.LastSeen));
+                    RemovePendingTerminalNotification(jobId);
+                }
             }
         }
 
-        return terminalById.Values.ToList();
+        return resolved;
     }
 
-    private void NotifyCompletedJobs(IReadOnlyList<JobRow> completedJobs)
+    private void RemovePendingTerminalNotification(long jobId)
+    {
+        lock (_completionNotificationGate)
+            _pendingTerminalNotifications.Remove(jobId);
+    }
+
+    private void NotifyCompletedJobs(IReadOnlyList<JobTerminalNotification> completedJobs)
     {
         if (completedJobs.Count == 0)
             return;
 
-        foreach (var row in completedJobs.OrderBy(r => r.JobId))
+        foreach (var notification in completedJobs.OrderBy(n => n.Row.JobId))
         {
-            lock (_completionNotificationGate)
-            {
-                if (_notifiedCompletedJobIds.Contains(row.JobId))
-                    continue;
-                _notifiedCompletedJobIds.Add(row.JobId);
-            }
+            var row = notification.Row;
+            if (!MarkJobNotificationDelivered(row.JobId))
+                continue;
 
             try
             {
-                var isSuccessfulCompletion = row.State.Equals(SlurmJobState.Completed, StringComparison.OrdinalIgnoreCase);
-                _notificationService?.Show(
-                    isSuccessfulCompletion
-                        ? L("Monitor.JobCompletionNotificationTitle")
-                        : L("Monitor.JobTerminalNotificationTitle"),
-                    string.Format(
-                        isSuccessfulCompletion
-                            ? L("Monitor.JobCompletionNotificationBody")
-                            : L("Monitor.JobTerminalNotificationBody"),
-                        row.JobId,
-                        ValueOrDash(row.JobName),
-                        ValueOrDash(row.State)));
+                var (title, message, toastType) = BuildJobNotificationContent(notification);
+                ShowJobNotification(title, message, toastType);
             }
             catch (Exception ex)
             {
                 _logger?.Warning($"Monitor completion notification failed for job {row.JobId}: {ex.Message}");
             }
+        }
+    }
+
+    private (string Title, string Message, ToastType ToastType) BuildJobNotificationContent(JobTerminalNotification notification)
+    {
+        var row = notification.Row;
+        return notification.Kind switch
+        {
+            JobTerminalNotificationKind.Completed => (
+                L("Monitor.JobCompletionNotificationTitle"),
+                string.Format(L("Monitor.JobCompletionNotificationBody"), row.JobId, ValueOrDash(row.JobName)),
+                ToastType.Success),
+            JobTerminalNotificationKind.MissingFromQueue => (
+                L("Monitor.JobMissingNotificationTitle"),
+                string.Format(L("Monitor.JobMissingNotificationBody"), row.JobId, ValueOrDash(row.JobName)),
+                ToastType.Warning),
+            _ => (
+                L("Monitor.JobTerminalNotificationTitle"),
+                string.Format(L("Monitor.JobTerminalNotificationBody"), row.JobId, ValueOrDash(row.JobName), ValueOrDash(row.State)),
+                ToastType.Warning)
+        };
+    }
+
+    private bool MarkJobNotificationDelivered(long jobId)
+    {
+        lock (_completionNotificationGate)
+        {
+            if (_notifiedCompletedJobIds.Contains(jobId))
+                return false;
+
+            _notifiedCompletedJobIds.Add(jobId);
+            _pendingTerminalNotifications.Remove(jobId);
+            return true;
+        }
+    }
+
+    private void ShowJobNotification(string title, string message, ToastType toastType)
+    {
+        _notificationService?.Show(title, message);
+
+        var toastMessage = string.IsNullOrWhiteSpace(title)
+            ? message
+            : $"{title}{Environment.NewLine}{message}";
+        try
+        {
+            ToastService.Instance.Show(toastMessage, toastType, 8);
+        }
+        catch (Exception ex)
+        {
+            _logger?.Warning($"In-app notification failed: {ex.Message}");
         }
     }
 
@@ -929,6 +1043,18 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         var value = state.Trim();
         return value.Equals(SlurmJobState.Completed, StringComparison.OrdinalIgnoreCase)
             || value.Equals(SlurmJobState.Failed, StringComparison.OrdinalIgnoreCase)
+            || value.Equals(SlurmJobState.Cancelled, StringComparison.OrdinalIgnoreCase)
+            || value.Equals(SlurmJobState.Timeout, StringComparison.OrdinalIgnoreCase)
+            || value.Equals(SlurmJobState.NodeFail, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsAttentionState(string? state)
+    {
+        if (string.IsNullOrWhiteSpace(state))
+            return false;
+
+        var value = state.Trim();
+        return value.Equals(SlurmJobState.Failed, StringComparison.OrdinalIgnoreCase)
             || value.Equals(SlurmJobState.Cancelled, StringComparison.OrdinalIgnoreCase)
             || value.Equals(SlurmJobState.Timeout, StringComparison.OrdinalIgnoreCase)
             || value.Equals(SlurmJobState.NodeFail, StringComparison.OrdinalIgnoreCase);
@@ -1022,6 +1148,39 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
         _elapsedTimer.Tick -= OnElapsedTick;
         _elapsedTimer.Stop();
+    }
+
+    private sealed class PendingTerminalNotification
+    {
+        public PendingTerminalNotification(JobRow lastSeen)
+        {
+            LastSeen = lastSeen;
+        }
+
+        public long JobId => LastSeen.JobId;
+        public JobRow LastSeen { get; set; }
+        public int AccountingAttempts { get; set; }
+    }
+
+    private sealed record JobTerminalNotification(JobRow Row, JobTerminalNotificationKind Kind)
+    {
+        public static JobTerminalNotification FromTerminalRow(JobRow row)
+        {
+            var kind = row.State.Equals(SlurmJobState.Completed, StringComparison.OrdinalIgnoreCase)
+                ? JobTerminalNotificationKind.Completed
+                : JobTerminalNotificationKind.Terminal;
+            return new JobTerminalNotification(row, kind);
+        }
+
+        public static JobTerminalNotification MissingFromQueue(JobRow row)
+            => new(row, JobTerminalNotificationKind.MissingFromQueue);
+    }
+
+    private enum JobTerminalNotificationKind
+    {
+        Completed,
+        Terminal,
+        MissingFromQueue
     }
 }
 

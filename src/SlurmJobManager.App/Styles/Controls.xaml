@@ -127,6 +127,29 @@
         <Setter Property="Margin" Value="0,0,0,10" />
     </Style>
 
+    <Style x:Key="MetricPillStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource BgSurface0Brush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="10,7" />
+        <Setter Property="Margin" Value="0,8,8,0" />
+        <Setter Property="MinWidth" Value="82" />
+    </Style>
+
+    <Style x:Key="MetricPillLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource MutedTextStyle}">
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="TextAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="MetricPillValueStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,1,0,0" />
+    </Style>
+
     <Style x:Key="StatusPanelStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource BgPanelBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />

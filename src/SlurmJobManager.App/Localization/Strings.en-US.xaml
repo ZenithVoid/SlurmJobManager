@@ -117,6 +117,10 @@
     <sys:String x:Key="Monitor.ActionOpenStdout">Open stdout</sys:String>
     <sys:String x:Key="Monitor.ActionOpenStderr">Open stderr</sys:String>
     <sys:String x:Key="Monitor.ActionOpenTaskDir">Open task dir</sys:String>
+    <sys:String x:Key="Monitor.MetricCurrent">Current</sys:String>
+    <sys:String x:Key="Monitor.MetricRunning">Running</sys:String>
+    <sys:String x:Key="Monitor.MetricPending">Pending</sys:String>
+    <sys:String x:Key="Monitor.MetricAttention">Attention</sys:String>
 
     <!-- ── Log viewer ───────────────────────────────────────────────────── -->
     <sys:String x:Key="Log.Title">Log Viewer</sys:String>
@@ -1011,6 +1015,10 @@
     <sys:String x:Key="Monitor.JobCompletionNotificationBody">Job {0} ({1}) completed successfully.</sys:String>
     <sys:String x:Key="Monitor.JobTerminalNotificationTitle">Job Ended (Not Successful)</sys:String>
     <sys:String x:Key="Monitor.JobTerminalNotificationBody">Job {0} ({1}) ended with state: {2}</sys:String>
+    <sys:String x:Key="Monitor.JobMissingNotificationTitle">Job Left Queue</sys:String>
+    <sys:String x:Key="Monitor.JobMissingNotificationBody">Job {0} ({1}) is no longer in the current queue; history may become available shortly.</sys:String>
+    <sys:String x:Key="Monitor.JobCancelNotificationTitle">Job Stop Requested</sys:String>
+    <sys:String x:Key="Monitor.JobCancelNotificationBody">Cancellation was requested for job {0} ({1}).</sys:String>
     <sys:String x:Key="Monitor.PollingEvery">Polling every {0}s…</sys:String>
     <sys:String x:Key="Monitor.PollingStopped">Polling stopped.</sys:String>
     <sys:String x:Key="Monitor.PollingHalted">Polling stopped after {0} consecutive failures. Check connection and restart polling manually.</sys:String>

@@ -118,6 +118,10 @@
     <sys:String x:Key="Monitor.ActionOpenStdout">打开 stdout</sys:String>
     <sys:String x:Key="Monitor.ActionOpenStderr">打开 stderr</sys:String>
     <sys:String x:Key="Monitor.ActionOpenTaskDir">打开任务目录</sys:String>
+    <sys:String x:Key="Monitor.MetricCurrent">当前</sys:String>
+    <sys:String x:Key="Monitor.MetricRunning">运行</sys:String>
+    <sys:String x:Key="Monitor.MetricPending">排队</sys:String>
+    <sys:String x:Key="Monitor.MetricAttention">关注</sys:String>
 
     <!-- ── 日志视图 ─────────────────────────────────────────────────────── -->
     <sys:String x:Key="Log.Title">日志查看器</sys:String>
@@ -1015,6 +1019,10 @@
     <sys:String x:Key="Monitor.JobCompletionNotificationBody">Job {0}（{1}）已成功完成。</sys:String>
     <sys:String x:Key="Monitor.JobTerminalNotificationTitle">任务已结束（非成功）</sys:String>
     <sys:String x:Key="Monitor.JobTerminalNotificationBody">Job {0}（{1}）结束状态：{2}</sys:String>
+    <sys:String x:Key="Monitor.JobMissingNotificationTitle">任务已离开队列</sys:String>
+    <sys:String x:Key="Monitor.JobMissingNotificationBody">Job {0}（{1}）已不在当前队列中；历史状态可能稍后可查询。</sys:String>
+    <sys:String x:Key="Monitor.JobCancelNotificationTitle">任务停止请求已发送</sys:String>
+    <sys:String x:Key="Monitor.JobCancelNotificationBody">Job {0}（{1}）已提交取消请求。</sys:String>
     <sys:String x:Key="Monitor.PollingEvery">轮询间隔 {0}s…</sys:String>
     <sys:String x:Key="Monitor.PollingStopped">已停止轮询。</sys:String>
     <sys:String x:Key="Monitor.PollingHalted">连续失败 {0} 次后已停止轮询。请检查连接后手动重启。</sys:String>
