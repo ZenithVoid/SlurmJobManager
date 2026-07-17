@@ -26,7 +26,7 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 
 > 发布说明（App + Updater）：
 > - 发布 `SlurmJobManager.App` 时会自动构建并打包 `SlurmJobManager.Updater` 到发布目录下的 `Updater/`。
-> - 已兼容两种 Updater 输出布局：`bin/<Configuration>/net8.0-windows/<RID>/` 与 `bin/<Configuration>/net8.0-windows/`。
+> - 已兼容两种 Updater 输出布局：`bin/<Configuration>/net10.0-windows/<RID>/` 与 `bin/<Configuration>/net10.0-windows/`。
 > - Visual Studio Publish 与 `dotnet publish` 均可使用，无需手动先发布 Updater。
 > - 若未找到 Updater 关键产物（`.exe` / `.deps.json` / `.runtimeconfig.json`），构建会输出包含已搜索路径、Configuration、RID 的诊断错误信息。
 
@@ -468,8 +468,8 @@ src/
 
 ## Requirements
 
-- **Windows** (WPF app, `net8.0-windows`)
-- **.NET 8 SDK**
+- **Windows** (WPF app, `net10.0-windows`)
+- **.NET 10 SDK**
 - SSH access to a Slurm cluster
 
 ---
@@ -683,8 +683,8 @@ src/
 
 ## Requirements
 
-- **Windows** (WPF app, `net8.0-windows`)
-- **.NET 8 SDK**
+- **Windows** (WPF app, `net10.0-windows`)
+- **.NET 10 SDK**
 - SSH access to a Slurm cluster
 
 ---
