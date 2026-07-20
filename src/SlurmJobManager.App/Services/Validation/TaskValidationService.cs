@@ -8,6 +8,7 @@ namespace SlurmJobManager.App.Services.Validation;
 public sealed class TaskValidationService : ITaskValidationService
 {
     private static readonly Regex PositiveIntegerRegex = new(@"^\d+$", RegexOptions.Compiled);
+    private static readonly Regex MpiLauncherRegex = new(@"(^|\s)(\S*/)?mpi(run|exec)(\s|$)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private readonly ISshClientService _ssh;
 
     public TaskValidationService(ISshClientService ssh)
@@ -30,6 +31,21 @@ public sealed class TaskValidationService : ITaskValidationService
             .Select(path => NormalizeRemotePath(path))
             .Distinct(StringComparer.Ordinal)
             .ToList();
+        var commands = context.Commands
+            .Select((command, index) => new CommandValidationItem
+            {
+                Order = command.Order > 0 ? command.Order : index + 1,
+                CommandLine = command.CommandLine?.Trim() ?? string.Empty,
+                ProgramPath = NormalizeRemotePath(command.ProgramPath),
+                MpirunPath = NormalizeRemotePath(command.MpirunPath),
+                ParameterFiles = command.ParameterFiles
+                    .Where(path => !string.IsNullOrWhiteSpace(path))
+                    .Select(path => NormalizeRemotePath(path))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList(),
+            })
+            .ToList();
+        var hasCommandPayload = commands.Any(HasCommandPayload);
 
         if (string.IsNullOrWhiteSpace(context.RootDirectory))
         {
@@ -102,7 +118,7 @@ public sealed class TaskValidationService : ITaskValidationService
             }
         }
 
-        if (string.IsNullOrWhiteSpace(appPath))
+        if (!hasCommandPayload && string.IsNullOrWhiteSpace(appPath))
         {
             issues.Add(CreateIssue(
                 "app.required",
@@ -111,7 +127,7 @@ public sealed class TaskValidationService : ITaskValidationService
                 TaskValidationSeverity.Error,
                 isBlocking: true));
         }
-        else if (appPath.StartsWith("/", StringComparison.Ordinal))
+        else if (!hasCommandPayload && appPath.StartsWith("/", StringComparison.Ordinal))
         {
             var appExists = await SafeFileExistsAsync(appPath, ct);
             if (!appExists)
@@ -227,7 +243,9 @@ public sealed class TaskValidationService : ITaskValidationService
                 isBlocking: false));
         }
 
-        if (parameterFiles.Count == 0)
+        await ValidateCommandsAsync(commands, issues, ct);
+
+        if (parameterFiles.Count == 0 && !commands.Any(command => !string.IsNullOrWhiteSpace(command.ProgramPath)))
         {
             issues.Add(CreateIssue(
                 "param.required",
@@ -326,6 +344,83 @@ public sealed class TaskValidationService : ITaskValidationService
         };
     }
 
+    private async Task ValidateCommandsAsync(
+        IReadOnlyList<CommandValidationItem> commands,
+        List<TaskValidationIssue> issues,
+        CancellationToken ct)
+    {
+        foreach (var command in commands.Where(HasCommandPayload))
+        {
+            var order = command.Order.ToString();
+            var hasProgram = !string.IsNullOrWhiteSpace(command.ProgramPath);
+            var hasStructuredFields = !string.IsNullOrWhiteSpace(command.MpirunPath) || command.ParameterFiles.Count > 0;
+
+            if (!hasProgram)
+            {
+                if (hasStructuredFields)
+                {
+                    issues.Add(CreateIssue(
+                        "command.program.required",
+                        "Task.Validation.CommandProgramRequiredTitle",
+                        string.Format(L("Task.Validation.CommandProgramRequiredDetail"), order),
+                        TaskValidationSeverity.Error,
+                        isBlocking: true,
+                        detailIsResourceKey: false));
+                }
+
+                continue;
+            }
+
+            var programAvailable = await IsExecutableReferenceAvailableAsync(command.ProgramPath, ct);
+            if (!programAvailable)
+            {
+                issues.Add(CreateIssue(
+                    "command.program.unavailable",
+                    "Task.Validation.CommandProgramUnavailableTitle",
+                    string.Format(L("Task.Validation.CommandProgramUnavailableDetail"), order, command.ProgramPath),
+                    TaskValidationSeverity.Error,
+                    isBlocking: true,
+                    detailIsResourceKey: false));
+            }
+
+            if (!string.IsNullOrWhiteSpace(command.MpirunPath))
+            {
+                var mpiAvailable = await IsExecutableReferenceAvailableAsync(command.MpirunPath, ct);
+                if (!mpiAvailable)
+                {
+                    issues.Add(CreateIssue(
+                        "command.mpi.unavailable",
+                        "Task.Validation.CommandMpiUnavailableTitle",
+                        string.Format(L("Task.Validation.CommandMpiUnavailableDetail"), order, command.MpirunPath),
+                        TaskValidationSeverity.Error,
+                        isBlocking: true,
+                        detailIsResourceKey: false));
+                }
+            }
+            else if (CommandLineUsesMpi(command.CommandLine))
+            {
+                issues.Add(CreateIssue(
+                    "command.mpi.unverified",
+                    "Task.Validation.CommandMpiUnverifiedTitle",
+                    string.Format(L("Task.Validation.CommandMpiUnverifiedDetail"), order),
+                    TaskValidationSeverity.Warning,
+                    isBlocking: false,
+                    detailIsResourceKey: false));
+            }
+
+            if (command.ParameterFiles.Count == 0)
+            {
+                issues.Add(CreateIssue(
+                    "command.parameter.required",
+                    "Task.Validation.CommandParameterRequiredTitle",
+                    string.Format(L("Task.Validation.CommandParameterRequiredDetail"), order),
+                    TaskValidationSeverity.Error,
+                    isBlocking: true,
+                    detailIsResourceKey: false));
+            }
+        }
+    }
+
     private async Task<bool> SafeDirectoryExistsAsync(string path, CancellationToken ct)
     {
         try
@@ -356,6 +451,27 @@ public sealed class TaskValidationService : ITaskValidationService
         {
             var escaped = EscapeShellArg(workDir);
             var (_, _, exitCode) = await _ssh.ExecuteAsync($"test -w {escaped}", ct);
+            return exitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task<bool> IsExecutableReferenceAvailableAsync(string value, CancellationToken ct)
+    {
+        try
+        {
+            var normalized = NormalizeRemotePath(value);
+            if (string.IsNullOrWhiteSpace(normalized))
+                return false;
+
+            var escaped = EscapeShellArg(normalized);
+            var command = normalized.StartsWith("/", StringComparison.Ordinal) || normalized.Contains("/", StringComparison.Ordinal)
+                ? $"test -f {escaped} && test -x {escaped}"
+                : $"command -v {escaped} >/dev/null 2>&1";
+            var (_, _, exitCode) = await _ssh.ExecuteAsync(command, ct);
             return exitCode == 0;
         }
         catch
@@ -449,6 +565,15 @@ public sealed class TaskValidationService : ITaskValidationService
             return "/";
         return normalized.TrimEnd('/');
     }
+
+    private static bool HasCommandPayload(CommandValidationItem command)
+        => !string.IsNullOrWhiteSpace(command.CommandLine)
+           || !string.IsNullOrWhiteSpace(command.ProgramPath)
+           || !string.IsNullOrWhiteSpace(command.MpirunPath)
+           || command.ParameterFiles.Count > 0;
+
+    private static bool CommandLineUsesMpi(string commandLine)
+        => !string.IsNullOrWhiteSpace(commandLine) && MpiLauncherRegex.IsMatch(commandLine);
 
     private static string EscapeShellArg(string value)
         => "'" + value.Replace("'", "'\\''") + "'";

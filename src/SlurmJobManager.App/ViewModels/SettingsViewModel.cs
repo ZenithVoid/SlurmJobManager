@@ -191,6 +191,72 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
+    public int SelectedJobMonitorNotificationModeIndex
+    {
+        get => _prefs.JobMonitorNotificationMode == JobMonitorNotificationMode.AppWidget ? 1 : 0;
+        set
+        {
+            var mode = value == 1
+                ? JobMonitorNotificationMode.AppWidget
+                : JobMonitorNotificationMode.Windows;
+
+            if (_prefs.TrySetJobMonitorNotificationMode(mode, out var saveError))
+                ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+            else
+                ToastService.Instance.Error(string.Format(L("Settings.AutoSaveFailedFormat"), saveError ?? L("Settings.UnknownError")));
+
+            OnPropertyChanged();
+        }
+    }
+
+    public string JobMonitorNotificationDurationSecondsText
+    {
+        get => _prefs.JobMonitorNotificationDurationSeconds.ToString();
+        set
+        {
+            var trimmed = (value ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(trimmed))
+            {
+                OnPropertyChanged();
+                return;
+            }
+
+            if (!int.TryParse(trimmed, out var seconds))
+            {
+                ToastService.Instance.Error(string.Format(
+                    L("Settings.JobMonitorNotificationDurationInvalidFormat"),
+                    AppPreferencesService.MinJobMonitorNotificationDurationSeconds,
+                    AppPreferencesService.MaxJobMonitorNotificationDurationSeconds));
+                OnPropertyChanged();
+                return;
+            }
+
+            if (_prefs.TrySetJobMonitorNotificationDurationSeconds(seconds, out var saveError))
+                ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+            else
+                ToastService.Instance.Error(string.Format(L("Settings.AutoSaveFailedFormat"), saveError ?? L("Settings.UnknownError")));
+
+            OnPropertyChanged();
+        }
+    }
+
+    public bool JobMonitorNotificationPersistent
+    {
+        get => _prefs.JobMonitorNotificationPersistent;
+        set
+        {
+            if (_prefs.TrySetJobMonitorNotificationPersistent(value, out var saveError))
+                ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+            else
+                ToastService.Instance.Error(string.Format(L("Settings.AutoSaveFailedFormat"), saveError ?? L("Settings.UnknownError")));
+
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsJobMonitorNotificationDurationEnabled));
+        }
+    }
+
+    public bool IsJobMonitorNotificationDurationEnabled => !JobMonitorNotificationPersistent;
+
     // ── Locale ────────────────────────────────────────────────────────────
 
     public string CurrentLocale => _main.CurrentLocale;

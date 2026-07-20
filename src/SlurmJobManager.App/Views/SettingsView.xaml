@@ -210,6 +210,55 @@
                         Text="{DynamicResource Settings.MonitorAllUsersJobsEffect}"
                         Style="{StaticResource MutedTextStyle}"
                         TextWrapping="Wrap" />
+
+                    <TextBlock
+                        Margin="0,12,0,4"
+                        Text="{DynamicResource Settings.JobMonitorNotificationModeLabel}"
+                        Style="{StaticResource FieldLabelStyle}" />
+                    <ComboBox
+                        Margin="0,0,0,6"
+                        SelectedIndex="{Binding SelectedJobMonitorNotificationModeIndex, Mode=TwoWay}">
+                        <ComboBoxItem Content="{DynamicResource Settings.JobMonitorNotificationModeWindows}" />
+                        <ComboBoxItem Content="{DynamicResource Settings.JobMonitorNotificationModeWidget}" />
+                    </ComboBox>
+                    <TextBlock
+                        Text="{DynamicResource Settings.JobMonitorNotificationModeDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock
+                        Margin="0,10,0,4"
+                        Text="{DynamicResource Settings.JobMonitorNotificationDurationLabel}"
+                        Style="{StaticResource FieldLabelStyle}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBox
+                            Width="88"
+                            Margin="0,0,8,0"
+                            IsEnabled="{Binding IsJobMonitorNotificationDurationEnabled, Mode=OneWay}"
+                            Text="{Binding JobMonitorNotificationDurationSecondsText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                            b:DigitsOnlyTextBoxBehavior.IsEnabled="True" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Text="{DynamicResource Units.SecondShort}"
+                            Style="{StaticResource MutedTextStyle}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <CheckBox
+                            x:Name="JobMonitorNotificationPersistentCheckBox"
+                            Margin="0,0,10,0"
+                            IsChecked="{Binding JobMonitorNotificationPersistent, Mode=TwoWay}" />
+                        <Label
+                            Padding="0"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"
+                            Target="{Binding ElementName=JobMonitorNotificationPersistentCheckBox}"
+                            Content="{DynamicResource Settings.JobMonitorNotificationPersistentLabel}"
+                            Foreground="{DynamicResource TextPrimaryBrush}" />
+                    </StackPanel>
+                    <TextBlock
+                        Text="{DynamicResource Settings.JobMonitorNotificationDurationDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 

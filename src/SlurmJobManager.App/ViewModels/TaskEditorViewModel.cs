@@ -289,6 +289,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(EffectiveStatusStyleKey));
                 OnPropertyChanged(nameof(EffectiveStatusMessage));
                 OnPropertyChanged(nameof(TaskContextSummary));
+                NotifyOperatorGuideChanged();
             }
         }
     }
@@ -446,6 +447,32 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             return string.Format(L("Task.ContextSummary"), TaskContextTaskIdDisplay, TaskContextWorkDirDisplay, TaskContextFilePathDisplay, status);
         }
     }
+
+    public string OperatorConnectionStepText => IsSshConnectedSafe()
+        ? L("Task.OperatorStepConnectionReady")
+        : L("Task.OperatorStepConnectionMissing");
+    public string OperatorConnectionStepStyleKey => IsSshConnectedSafe() ? "SuccessTextStyle" : "WarningTextStyle";
+
+    public string OperatorTaskStepText => IsTaskIdentityReady()
+        ? L("Task.OperatorStepTaskReady")
+        : L("Task.OperatorStepTaskMissing");
+    public string OperatorTaskStepStyleKey => IsTaskIdentityReady() ? "SuccessTextStyle" : "WarningTextStyle";
+
+    public string OperatorCommandStepText => IsCommandSetupReady()
+        ? L("Task.OperatorStepCommandReady")
+        : L("Task.OperatorStepCommandMissing");
+    public string OperatorCommandStepStyleKey => IsCommandSetupReady() ? "SuccessTextStyle" : "WarningTextStyle";
+
+    public string OperatorSubmitStepText => IsOperatorReadyForSubmit()
+        ? L("Task.OperatorStepSubmitReady")
+        : L("Task.OperatorStepSubmitMissing");
+    public string OperatorSubmitStepStyleKey => IsOperatorReadyForSubmit() ? "SuccessTextStyle" : "WarningTextStyle";
+
+    public string OperatorPreflightTitle => IsOperatorReadyForSubmit()
+        ? L("Task.OperatorPreflightReadyTitle")
+        : L("Task.OperatorPreflightNeedsAttentionTitle");
+    public string OperatorPreflightStyleKey => IsOperatorReadyForSubmit() ? "SuccessTextStyle" : "WarningTextStyle";
+    public string OperatorPreflightSummary => BuildOperatorPreflightSummary();
 
     public TaskFileEntry? SelectedTaskFile
     {
@@ -870,6 +897,22 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             return;
 
         UpdateTaskConfigurationDirtyState();
+        NotifyOperatorGuideChanged();
+    }
+
+    private void NotifyOperatorGuideChanged()
+    {
+        OnPropertyChanged(nameof(OperatorConnectionStepText));
+        OnPropertyChanged(nameof(OperatorConnectionStepStyleKey));
+        OnPropertyChanged(nameof(OperatorTaskStepText));
+        OnPropertyChanged(nameof(OperatorTaskStepStyleKey));
+        OnPropertyChanged(nameof(OperatorCommandStepText));
+        OnPropertyChanged(nameof(OperatorCommandStepStyleKey));
+        OnPropertyChanged(nameof(OperatorSubmitStepText));
+        OnPropertyChanged(nameof(OperatorSubmitStepStyleKey));
+        OnPropertyChanged(nameof(OperatorPreflightTitle));
+        OnPropertyChanged(nameof(OperatorPreflightStyleKey));
+        OnPropertyChanged(nameof(OperatorPreflightSummary));
     }
 
     private void PauseTaskConfigurationDirtyTracking()
@@ -1183,7 +1226,10 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 await TryAutoLoadTaskForCurrentContextAsync(CancellationToken.None);
 
             if (!IsDisposed)
+            {
+                NotifyOperatorGuideChanged();
                 CommandManager.InvalidateRequerySuggested();
+            }
         }
         catch (Exception ex)
         {
@@ -3468,6 +3514,20 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 .Where(path => !string.IsNullOrWhiteSpace(path))
                 .Distinct(StringComparer.Ordinal)
                 .ToList();
+        var commands = unit == null
+            ? new List<CommandValidationItem>()
+            : unit.Commands
+                .Select((command, index) => new CommandValidationItem
+                {
+                    Order = command.Order >= 0 ? command.Order + 1 : index + 1,
+                    CommandLine = command.CommandLine ?? string.Empty,
+                    ProgramPath = command.ProgramPath ?? string.Empty,
+                    MpirunPath = command.MpirunPath ?? string.Empty,
+                    ParameterFiles = command.ParameterFiles
+                        .Where(path => !string.IsNullOrWhiteSpace(path))
+                        .ToList(),
+                })
+                .ToList();
 
         return new TaskValidationContext
         {
@@ -3479,6 +3539,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             SbatchTemplate = sbatchTemplate,
             SbatchOptions = options,
             ParameterFiles = parameterFiles,
+            Commands = commands,
             DefaultAccount = DefaultValidationAccount,
         };
     }
@@ -3592,6 +3653,74 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private bool CanSubmit() =>
         !IsDisposed
         && !IsBusy;
+
+    private bool IsTaskIdentityReady()
+        => !string.IsNullOrWhiteSpace(RootDirectory)
+           && !string.IsNullOrWhiteSpace(TaskId)
+           && !string.IsNullOrWhiteSpace(RemoteWorkDir);
+
+    private bool IsCommandSetupReady()
+        => HasConfiguredProgram()
+           && HasConfiguredParameterFile();
+
+    private bool IsOperatorReadyForSubmit()
+        => IsSshConnectedSafe()
+           && IsTaskIdentityReady()
+           && IsCommandSetupReady()
+           && IsSbatchSetupReady();
+
+    private bool HasConfiguredProgram()
+    {
+        var unit = _selectedTaskUnit;
+        return !string.IsNullOrWhiteSpace(AppPath)
+               || unit?.Programs.Any(program => !string.IsNullOrWhiteSpace(program.ProgramPath)) == true
+               || unit?.Commands.Any(command => !string.IsNullOrWhiteSpace(command.ProgramPath)) == true;
+    }
+
+    private bool HasConfiguredParameterFile()
+    {
+        var unit = _selectedTaskUnit;
+        return unit?.ParamFiles.Any(file => !string.IsNullOrWhiteSpace(file.FilePath)) == true
+               || unit?.Commands.Any(command => command.ParameterFiles.Any(path => !string.IsNullOrWhiteSpace(path))) == true;
+    }
+
+    private bool IsSbatchSetupReady()
+    {
+        var options = _selectedTaskUnit?.SbatchOptions;
+        var template = !string.IsNullOrWhiteSpace(_selectedTaskUnit?.SbatchTemplate)
+            ? _selectedTaskUnit!.SbatchTemplate!
+            : SbatchTemplate;
+
+        return !string.IsNullOrWhiteSpace(template)
+               && !string.IsNullOrWhiteSpace(options?.Partition)
+               && !string.IsNullOrWhiteSpace(options?.JobName)
+               && !string.IsNullOrWhiteSpace(options?.Nodes)
+               && !string.IsNullOrWhiteSpace(options?.TaskCount)
+               && !string.IsNullOrWhiteSpace(options?.Account);
+    }
+
+    private string BuildOperatorPreflightSummary()
+    {
+        var missing = new List<string>();
+        if (!IsSshConnectedSafe())
+            missing.Add(L("Task.OperatorNeedConnection"));
+        if (string.IsNullOrWhiteSpace(RootDirectory))
+            missing.Add(L("Task.OperatorNeedRootDirectory"));
+        if (string.IsNullOrWhiteSpace(TaskId))
+            missing.Add(L("Task.OperatorNeedTaskId"));
+        if (string.IsNullOrWhiteSpace(RemoteWorkDir))
+            missing.Add(L("Task.OperatorNeedWorkDir"));
+        if (!HasConfiguredProgram())
+            missing.Add(L("Task.OperatorNeedProgram"));
+        if (!HasConfiguredParameterFile())
+            missing.Add(L("Task.OperatorNeedParameterFile"));
+        if (!IsSbatchSetupReady())
+            missing.Add(L("Task.OperatorNeedSbatch"));
+
+        return missing.Count == 0
+            ? L("Task.OperatorPreflightReadySummary")
+            : string.Format(L("Task.OperatorPreflightMissingFormat"), string.Join(L("Task.OperatorMissingSeparator"), missing));
+    }
 
     private bool ValidateRootAndId()
     {

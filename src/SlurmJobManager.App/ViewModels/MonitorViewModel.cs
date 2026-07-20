@@ -1020,14 +1020,25 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
     private void ShowJobNotification(string title, string message, ToastType toastType)
     {
-        _notificationService?.Show(title, message);
+        var mode = _prefs?.JobMonitorNotificationMode ?? JobMonitorNotificationMode.Windows;
+        var persistent = _prefs?.JobMonitorNotificationPersistent ?? false;
+        var durationSeconds = _prefs?.JobMonitorNotificationDurationSeconds
+            ?? AppPreferencesService.DefaultJobMonitorNotificationDurationSeconds;
+        if (mode == JobMonitorNotificationMode.Windows)
+        {
+            _notificationService?.Show(
+                title,
+                message,
+                persistent ? null : TimeSpan.FromSeconds(durationSeconds));
+            return;
+        }
 
         var toastMessage = string.IsNullOrWhiteSpace(title)
             ? message
             : $"{title}{Environment.NewLine}{message}";
         try
         {
-            ToastService.Instance.Show(toastMessage, toastType, 8);
+            ToastService.Instance.Show(toastMessage, toastType, persistent ? 0 : durationSeconds);
         }
         catch (Exception ex)
         {

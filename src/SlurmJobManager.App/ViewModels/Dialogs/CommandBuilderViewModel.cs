@@ -87,12 +87,14 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             if (SetField(ref _selectedCommand, value))
             {
                 OnPropertyChanged(nameof(HasSelectedCommand));
+                OnPropertyChanged(nameof(SelectedCommandValidationSummary));
                 CommandManager.InvalidateRequerySuggested();
             }
         }
     }
 
     public bool HasSelectedCommand => _selectedCommand != null;
+    public string SelectedCommandValidationSummary => BuildSelectedCommandValidationSummary();
 
     // ── Filters ────────────────────────────────────────────────────────────
     public string ProgramFilter
@@ -1172,8 +1174,51 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
     private void WireCommandCollections(CommandEntryViewModel cmd)
     {
-        cmd.ParameterFiles.CollectionChanged += (_, __) => cmd.RebuildCommandLine();
-        cmd.ExtraArgs.CollectionChanged      += (_, __) => cmd.RebuildCommandLine();
+        cmd.PropertyChanged += OnCommandPropertyChanged;
+        cmd.ParameterFiles.CollectionChanged += (_, __) =>
+        {
+            cmd.RebuildCommandLine();
+            NotifySelectedCommandValidationChanged(cmd);
+        };
+        cmd.ExtraArgs.CollectionChanged += (_, __) => cmd.RebuildCommandLine();
+    }
+
+    private void OnCommandPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is not CommandEntryViewModel command)
+            return;
+
+        if (e.PropertyName is nameof(CommandEntryViewModel.ProgramPath)
+            or nameof(CommandEntryViewModel.MpirunPath))
+        {
+            NotifySelectedCommandValidationChanged(command);
+        }
+    }
+
+    private void NotifySelectedCommandValidationChanged(CommandEntryViewModel command)
+    {
+        if (ReferenceEquals(command, _selectedCommand))
+            OnPropertyChanged(nameof(SelectedCommandValidationSummary));
+    }
+
+    private string BuildSelectedCommandValidationSummary()
+    {
+        var command = _selectedCommand;
+        if (command == null)
+            return string.Empty;
+
+        var issues = new List<string>();
+        if (string.IsNullOrWhiteSpace(command.ProgramPath))
+            issues.Add(L("CmdBuilder.ValidationProgramMissing", "请选择程序路径。"));
+        if (command.ParameterFiles.Count == 0)
+            issues.Add(L("CmdBuilder.ValidationParamMissing", "请至少添加一个参数文件。"));
+
+        if (issues.Count > 0)
+            return string.Join(" ", issues);
+
+        return string.IsNullOrWhiteSpace(command.MpirunPath)
+            ? L("CmdBuilder.ValidationReadySerial", "结构完整；当前按非 MPI 命令生成。需要 MPI 时请自动探测或手动填写 mpirun。")
+            : L("CmdBuilder.ValidationReadyMpi", "结构完整；已指定 MPI 启动程序。");
     }
 
     private static string EscapeShell(string arg)

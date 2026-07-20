@@ -14,12 +14,12 @@ public sealed class WindowsNotificationService : INotificationService
         _logger = logger;
     }
 
-    public void Show(string title, string message)
+    public void Show(string title, string message, TimeSpan? expiration = null)
     {
         try
         {
             var xml = BuildToastXml(title, message);
-            var script = BuildPowerShellScript(xml);
+            var script = BuildPowerShellScript(xml, expiration);
             var startInfo = new ProcessStartInfo
             {
                 FileName = "powershell",
@@ -55,11 +55,11 @@ public sealed class WindowsNotificationService : INotificationService
         return $"<toast><visual><binding template='ToastGeneric'><text>{Escape(title)}</text><text>{Escape(message)}</text></binding></visual></toast>";
     }
 
-    private static string BuildPowerShellScript(string xml)
+    private static string BuildPowerShellScript(string xml, TimeSpan? expiration)
     {
         var escapedXml = xml.Replace("'", "''", StringComparison.Ordinal);
         const string appId = "SlurmPilot";
-        return string.Join("; ", new[]
+        var lines = new List<string>
         {
             "$ErrorActionPreference = 'Stop'",
             "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null",
@@ -67,7 +67,12 @@ public sealed class WindowsNotificationService : INotificationService
             "$doc = New-Object Windows.Data.Xml.Dom.XmlDocument",
             $"$doc.LoadXml('{escapedXml}')",
             "$toast = [Windows.UI.Notifications.ToastNotification]::new($doc)",
-            $"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{appId}').Show($toast)"
-        });
+        };
+
+        if (expiration is { TotalSeconds: > 0 })
+            lines.Add(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"$toast.ExpirationTime = [DateTimeOffset]::Now.AddSeconds({Math.Ceiling(expiration.Value.TotalSeconds)})"));
+
+        lines.Add($"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{appId}').Show($toast)");
+        return string.Join("; ", lines);
     }
 }

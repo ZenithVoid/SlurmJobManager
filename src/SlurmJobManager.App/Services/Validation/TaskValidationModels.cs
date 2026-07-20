@@ -41,6 +41,15 @@ public sealed class TaskValidationResult
     public bool HasBlockingIssues => Issues.Any(static i => i.IsBlocking);
 }
 
+public sealed class CommandValidationItem
+{
+    public int Order { get; init; }
+    public string CommandLine { get; init; } = string.Empty;
+    public string ProgramPath { get; init; } = string.Empty;
+    public string MpirunPath { get; init; } = string.Empty;
+    public IReadOnlyList<string> ParameterFiles { get; init; } = Array.Empty<string>();
+}
+
 public sealed class TaskValidationContext
 {
     public bool IsSshConnected { get; init; }
@@ -51,5 +60,6 @@ public sealed class TaskValidationContext
     public string SbatchTemplate { get; init; } = string.Empty;
     public SbatchJobOptions SbatchOptions { get; init; } = new();
     public IReadOnlyList<string> ParameterFiles { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<CommandValidationItem> Commands { get; init; } = Array.Empty<CommandValidationItem>();
     public string DefaultAccount { get; init; } = string.Empty;
 }

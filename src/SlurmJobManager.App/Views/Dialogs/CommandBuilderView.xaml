@@ -304,6 +304,11 @@
                                         ToolTip="{DynamicResource CmdBuilder.DetectMpiTooltip}" />
                             </Grid>
 
+                            <TextBlock Text="{Binding SelectedCommandValidationSummary}"
+                                       Style="{StaticResource MutedTextStyle}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,6" />
+
                             <!-- Attached parameter files -->
                             <Grid Margin="0,0,0,2">
                                 <Grid.ColumnDefinitions>

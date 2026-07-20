@@ -8,7 +8,7 @@ public enum ToastType { Info, Success, Warning, Error }
 
 /// <summary>
 /// View-model for a single toast notification.
-/// Supports auto-dismiss after <see cref="DurationSeconds"/> seconds,
+/// Supports auto-dismiss after the configured duration,
 /// with hover-to-pause behavior managed by the container view.
 /// </summary>
 public sealed class ToastViewModel : ViewModelBase, IDisposable
@@ -19,6 +19,7 @@ public sealed class ToastViewModel : ViewModelBase, IDisposable
 
     public string    Message  { get; }
     public ToastType Type     { get; }
+    public bool IsPersistent { get; }
     public string    Icon     => Type switch
     {
         ToastType.Success => "✔",
@@ -36,20 +37,30 @@ public sealed class ToastViewModel : ViewModelBase, IDisposable
     {
         Message = message;
         Type    = type;
+        IsPersistent = durationSeconds <= 0;
 
         CloseCommand = new RelayCommand(Dismiss);
 
         _remainingMs = durationSeconds * 1000.0;
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
         _timer.Tick += OnTick;
-        _timer.Start();
+        if (!IsPersistent)
+            _timer.Start();
     }
 
     /// <summary>Pauses the auto-dismiss countdown (called on mouse enter).</summary>
-    public void PauseTimer() => _timer.Stop();
+    public void PauseTimer()
+    {
+        if (!IsPersistent)
+            _timer.Stop();
+    }
 
     /// <summary>Resumes the auto-dismiss countdown (called on mouse leave).</summary>
-    public void ResumeTimer() => _timer.Start();
+    public void ResumeTimer()
+    {
+        if (!IsPersistent)
+            _timer.Start();
+    }
 
     private void OnTick(object? sender, EventArgs e)
     {

@@ -13,6 +13,9 @@ namespace SlurmJobManager.App.Services;
 public sealed class AppPreferencesService
 {
     public const string DefaultRemotePickerDirectoryFallback = "/gpfs/";
+    public const int DefaultJobMonitorNotificationDurationSeconds = 8;
+    public const int MinJobMonitorNotificationDurationSeconds = 1;
+    public const int MaxJobMonitorNotificationDurationSeconds = 3600;
 
     private static readonly string PrefsPath = LocalDataPaths.PreferencesFilePath;
 
@@ -111,6 +114,87 @@ public sealed class AppPreferencesService
         if (_dto.MonitorAllUsersJobs != value)
         {
             _dto = _dto with { MonitorAllUsersJobs = value };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
+    public JobMonitorNotificationMode JobMonitorNotificationMode
+    {
+        get => ParseJobMonitorNotificationMode(_dto.JobMonitorNotificationMode);
+        set
+        {
+            var serialized = value.ToString();
+            if (string.Equals(_dto.JobMonitorNotificationMode, serialized, StringComparison.Ordinal))
+                return;
+
+            _dto = _dto with { JobMonitorNotificationMode = serialized };
+            Save();
+        }
+    }
+
+    public bool TrySetJobMonitorNotificationMode(JobMonitorNotificationMode value, out string? error)
+    {
+        var serialized = value.ToString();
+        if (!string.Equals(_dto.JobMonitorNotificationMode, serialized, StringComparison.Ordinal))
+        {
+            _dto = _dto with { JobMonitorNotificationMode = serialized };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
+    public int JobMonitorNotificationDurationSeconds
+        => NormalizeJobMonitorNotificationDurationSeconds(_dto.JobMonitorNotificationDurationSeconds);
+
+    public bool TrySetJobMonitorNotificationDurationSeconds(int value, out string? error)
+    {
+        var normalized = NormalizeJobMonitorNotificationDurationSeconds(value);
+        if (_dto.JobMonitorNotificationDurationSeconds != normalized)
+        {
+            _dto = _dto with { JobMonitorNotificationDurationSeconds = normalized };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
+    public bool JobMonitorNotificationPersistent
+    {
+        get => _dto.JobMonitorNotificationPersistent;
+        set
+        {
+            if (_dto.JobMonitorNotificationPersistent == value) return;
+            _dto = _dto with { JobMonitorNotificationPersistent = value };
+            Save();
+        }
+    }
+
+    public bool TrySetJobMonitorNotificationPersistent(bool value, out string? error)
+    {
+        if (_dto.JobMonitorNotificationPersistent != value)
+        {
+            _dto = _dto with { JobMonitorNotificationPersistent = value };
             Save();
         }
         else
@@ -398,6 +482,9 @@ public sealed class AppPreferencesService
         bool AutoConnectOnStartup = false,
         bool AutoRestoreLastTaskOnLogin = false,
         bool MonitorAllUsersJobs = false,
+        string JobMonitorNotificationMode = "Windows",
+        int JobMonitorNotificationDurationSeconds = DefaultJobMonitorNotificationDurationSeconds,
+        bool JobMonitorNotificationPersistent = false,
         string? DefaultRemotePickerDirectory = DefaultRemotePickerDirectoryFallback,
         string UpdateSourceType = nameof(UpdateSourceType.GitHub),
         string? UpdateFolderPath = "",
@@ -430,6 +517,12 @@ public sealed class AppPreferencesService
     private static string NormalizeFolderPath(string? value)
         => (value ?? string.Empty).Trim();
 
+    private static int NormalizeJobMonitorNotificationDurationSeconds(int value)
+        => Math.Clamp(
+            value <= 0 ? DefaultJobMonitorNotificationDurationSeconds : value,
+            MinJobMonitorNotificationDurationSeconds,
+            MaxJobMonitorNotificationDurationSeconds);
+
     private static UpdateSourceType ParseUpdateSourceType(string? value)
         => Enum.TryParse<UpdateSourceType>(value, ignoreCase: true, out var parsed)
             ? parsed
@@ -439,4 +532,9 @@ public sealed class AppPreferencesService
         => Enum.TryParse<UpdateProxyMode>(value, ignoreCase: true, out var parsed)
             ? parsed
             : UpdateProxyMode.NoProxy;
+
+    private static JobMonitorNotificationMode ParseJobMonitorNotificationMode(string? value)
+        => Enum.TryParse<JobMonitorNotificationMode>(value, ignoreCase: true, out var parsed)
+            ? parsed
+            : JobMonitorNotificationMode.Windows;
 }

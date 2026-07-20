@@ -29,6 +29,41 @@
                 </StackPanel>
             </Border>
 
+            <TextBlock Text="{DynamicResource Task.OperatorFlowTitle}"
+                       Style="{StaticResource SectionHeaderStyle}" />
+            <WrapPanel Margin="0,0,0,8">
+                <Border Style="{StaticResource MetricPillStyle}">
+                    <TextBlock Text="{Binding OperatorConnectionStepText}"
+                               Style="{Binding OperatorConnectionStepStyleKey, Converter={StaticResource StyleKeyToStyle}}"
+                               TextWrapping="Wrap" />
+                </Border>
+                <Border Style="{StaticResource MetricPillStyle}">
+                    <TextBlock Text="{Binding OperatorTaskStepText}"
+                               Style="{Binding OperatorTaskStepStyleKey, Converter={StaticResource StyleKeyToStyle}}"
+                               TextWrapping="Wrap" />
+                </Border>
+                <Border Style="{StaticResource MetricPillStyle}">
+                    <TextBlock Text="{Binding OperatorCommandStepText}"
+                               Style="{Binding OperatorCommandStepStyleKey, Converter={StaticResource StyleKeyToStyle}}"
+                               TextWrapping="Wrap" />
+                </Border>
+                <Border Style="{StaticResource MetricPillStyle}">
+                    <TextBlock Text="{Binding OperatorSubmitStepText}"
+                               Style="{Binding OperatorSubmitStepStyleKey, Converter={StaticResource StyleKeyToStyle}}"
+                               TextWrapping="Wrap" />
+                </Border>
+            </WrapPanel>
+            <Border Style="{StaticResource StatusPanelStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="{Binding OperatorPreflightTitle}"
+                               Style="{Binding OperatorPreflightStyleKey, Converter={StaticResource StyleKeyToStyle}}" />
+                    <TextBlock Text="{Binding OperatorPreflightSummary}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap"
+                               Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+
             <!-- Task Setup -->
             <TextBlock Text="{DynamicResource Task.Setup}"
                        Style="{StaticResource SectionHeaderStyle}" />
@@ -186,6 +221,17 @@
 
             <!-- Submit -->
             <TextBlock Text="{DynamicResource Task.Submit}" Style="{StaticResource SectionHeaderStyle}" />
+
+            <Border Style="{StaticResource StatusPanelStyle}" Margin="0,0,0,8">
+                <StackPanel>
+                    <TextBlock Text="{Binding OperatorPreflightTitle}"
+                               Style="{Binding OperatorPreflightStyleKey, Converter={StaticResource StyleKeyToStyle}}" />
+                    <TextBlock Text="{Binding OperatorPreflightSummary}"
+                               Style="{StaticResource MutedTextStyle}"
+                               TextWrapping="Wrap"
+                               Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
 
             <Button Content="{DynamicResource Btn.SubmitSbatch}" Command="{Binding SubmitJobCommand}"
                     Style="{StaticResource SuccessButtonStyle}"
