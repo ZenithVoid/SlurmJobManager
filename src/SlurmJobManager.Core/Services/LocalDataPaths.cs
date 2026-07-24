@@ -54,4 +54,9 @@ public static class LocalDataPaths
     /// Per-connection last task context file path: &lt;AppBaseDirectory&gt;/Data/last-task-contexts.json
     /// </summary>
     public static string LastTaskContextsFilePath => Path.Combine(DataDirectory, "last-task-contexts.json");
+
+    /// <summary>
+    /// Recently used and pinned task submit paths: &lt;AppBaseDirectory&gt;/Data/task-path-library.json
+    /// </summary>
+    public static string TaskPathLibraryFilePath => Path.Combine(DataDirectory, "task-path-library.json");
 }

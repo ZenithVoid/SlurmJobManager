@@ -126,6 +126,38 @@ public sealed class AppPreferencesService
         return LastSaveSucceeded;
     }
 
+    public CloseButtonBehavior CloseButtonBehavior
+    {
+        get => ParseCloseButtonBehavior(_dto.CloseButtonBehavior);
+        set
+        {
+            var serialized = value.ToString();
+            if (string.Equals(_dto.CloseButtonBehavior, serialized, StringComparison.Ordinal))
+                return;
+
+            _dto = _dto with { CloseButtonBehavior = serialized };
+            Save();
+        }
+    }
+
+    public bool TrySetCloseButtonBehavior(CloseButtonBehavior value, out string? error)
+    {
+        var serialized = value.ToString();
+        if (!string.Equals(_dto.CloseButtonBehavior, serialized, StringComparison.Ordinal))
+        {
+            _dto = _dto with { CloseButtonBehavior = serialized };
+            Save();
+        }
+        else
+        {
+            LastSaveSucceeded = true;
+            LastSaveError = null;
+        }
+
+        error = LastSaveError;
+        return LastSaveSucceeded;
+    }
+
     public JobMonitorNotificationMode JobMonitorNotificationMode
     {
         get => ParseJobMonitorNotificationMode(_dto.JobMonitorNotificationMode);
@@ -481,6 +513,7 @@ public sealed class AppPreferencesService
     private sealed record AppPrefsDto(
         bool AutoConnectOnStartup = false,
         bool AutoRestoreLastTaskOnLogin = false,
+        string CloseButtonBehavior = "Ask",
         bool MonitorAllUsersJobs = false,
         string JobMonitorNotificationMode = "Windows",
         int JobMonitorNotificationDurationSeconds = DefaultJobMonitorNotificationDurationSeconds,
@@ -502,6 +535,9 @@ public sealed class AppPreferencesService
             return DefaultRemotePickerDirectoryFallback;
 
         trimmed = trimmed.Replace('\\', '/');
+        if (trimmed == "~" || trimmed.StartsWith("~/", StringComparison.Ordinal))
+            return trimmed == "~" ? "~/" : $"{trimmed.TrimEnd('/')}/";
+
         if (!trimmed.StartsWith("/", StringComparison.Ordinal))
             trimmed = $"/{trimmed}";
 
@@ -532,6 +568,11 @@ public sealed class AppPreferencesService
         => Enum.TryParse<UpdateProxyMode>(value, ignoreCase: true, out var parsed)
             ? parsed
             : UpdateProxyMode.NoProxy;
+
+    private static CloseButtonBehavior ParseCloseButtonBehavior(string? value)
+        => Enum.TryParse<CloseButtonBehavior>(value, ignoreCase: true, out var parsed)
+            ? parsed
+            : CloseButtonBehavior.Ask;
 
     private static JobMonitorNotificationMode ParseJobMonitorNotificationMode(string? value)
         => Enum.TryParse<JobMonitorNotificationMode>(value, ignoreCase: true, out var parsed)

@@ -15,6 +15,7 @@ public sealed class SlurmService : ISlurmService
     private readonly ISshClientService _ssh;
     private readonly AppSettings       _settings;
     private readonly IAppLogger?       _logger;
+    private bool? _sacctArrayOptionSupported;
 
     public SlurmService(ISshClientService ssh, AppSettings? settings = null, IAppLogger? logger = null)
     {
@@ -133,27 +134,31 @@ public sealed class SlurmService : ISlurmService
         return await RetryHelper.ExecuteAsync(
             async token =>
             {
-                var command = string.Join(" ", new[]
-                {
+                var stdout = await ExecuteSacctHistoryWithArrayFallbackAsync(
                     $"sacct -X -u {escapedUsername}",
-                    "--starttime now-7days",
-                    "--noheader --parsable2",
-                    "--format=\"JobIDRaw,JobName,User,State,Partition,NodeList,Start,End,Elapsed,ExitCode,Reason\"",
-                    "--sort=-Start",
-                    $"| head -n {safeMaxEntries}"
-                });
-
-                var (stdout, _, _) = await _ssh.ExecuteAsync(command, token);
-                var results = new List<SlurmJobStatus>();
-                foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-                {
-                    var status = ParseSacctLine(line.Trim());
-                    if (status is not null) results.Add(status);
-                }
-
-                return (IReadOnlyList<SlurmJobStatus>)results;
+                    safeMaxEntries,
+                    token);
+                return ParseSacctHistory(stdout);
             },
             _settings, _logger, $"GetUserJobHistory({username})", ct);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<SlurmJobStatus>> GetAllJobHistoryAsync(
+        int maxEntries = 100,
+        CancellationToken ct = default)
+    {
+        var safeMaxEntries = Math.Max(1, maxEntries);
+        return await RetryHelper.ExecuteAsync(
+            async token =>
+            {
+                var stdout = await ExecuteSacctHistoryWithArrayFallbackAsync(
+                    "sacct -X -a",
+                    safeMaxEntries,
+                    token);
+                return ParseSacctHistory(stdout);
+            },
+            _settings, _logger, "GetAllJobHistory()", ct);
     }
 
     /// <inheritdoc/>
@@ -170,8 +175,7 @@ public sealed class SlurmService : ISlurmService
                     $"sacct -X -j {jobId}",
                     "--starttime now-7days",
                     "--noheader --parsable2",
-                    "--format=\"JobIDRaw,JobName,User,State,Partition,NodeList,Start,End,Elapsed,ExitCode,Reason\"",
-                    "--sort=-End"
+                    "--format=\"JobIDRaw,JobName,User,State,Partition,NodeList,Start,End,Elapsed,ExitCode,Reason\""
                 });
 
                 var (stdout, _, _) = await _ssh.ExecuteAsync(command, token);
@@ -219,6 +223,64 @@ public sealed class SlurmService : ISlurmService
         };
     }
 
+    private async Task<string> ExecuteSacctHistoryWithArrayFallbackAsync(
+        string commandPrefix,
+        int maxEntries,
+        CancellationToken token)
+    {
+        var shouldTryArray = _sacctArrayOptionSupported != false;
+        var commandWithArray = BuildSacctHistoryCommand(commandPrefix, maxEntries, includeArray: shouldTryArray);
+        var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync(commandWithArray, token);
+        if (!shouldTryArray || (!IsUnsupportedArrayOption(stderr) && !IsUnsupportedArrayOption(stdout)))
+        {
+            if (exitCode != 0)
+                throw new InvalidOperationException($"sacct history query failed (exit {exitCode}): {stderr.Trim()}");
+
+            if (shouldTryArray)
+                _sacctArrayOptionSupported = true;
+            return stdout;
+        }
+
+        _sacctArrayOptionSupported = false;
+        _logger?.Warning("Remote sacct does not support --array; retrying history query without it.");
+        var fallbackCommand = BuildSacctHistoryCommand(commandPrefix, maxEntries, includeArray: false);
+        var (fallbackStdout, fallbackStderr, fallbackExitCode) = await _ssh.ExecuteAsync(fallbackCommand, token);
+        if (fallbackExitCode != 0)
+            throw new InvalidOperationException($"sacct history query failed (exit {fallbackExitCode}): {fallbackStderr.Trim()}");
+
+        return fallbackStdout;
+    }
+
+    private static string BuildSacctHistoryCommand(string commandPrefix, int maxEntries, bool includeArray)
+    {
+        var parts = new List<string> { commandPrefix };
+        if (includeArray)
+            parts.Add("--array");
+        parts.Add("--starttime now-7days");
+        parts.Add("--noheader --parsable2");
+        parts.Add("--format=\"JobIDRaw,JobName,User,State,Partition,NodeList,Start,End,Elapsed,ExitCode,Reason\"");
+        parts.Add("| sort -t '|' -k7,7r");
+        parts.Add($"| head -n {maxEntries}");
+        return string.Join(" ", parts);
+    }
+
+    private static IReadOnlyList<SlurmJobStatus> ParseSacctHistory(string stdout)
+    {
+        var results = new List<SlurmJobStatus>();
+        foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var status = ParseSacctLine(line.Trim());
+            if (status is not null) results.Add(status);
+        }
+
+        return results;
+    }
+
+    private static bool IsUnsupportedArrayOption(string? output)
+        => !string.IsNullOrWhiteSpace(output)
+           && output.Contains("--array", StringComparison.OrdinalIgnoreCase)
+           && output.Contains("unrecognized option", StringComparison.OrdinalIgnoreCase);
+
     private static SlurmJobStatus? ParseSacctLine(string line)
     {
         // Format: jobIdRaw|jobName|user|state|partition|nodeList|start|end|elapsed|exitCode|reason
@@ -257,7 +319,7 @@ public sealed class SlurmService : ISlurmService
         jobId = 0;
         var parts = rawJobId.Split('.', 2, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0) return false;
-        var primary = parts[0];
+        var primary = parts[0].Split('_', 2, StringSplitOptions.RemoveEmptyEntries)[0];
         return long.TryParse(primary, NumberStyles.Integer, CultureInfo.InvariantCulture, out jobId);
     }
 

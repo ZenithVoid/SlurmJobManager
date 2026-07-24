@@ -34,6 +34,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
     private readonly ITaskBlueprintService _blueprints;
     private readonly ITaskValidationService _taskValidationService;
     private readonly AppPreferencesService _prefs;
+    private readonly TaskPathLibraryService _pathLibrary = TaskPathLibraryService.Instance;
     private readonly ILastTaskContextService? _lastTaskContextService;
     private readonly IAppLogger? _logger;
     private Func<string, Task<bool>>? _openInConsoleAsync;
@@ -1375,7 +1376,10 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         if (string.IsNullOrEmpty(homeDir)) homeDir = "/home";
 
-        var vm  = new RemoteDirectoryPickerViewModel(_ssh, ResolveRemotePickerStartDirectory(homeDir));
+        var startDirectory = !string.IsNullOrWhiteSpace(RootDirectory)
+            ? RootDirectory
+            : homeDir;
+        var vm  = new RemoteDirectoryPickerViewModel(_ssh, startDirectory, homeDir);
         var win = new RemoteDirectoryPickerView { DataContext = vm };
 
         if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
@@ -1811,10 +1815,12 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 var msgText  = Application.Current?.TryFindResource("Task.OverwritePrompt") as string
                                ?? L("Task.OverwritePrompt");
                 var msgTitle = Application.Current?.TryFindResource("Task.OverwriteTitle") as string ?? L("Task.OverwriteTitle");
-                var result   = MessageBox.Show(
-                    string.Format(msgText, remoteDest), msgTitle,
-                    MessageBoxButton.OKCancel, MessageBoxImage.Question);
-                if (result != MessageBoxResult.OK)
+                var result = AppDialogService.ConfirmWarning(
+                    msgTitle,
+                    string.Format(msgText, remoteDest),
+                    confirmButtonText: L("Btn.Confirm"),
+                    cancelButtonText: L("Btn.Cancel"));
+                if (!result)
                 {
                     SetStatus("Task.SaveCancelled", "InfoTextStyle");
                     return;
@@ -2377,11 +2383,10 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
                 $"{L("Task.FileTimeCreatedLabel")} {creationTimeText}",
             };
 
-            MessageBox.Show(
-                string.Join(Environment.NewLine, lines),
+            AppDialogService.ShowInfo(
                 L("Task.FileTimeInfoTitle"),
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+                fileEntry.Name,
+                string.Join(Environment.NewLine, lines));
         }
         catch (Exception ex)
         {
@@ -2514,22 +2519,20 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
 
         if (TaskUnits.All(u => u.Commands.Count == 0 && u.Programs.Count == 0))
         {
-            MessageBox.Show(
-                L("Task.BlueprintIncompleteWarning"),
+            AppDialogService.ShowInfo(
                 L("Task.BlueprintSaveTitle"),
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+                L("Task.BlueprintIncompleteWarning"));
         }
 
         var overwrite = false;
         if (await _blueprints.ExistsByNameAsync(dialogVm.BlueprintName, scope, ct))
         {
-            var confirm = MessageBox.Show(
-                string.Format(L("Task.BlueprintOverwriteConfirm"), dialogVm.BlueprintName),
+            var confirm = AppDialogService.ConfirmWarning(
                 L("Task.BlueprintOverwriteTitle"),
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-            if (confirm != MessageBoxResult.Yes)
+                string.Format(L("Task.BlueprintOverwriteConfirm"), dialogVm.BlueprintName),
+                confirmButtonText: L("Btn.Confirm"),
+                cancelButtonText: L("Btn.Cancel"));
+            if (!confirm)
             {
                 SetStatus("Task.SaveCancelled", "InfoTextStyle");
                 return;
@@ -2542,6 +2545,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         {
             var blueprint = BuildBlueprintRecord(dialogVm.BlueprintName, dialogVm.BlueprintDescription, scope);
             await _blueprints.SaveAsync(blueprint, scope, overwriteByName: overwrite, ct);
+            _pathLibrary.RememberBlueprint(blueprint);
             SetStatus(string.Format(L("Task.BlueprintSaveSucceeded"), blueprint.Name), "SuccessTextStyle", localize: false);
             _logger?.Info($"Blueprint saved. Name='{blueprint.Name}', TaskId='{TaskId}', Scope='{TaskBlueprintScope.BuildScopeKey(scope.HostOrAddress, scope.Username)}'.");
         }
@@ -2591,6 +2595,7 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         {
             PauseTaskConfigurationDirtyTracking();
             var warnings = ApplyBlueprintToEditor(dialogVm.AppliedBlueprintRecord, targetTaskId);
+            _pathLibrary.RememberBlueprint(BuildBlueprintRecord(dialogVm.AppliedBlueprintRecord.Name, dialogVm.AppliedBlueprintRecord.Description, scope));
             ResumeTaskConfigurationDirtyTracking(commitSnapshot: true);
             var successMessage = string.Format(L("Task.BlueprintApplySucceeded"), dialogVm.AppliedBlueprintRecord.Name);
             if (warnings.Count == 0)
@@ -2600,11 +2605,10 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
             else
             {
                 SetStatus($"{successMessage}\n{string.Join("\n", warnings)}", "WarningTextStyle", localize: false);
-                MessageBox.Show(
-                    string.Join("\n", warnings),
+                AppDialogService.ShowWarning(
                     L("Task.BlueprintApplyNoticeTitle"),
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                    successMessage,
+                    string.Join("\n", warnings));
             }
 
             _logger?.Info($"Blueprint applied. Name='{dialogVm.AppliedBlueprintRecord.Name}', TargetTaskId='{targetTaskId}', Warnings={warnings.Count}.");
@@ -4412,6 +4416,40 @@ public sealed class TaskEditorViewModel : ViewModelBase, IDisposable
         var escapedPath = EscapeShellArg(remotePath);
         var (stdout, _, _) = await _ssh.ExecuteAsync($"if [ -d {escapedPath} ]; then echo 1; else echo 0; fi", ct);
         return stdout.Trim() == "1";
+    }
+
+    public async Task<RemoteDirectoryAccessResult> CheckRemoteDirectoryReadWriteAccessAsync(string remotePath, CancellationToken ct)
+    {
+        if (!IsSshConnectedSafe())
+            return RemoteDirectoryAccessResult.CheckFailed;
+
+        await EnsureHomeDirectoryLoadedAsync(ct);
+        var normalized = NormalizeRemotePath(ExpandHomePath(remotePath));
+        if (string.IsNullOrWhiteSpace(normalized))
+            return RemoteDirectoryAccessResult.NotFound;
+
+        try
+        {
+            var escapedPath = EscapeShellArg(normalized);
+            var (stdout, _, exitCode) = await _ssh.ExecuteAsync(
+                $"if [ ! -d {escapedPath} ]; then echo missing; elif [ ! -r {escapedPath} ]; then echo unreadable; elif [ ! -w {escapedPath} ]; then echo unwritable; else echo ok; fi",
+                ct);
+            if (exitCode != 0)
+                return RemoteDirectoryAccessResult.CheckFailed;
+
+            return stdout.Trim() switch
+            {
+                "ok" => RemoteDirectoryAccessResult.ReadWrite,
+                "missing" => RemoteDirectoryAccessResult.NotFound,
+                "unreadable" => RemoteDirectoryAccessResult.NotReadable,
+                "unwritable" => RemoteDirectoryAccessResult.NotWritable,
+                _ => RemoteDirectoryAccessResult.CheckFailed,
+            };
+        }
+        catch
+        {
+            return RemoteDirectoryAccessResult.CheckFailed;
+        }
     }
 
     private async Task<bool> RemotePathExistsAsync(string remotePath, CancellationToken ct)

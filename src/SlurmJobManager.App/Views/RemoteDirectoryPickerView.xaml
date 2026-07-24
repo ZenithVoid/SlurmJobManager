@@ -78,12 +78,24 @@
             </Grid.RowDefinitions>
 
             <!-- Current path -->
-            <TextBlock Grid.Row="0"
-                       Text="{Binding CurrentPath}"
-                       Foreground="{DynamicResource AccentBlueBrush}"
-                       FontFamily="Consolas" FontSize="12"
-                       TextTrimming="CharacterEllipsis"
-                       Margin="0,0,0,6" />
+            <Grid Grid.Row="0" Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ComboBox Grid.Column="0"
+                          IsEditable="True"
+                          ItemsSource="{Binding QuickPaths}"
+                          Text="{Binding PathInput, UpdateSourceTrigger=PropertyChanged}"
+                          FontFamily="Consolas"
+                          FontSize="12" />
+                <Button Grid.Column="1"
+                        Content="{DynamicResource RemotePicker.GoToPath}"
+                        Command="{Binding GoToPathCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        Padding="8,4"
+                        Margin="6,0,0,0" />
+            </Grid>
 
             <!-- Toolbar -->
             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">

@@ -37,7 +37,7 @@ public static class RemotePathDisplayHelper
         if (string.IsNullOrWhiteSpace(normalizedHome)) return normalizedPath;
 
         if (string.Equals(normalizedPath, normalizedHome, StringComparison.Ordinal))
-            return "~";
+            return "~/";
 
         if (normalizedPath.StartsWith($"{normalizedHome}/", StringComparison.Ordinal))
             return $"~/{normalizedPath[(normalizedHome.Length + 1)..]}";

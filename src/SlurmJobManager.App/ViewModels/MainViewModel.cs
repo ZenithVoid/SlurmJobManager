@@ -5,6 +5,7 @@ using SlurmJobManager.App.Services.ExternalTargets;
 using SlurmJobManager.App.Services.Logging;
 using SlurmJobManager.App.Services.Packaging;
 using SlurmJobManager.App.Services.Updates;
+using SlurmJobManager.App.Views;
 using SlurmJobManager.Core.Interfaces;
 
 namespace SlurmJobManager.App.ViewModels;
@@ -194,7 +195,34 @@ public sealed class MainViewModel : ViewModelBase
                 : string.Empty,
             TaskEditor.OpenRemoteDiagnosticFileFromMonitorAsync,
             TaskEditor.OpenDirectoryInConsoleFromMonitorAsync);
+        Monitor.SetJobNotificationNavigationHandler(OpenMonitorForJobNotificationAsync);
         StatusMessage = Application.Current?.TryFindResource("Status.Ready") as string ?? "Status.Ready";
+    }
+
+    private async Task OpenMonitorForJobNotificationAsync(long jobId)
+    {
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            var mainWindow = Application.Current.MainWindow;
+            if (mainWindow != null)
+            {
+                if (mainWindow is MainWindow appWindow)
+                {
+                    appWindow.RestoreFromTray();
+                }
+                else
+                {
+                    if (mainWindow.WindowState == WindowState.Minimized)
+                        mainWindow.WindowState = WindowState.Normal;
+                    mainWindow.Show();
+                    mainWindow.Activate();
+                }
+            }
+
+            ActivateTab("Monitor");
+        });
+
+        await Monitor.FocusHistoryJobAsync(jobId, CancellationToken.None);
     }
 
     public async Task<bool> OpenConsoleAtDirectoryAsync(string remoteDirectory)

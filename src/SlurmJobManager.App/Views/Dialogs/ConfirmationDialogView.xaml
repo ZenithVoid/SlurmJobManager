@@ -27,6 +27,7 @@
     </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <conv:StyleKeyToStyleConverter x:Key="StyleKeyToStyle" />
     </Window.Resources>
 
     <Grid Margin="14">
@@ -118,7 +119,7 @@
                     Click="BtnDiscard_Click"
                     Visibility="{Binding ShowDiscardButton, Converter={StaticResource BoolToVis}}" />
             <Button Content="{Binding ConfirmButtonText}"
-                    Style="{StaticResource DangerButtonStyle}"
+                    Style="{Binding ConfirmButtonStyleKey, Converter={StaticResource StyleKeyToStyle}}"
                     Padding="12,5"
                     IsDefault="True"
                     Click="BtnConfirm_Click" />

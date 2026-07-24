@@ -42,10 +42,10 @@ public partial class RemoteDirectoryPickerView : Window
             Vm.NavigateIntoCommand.Execute(Vm.SelectedEntry);
     }
 
-    private void BtnSelect_Click(object sender, RoutedEventArgs e)
+    private async void BtnSelect_Click(object sender, RoutedEventArgs e)
     {
-        Vm.SelectCurrentCommand.Execute(null);
-        DialogResult = true;
+        if (await Vm.TrySelectCurrentAsync())
+            DialogResult = true;
     }
 
     private void BtnCancel_Click(object sender, RoutedEventArgs e)

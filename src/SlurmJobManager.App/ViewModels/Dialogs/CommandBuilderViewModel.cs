@@ -33,6 +33,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
     private readonly ISshClientService _ssh;
     private readonly AppPreferencesService _prefs;
+    private readonly TaskPathLibraryService _pathLibrary = TaskPathLibraryService.Instance;
     // ── Context passed from TaskEditorViewModel ────────────────────────────
     private readonly string _taskId;
     private readonly string _remoteWorkDir;
@@ -464,11 +465,13 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private async Task AddParamFileAsync(CancellationToken ct)
     {
         if (_selectedCommand == null || string.IsNullOrWhiteSpace(_selectedAvailableParamFile)) return;
-        var path = await MaterializeParameterFileToWorkDirAsync(_selectedAvailableParamFile, ct);
+        var sourcePath = _selectedAvailableParamFile.Trim();
+        var path = await MaterializeParameterFileToWorkDirAsync(sourcePath, ct);
         if (string.IsNullOrWhiteSpace(path)) return;
 
         if (!_selectedCommand.ParameterFiles.Contains(path))
             _selectedCommand.ParameterFiles.Add(path);
+        _pathLibrary.Remember(TaskPathKind.ParameterFile, sourcePath);
         _selectedCommand.RebuildCommandLine();
     }
 
@@ -476,6 +479,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     {
         if (_selectedCommand == null || string.IsNullOrWhiteSpace(_selectedAvailableProgram)) return;
         _selectedCommand.ProgramPath = _selectedAvailableProgram.Trim();
+        _pathLibrary.Remember(TaskPathKind.Program, _selectedCommand.ProgramPath);
         await AutoDetectMpirunForProgramAsync(_selectedCommand, ct, updateStatusWhenMissing: false);
     }
 
@@ -699,16 +703,31 @@ public sealed class CommandBuilderViewModel : ViewModelBase
     private async Task BrowseProgramPathAsync(CancellationToken ct)
     {
         if (_selectedCommand == null) return;
-        var selectedFile = await BrowseRemoteFileAsync(ct, ResolveProgramPickerStartPath(_selectedCommand.ProgramPath));
+        var selectedFile = await OpenTaskPathPickerAsync(
+            TaskPathKind.Program,
+            AllPrograms
+                .Concat(Commands.Select(c => c.ProgramPath))
+                .Where(path => !string.IsNullOrWhiteSpace(path)),
+            _selectedCommand.ProgramPath,
+            ResolveProgramPickerStartPath(_selectedCommand.ProgramPath),
+            ct);
         if (string.IsNullOrWhiteSpace(selectedFile)) return;
         _selectedCommand.ProgramPath = selectedFile;
+        _pathLibrary.Remember(TaskPathKind.Program, selectedFile);
         await AutoDetectMpirunForProgramAsync(_selectedCommand, ct, updateStatusWhenMissing: false);
     }
 
     private async Task BrowseParamFileAsync(CancellationToken ct)
     {
         if (_selectedCommand == null) return;
-        var selectedFile = await BrowseRemoteFileAsync(ct, await ResolveHomeDirectoryAsync(ct));
+        var selectedFile = await OpenTaskPathPickerAsync(
+            TaskPathKind.ParameterFile,
+            AllParamFiles
+                .Concat(Commands.SelectMany(c => c.ParameterFiles))
+                .Where(path => !string.IsNullOrWhiteSpace(path)),
+            SelectedAvailableParamFile,
+            await ResolveHomeDirectoryAsync(ct),
+            ct);
         if (string.IsNullOrWhiteSpace(selectedFile)) return;
 
         var workCopy = await MaterializeParameterFileToWorkDirAsync(selectedFile, ct);
@@ -717,6 +736,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         if (!_selectedCommand.ParameterFiles.Contains(workCopy))
             _selectedCommand.ParameterFiles.Add(workCopy);
 
+        _pathLibrary.Remember(TaskPathKind.ParameterFile, selectedFile);
         SelectedAvailableParamFile = workCopy;
         _selectedCommand.RebuildCommandLine();
     }
@@ -754,12 +774,12 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         {
             if (await _ssh.RemoteFileExistsAsync(remotePath, ct))
             {
-                var overwrite = MessageBox.Show(
-                    string.Format(L("CmdBuilder.OverwriteParamPrompt", "工作目录中已存在同名文件：{0}\n是否覆盖？"), remotePath),
+                var overwrite = AppDialogService.ConfirmWarning(
                     L("CmdBuilder.OverwriteParamTitle", "覆盖确认"),
-                    MessageBoxButton.OKCancel,
-                    MessageBoxImage.Question);
-                if (overwrite != MessageBoxResult.OK)
+                    string.Format(L("CmdBuilder.OverwriteParamPrompt", "工作目录中已存在同名文件：{0}\n是否覆盖？"), remotePath),
+                    confirmButtonText: L("Btn.Confirm", "确定"),
+                    cancelButtonText: L("Btn.Cancel", "取消"));
+                if (!overwrite)
                 {
                     StatusMessage = L("CmdBuilder.OperationCancelled", "已取消。");
                     return;
@@ -769,6 +789,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             await _ssh.WriteTextFileAsync(remotePath, string.Empty, ct);
             if (!_selectedCommand.ParameterFiles.Contains(remotePath))
                 _selectedCommand.ParameterFiles.Add(remotePath);
+            _pathLibrary.Remember(TaskPathKind.ParameterFile, remotePath);
             _selectedCommand.RebuildCommandLine();
             await EditParamFileAsync(remotePath, ct);
             StatusMessage = string.Format(L("CmdBuilder.ParamCreatedInWorkDir", "已在工作目录创建参数文件副本：{0}"), remotePath);
@@ -835,6 +856,27 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         return win.ShowDialog() == true ? vm.ResultPath : null;
     }
 
+    private async Task<string?> OpenTaskPathPickerAsync(
+        TaskPathKind kind,
+        IEnumerable<string> candidatePaths,
+        string? currentPath,
+        string? remoteBrowseStartPath,
+        CancellationToken ct)
+    {
+        var vm = new TaskPathPickerViewModel(kind, candidatePaths, currentPath, _pathLibrary);
+        var win = new TaskPathPickerView { DataContext = vm };
+        if (Application.Current.MainWindow is { } mainWin)
+            win.Owner = mainWin;
+
+        if (win.ShowDialog() != true)
+            return null;
+
+        if (vm.BrowseRequested)
+            return await BrowseRemoteFileAsync(ct, remoteBrowseStartPath);
+
+        return vm.ConfirmedPath;
+    }
+
     private async Task<string> ResolveHomeDirectoryAsync(CancellationToken ct)
     {
         if (!string.IsNullOrWhiteSpace(_homeDirectory))
@@ -890,12 +932,12 @@ public sealed class CommandBuilderViewModel : ViewModelBase
 
             if (targetExists && !samePath)
             {
-                var overwrite = MessageBox.Show(
-                    string.Format(L("CmdBuilder.OverwriteParamPrompt", "工作目录中已存在同名文件：{0}\n是否覆盖？"), targetPath),
+                var overwrite = AppDialogService.ConfirmWarning(
                     L("CmdBuilder.OverwriteParamTitle", "覆盖确认"),
-                    MessageBoxButton.OKCancel,
-                    MessageBoxImage.Question);
-                if (overwrite != MessageBoxResult.OK)
+                    string.Format(L("CmdBuilder.OverwriteParamPrompt", "工作目录中已存在同名文件：{0}\n是否覆盖？"), targetPath),
+                    confirmButtonText: L("Btn.Confirm", "确定"),
+                    cancelButtonText: L("Btn.Cancel", "取消"));
+                if (!overwrite)
                 {
                     StatusMessage = L("CmdBuilder.OperationCancelled", "已取消。");
                     return null;
@@ -1015,6 +1057,7 @@ public sealed class CommandBuilderViewModel : ViewModelBase
             if (!string.IsNullOrWhiteSpace(cmd.ProgramPath))
                 cmd.RebuildCommandLine();
 
+        _pathLibrary.RememberCommands(GetResultCommands());
         Confirmed = true;
     }
 
@@ -1387,14 +1430,22 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         try
         {
             var (stdout, stderr, exitCode) = await _ssh.ExecuteAsync("sinfo --noheader --format=\"%P|%G|%m|%c\"", ct);
-            if (exitCode != 0)
+            var parsed = exitCode == 0 ? ParseQueueMetadata(stdout) : new List<QueueMetadata>();
+            if (exitCode != 0 || parsed.Count == 0)
             {
-                if (!string.IsNullOrWhiteSpace(stderr))
-                    StatusMessage = string.Format(L("CmdBuilder.QueueLoadFailed", "队列信息加载失败：{0}"), stderr.Trim());
-                return;
+                var fallback = await TryLoadQueueNamesAsync(ct);
+                if (fallback.Count == 0)
+                {
+                    if (!string.IsNullOrWhiteSpace(stderr))
+                        StatusMessage = string.Format(L("CmdBuilder.QueueLoadFailed", "队列信息加载失败：{0}"), stderr.Trim());
+                    return;
+                }
+
+                parsed = fallback
+                    .Select(name => new QueueMetadata(name))
+                    .ToList();
             }
 
-            var parsed = ParseQueueMetadata(stdout);
             AvailableQueues.Clear();
             _queueMetadataMap.Clear();
             foreach (var item in parsed.OrderBy(q => q.Name, StringComparer.Ordinal))
@@ -1415,6 +1466,28 @@ public sealed class CommandBuilderViewModel : ViewModelBase
         catch (Exception ex)
         {
             StatusMessage = string.Format(L("CmdBuilder.QueueLoadFailed", "队列信息加载失败：{0}"), ex.Message);
+        }
+    }
+
+    private async Task<IReadOnlyList<string>> TryLoadQueueNamesAsync(CancellationToken ct)
+    {
+        try
+        {
+            var (stdout, _, exitCode) = await _ssh.ExecuteAsync("sinfo --noheader --format=\"%P\"", ct);
+            if (exitCode != 0)
+                return Array.Empty<string>();
+
+            return stdout
+                .Replace("\r\n", "\n")
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.Trim().TrimEnd('*'))
+                .Where(line => !string.IsNullOrWhiteSpace(line))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+        }
+        catch
+        {
+            return Array.Empty<string>();
         }
     }
 

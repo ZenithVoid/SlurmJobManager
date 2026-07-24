@@ -28,6 +28,7 @@
     <sys:String x:Key="Dialog.Confirm">Confirm</sys:String>
     <sys:String x:Key="Dialog.OK">OK</sys:String>
     <sys:String x:Key="Btn.Cancel">Cancel</sys:String>
+    <sys:String x:Key="Btn.Confirm">OK</sys:String>
     <sys:String x:Key="Btn.Connect">Connect</sys:String>
     <sys:String x:Key="Btn.Disconnect">Disconnect</sys:String>
     <sys:String x:Key="Btn.Save">Save</sys:String>
@@ -108,6 +109,7 @@
     <sys:String x:Key="Monitor.ColNodes">Nodes</sys:String>
     <sys:String x:Key="Monitor.ColStartTime">Start Time</sys:String>
     <sys:String x:Key="Monitor.ColEndTime">End Time</sys:String>
+    <sys:String x:Key="Monitor.ColExitCode">Exit Code</sys:String>
     <sys:String x:Key="Monitor.ColAction">Action</sys:String>
     <sys:String x:Key="Monitor.TabCurrentJobs">Current Jobs</sys:String>
     <sys:String x:Key="Monitor.TabHistoryJobs">History Jobs</sys:String>
@@ -159,9 +161,19 @@
     <sys:String x:Key="Settings.AutoRestoreLastTaskLabel">Auto-restore last task after login</sys:String>
     <sys:String x:Key="Settings.AutoRestoreLastTaskDesc">On successful login, restore the last task context for the same host and username.</sys:String>
     <sys:String x:Key="Settings.AutoRestoreLastTaskEffect">When enabled, the app navigates to Tasks and restores the last TaskId (plus related context). Without history, no forced jump is performed.</sys:String>
+    <sys:String x:Key="Settings.CloseButtonBehaviorLabel">When the close button is clicked:</sys:String>
+    <sys:String x:Key="Settings.CloseButtonBehaviorAsk">Ask once and remember</sys:String>
+    <sys:String x:Key="Settings.CloseButtonBehaviorClose">Close the application</sys:String>
+    <sys:String x:Key="Settings.CloseButtonBehaviorMinimizeToTray">Minimize to system tray</sys:String>
+    <sys:String x:Key="Settings.CloseButtonBehaviorDesc">Controls the main window close button. Tray mode keeps the app running in the background so job monitoring and notifications continue; use the tray icon to reopen or exit.</sys:String>
     <sys:String x:Key="Settings.AutoSaveHint">Settings on this page are auto-saved when changed.</sys:String>
     <sys:String x:Key="Settings.DefaultRemotePickerDirectoryLabel">Default remote picker directory:</sys:String>
     <sys:String x:Key="Settings.DefaultRemotePickerDirectoryDesc">Used as the initial location for remote file/directory pickers after SSH is connected. Default: /gpfs/</sys:String>
+    <sys:String x:Key="Settings.DefaultRemotePickerDirectoryAccessOk">Default remote directory is readable and writable.</sys:String>
+    <sys:String x:Key="Settings.DefaultRemotePickerDirectoryMissing">Default remote directory does not exist: {0}</sys:String>
+    <sys:String x:Key="Settings.DefaultRemotePickerDirectoryUnreadable">Default remote directory is not readable: {0}</sys:String>
+    <sys:String x:Key="Settings.DefaultRemotePickerDirectoryUnwritable">Default remote directory is not writable: {0}</sys:String>
+    <sys:String x:Key="Settings.DefaultRemotePickerDirectoryCheckFailed">Failed to check default remote directory permissions: {0}</sys:String>
     <sys:String x:Key="Settings.Appearance">Appearance</sys:String>
     <sys:String x:Key="Settings.Theme">Theme:</sys:String>
     <sys:String x:Key="Settings.ThemeDesc">Switch between dark (Catppuccin Mocha) and light (Catppuccin Latte) themes.</sys:String>
@@ -526,6 +538,16 @@
     <sys:String x:Key="Task.UnsavedActionCancelled">Action cancelled. Please save changes first if needed.</sys:String>
     <sys:String x:Key="App.UnsavedClosePrompt">The application is about to close and discard unsaved changes:\n{0}\n\nClick OK to close anyway, or Cancel to return and save.</sys:String>
     <sys:String x:Key="App.UnsavedSourceRemoteEditors">Remote file editors ({0})</sys:String>
+    <sys:String x:Key="App.CloseBehaviorTitle">Close Button Behavior</sys:String>
+    <sys:String x:Key="App.CloseBehaviorMessage">What should happen when you click the close button in the top-right corner?</sys:String>
+    <sys:String x:Key="App.CloseBehaviorDetails">This choice is saved automatically. You can change it later in Settings.</sys:String>
+    <sys:String x:Key="App.CloseBehaviorCloseApplication">Close application</sys:String>
+    <sys:String x:Key="App.CloseBehaviorMinimizeToTray">Minimize to tray</sys:String>
+    <sys:String x:Key="Tray.ToolTip">SlurmPilot is running in the background</sys:String>
+    <sys:String x:Key="Tray.Open">Open SlurmPilot</sys:String>
+    <sys:String x:Key="Tray.Exit">Exit</sys:String>
+    <sys:String x:Key="Tray.HiddenTitle">SlurmPilot minimized to tray</sys:String>
+    <sys:String x:Key="Tray.HiddenText">Job monitoring will continue. Double-click the tray icon to reopen the window.</sys:String>
     <!-- Multi-task workspace -->
     <sys:String x:Key="Task.TaskUnits">Task Units</sys:String>
     <sys:String x:Key="Task.ActiveUnit">Active Task Unit</sys:String>
@@ -911,10 +933,26 @@
     <sys:String x:Key="CmdBuilder.MpiDetectFailed">Could not infer mpirun path automatically. Please set it manually.</sys:String>
     <sys:String x:Key="CmdBuilder.MpiDetectException">Failed to infer MPI path: {0}</sys:String>
 
+    <!-- ── Task path library picker ─────────────────────────────────────── -->
+    <sys:String x:Key="TaskPathPicker.ProgramTitle">Select Program</sys:String>
+    <sys:String x:Key="TaskPathPicker.ParameterTitle">Select Configuration File</sys:String>
+    <sys:String x:Key="TaskPathPicker.SearchTip">Search history, favorites, and current scan results</sys:String>
+    <sys:String x:Key="TaskPathPicker.ManualTip">Enter a full remote path directly</sys:String>
+    <sys:String x:Key="TaskPathPicker.BrowseRemote">Browse Remote File</sys:String>
+    <sys:String x:Key="TaskPathPicker.UseManual">Use Entered Path</sys:String>
+    <sys:String x:Key="TaskPathPicker.Select">Select</sys:String>
+    <sys:String x:Key="TaskPathPicker.Hint">Double-click an item to select it. Pin frequently used paths as favorites.</sys:String>
+    <sys:String x:Key="TaskPathPicker.SourceFavorite">Favorite</sys:String>
+    <sys:String x:Key="TaskPathPicker.SourceRecent">History</sys:String>
+    <sys:String x:Key="TaskPathPicker.SourceCandidate">Scan Result</sys:String>
+    <sys:String x:Key="TaskPathPicker.Favorite">Favorite</sys:String>
+    <sys:String x:Key="TaskPathPicker.Unfavorite">Unfavorite</sys:String>
+
     <!-- ── Remote directory picker ──────────────────────────────────────── -->
     <sys:String x:Key="RemotePicker.TitleWindow">Select Remote Directory</sys:String>
     <sys:String x:Key="RemotePicker.Title">Remote Directory Picker</sys:String>
     <sys:String x:Key="RemotePicker.GoUp">⬆ Up</sys:String>
+    <sys:String x:Key="RemotePicker.GoToPath">Go</sys:String>
     <sys:String x:Key="RemotePicker.Refresh">⟳ Refresh</sys:String>
     <sys:String x:Key="RemotePicker.Hint">Select the current directory or double-click to enter a subdirectory, then click [Select]</sys:String>
     <sys:String x:Key="RemotePicker.Select">Select</sys:String>
@@ -923,6 +961,10 @@
     <sys:String x:Key="RemotePicker.GoUpDisabledTip">Already at root; cannot go up further</sys:String>
     <sys:String x:Key="RemotePicker.StatusLoading">Loading…</sys:String>
     <sys:String x:Key="RemotePicker.StatusLoadFailed">Unable to load directory: {0}</sys:String>
+    <sys:String x:Key="RemotePicker.AccessNotFound">Directory does not exist and cannot be selected.</sys:String>
+    <sys:String x:Key="RemotePicker.AccessNotReadable">Current account cannot read this directory.</sys:String>
+    <sys:String x:Key="RemotePicker.AccessNotWritable">Current account cannot write to this directory.</sys:String>
+    <sys:String x:Key="RemotePicker.AccessCheckFailed">Directory permission check failed. Verify the connection and path.</sys:String>
     <sys:String x:Key="RemoteFilePicker.TitleWindow">Select Remote File</sys:String>
     <sys:String x:Key="RemoteFilePicker.Title">Remote File Picker</sys:String>
     <sys:String x:Key="RemoteFilePicker.Hint">Double-click a directory to enter it, or select a file then click [Select File]</sys:String>
@@ -1030,18 +1072,19 @@
     <sys:String x:Key="Monitor.ScopeUnset">user not configured</sys:String>
     <sys:String x:Key="Monitor.HistoryQueryUnset">history query user not ready</sys:String>
     <sys:String x:Key="Monitor.HistoryQueryUser">history user '{0}'</sys:String>
+    <sys:String x:Key="Monitor.HistoryQueryAllUsers">all users history</sys:String>
     <sys:String x:Key="Monitor.RefreshPolling">polling every {0}s</sys:String>
     <sys:String x:Key="Monitor.RefreshManual">manual refresh</sys:String>
     <sys:String x:Key="Monitor.CurrentEmptyTitle">No current jobs</sys:String>
     <sys:String x:Key="Monitor.CurrentEmptyHint">Try refreshing, changing filters, or broadening the query scope.</sys:String>
     <sys:String x:Key="Monitor.HistoryEmptyTitle">No history jobs</sys:String>
-    <sys:String x:Key="Monitor.HistoryEmptyHint">Query history after specifying a valid user.</sys:String>
+    <sys:String x:Key="Monitor.HistoryEmptyHint">Query history after specifying a valid user, or enable Monitor all jobs to query all visible users.</sys:String>
     <sys:String x:Key="Monitor.CurrentRefreshing">Refreshing current jobs…</sys:String>
     <sys:String x:Key="Monitor.CurrentUpdated">Current jobs updated: {0:HH:mm:ss} ({1} job(s))</sys:String>
     <sys:String x:Key="Monitor.CurrentRefreshFailed">Current jobs refresh failed: {0}</sys:String>
-    <sys:String x:Key="Monitor.HistoryNeedUser">Please specify a username to query history jobs.</sys:String>
-    <sys:String x:Key="Monitor.HistoryRefreshing">Querying history jobs for '{0}'…</sys:String>
-    <sys:String x:Key="Monitor.HistoryUpdated">History jobs updated: {0:HH:mm:ss} ({1} job(s), user: {2})</sys:String>
+    <sys:String x:Key="Monitor.HistoryNeedUser">Please specify a username, or enable Monitor all jobs to query history.</sys:String>
+    <sys:String x:Key="Monitor.HistoryRefreshing">Querying {0}…</sys:String>
+    <sys:String x:Key="Monitor.HistoryUpdated">History jobs updated: {0:HH:mm:ss} ({1} job(s), scope: {2})</sys:String>
     <sys:String x:Key="Monitor.HistoryRefreshFailed">History jobs refresh failed: {0}</sys:String>
     <sys:String x:Key="Monitor.HistoryDetailTitle">History Job Detail</sys:String>
     <sys:String x:Key="Monitor.DetailExitCode">Exit Code</sys:String>
@@ -1055,13 +1098,18 @@
     <sys:String x:Key="Monitor.HistoryOpenedPath">Opened: {0}</sys:String>
     <sys:String x:Key="Monitor.HistoryOpenPathFailed">Unable to open: {0}</sys:String>
     <sys:String x:Key="Monitor.JobCompletionNotificationTitle">Job Completed</sys:String>
-    <sys:String x:Key="Monitor.JobCompletionNotificationBody">Job {0} ({1}) completed successfully.</sys:String>
-    <sys:String x:Key="Monitor.JobTerminalNotificationTitle">Job Ended (Not Successful)</sys:String>
-    <sys:String x:Key="Monitor.JobTerminalNotificationBody">Job {0} ({1}) ended with state: {2}</sys:String>
+    <sys:String x:Key="Monitor.JobCompletionNotificationBody">Job {0} ({1}) finished normally. ExitCode: {2}</sys:String>
+    <sys:String x:Key="Monitor.JobTerminalNotificationTitle">Job Ended Abnormally</sys:String>
+    <sys:String x:Key="Monitor.JobTerminalNotificationBody">Job {0} ({1}) ended abnormally. State: {2}, ExitCode: {3}, Reason: {4}</sys:String>
     <sys:String x:Key="Monitor.JobMissingNotificationTitle">Job Left Queue</sys:String>
-    <sys:String x:Key="Monitor.JobMissingNotificationBody">Job {0} ({1}) is no longer in the current queue; history may become available shortly.</sys:String>
+    <sys:String x:Key="Monitor.JobMissingNotificationBody">Job {0} ({1}) is no longer in the current queue; sacct did not return a terminal state yet, so history may become available shortly.</sys:String>
     <sys:String x:Key="Monitor.JobCancelNotificationTitle">Job Stop Requested</sys:String>
     <sys:String x:Key="Monitor.JobCancelNotificationBody">Cancellation was requested for job {0} ({1}).</sys:String>
+    <sys:String x:Key="Monitor.NotificationClickHint">Click to open monitor history</sys:String>
+    <sys:String x:Key="Monitor.NotificationMarkAllRead">Mark all read</sys:String>
+    <sys:String x:Key="Monitor.NotificationOpenedHistory">Opened history record for Job {0}.</sys:String>
+    <sys:String x:Key="Monitor.NotificationHistoryUnavailable">Monitor opened, but Job {0} was not found in history or sacct yet.</sys:String>
+    <sys:String x:Key="Monitor.NotificationHistoryOpenFailed">Failed to open history for Job {0}: {1}</sys:String>
     <sys:String x:Key="Monitor.PollingEvery">Polling every {0}s…</sys:String>
     <sys:String x:Key="Monitor.PollingStopped">Polling stopped.</sys:String>
     <sys:String x:Key="Monitor.PollingHalted">Polling stopped after {0} consecutive failures. Check connection and restart polling manually.</sys:String>

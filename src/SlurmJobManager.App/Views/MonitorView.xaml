@@ -176,7 +176,8 @@
             Margin="0,32,0,0"
             Visibility="{Binding IsEmptyState, Converter={StaticResource BoolToVis}}" />
 
-        <TabControl Visibility="{Binding IsEmptyState, Converter={StaticResource InvBoolToVis}}">
+        <TabControl SelectedIndex="{Binding SelectedMonitorTabIndex, Mode=TwoWay}"
+                    Visibility="{Binding IsEmptyState, Converter={StaticResource InvBoolToVis}}">
             <TabItem Header="{DynamicResource Monitor.TabCurrentJobs}">
                 <Grid Margin="0,8,0,0">
                     <Grid.RowDefinitions>
@@ -222,7 +223,8 @@
                                   HorizontalScrollBarVisibility="Auto"
                                   CanContentScroll="False"
                                   b:SmoothScrollBehavior.IsEnabled="True"
-                                  b:SmoothScrollBehavior.ScrollAmount="60">
+                                  b:SmoothScrollBehavior.ScrollAmount="60"
+                                  b:MouseWheelRoutingBehavior.IsEnabled="True">
                         <Grid Background="{DynamicResource BgSurface0Brush}"
                               MinWidth="1020"
                               Width="{Binding ElementName=CurrentJobsScrollHost, Path=ViewportWidth}">
@@ -367,7 +369,8 @@
                                   HorizontalScrollBarVisibility="Auto"
                                   CanContentScroll="False"
                                   b:SmoothScrollBehavior.IsEnabled="True"
-                                  b:SmoothScrollBehavior.ScrollAmount="60">
+                                  b:SmoothScrollBehavior.ScrollAmount="60"
+                                  b:MouseWheelRoutingBehavior.IsEnabled="True">
                         <Grid Background="{DynamicResource BgSurface0Brush}"
                               MinWidth="940"
                               Width="{Binding ElementName=HistoryJobsScrollHost, Path=ViewportWidth}">
@@ -418,6 +421,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="{DynamicResource Monitor.ColExitCode}" Binding="{Binding ExitCode}" Width="90" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColStartTime}" Binding="{Binding StartTimeDisplay}" Width="170" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColEndTime}" Binding="{Binding EndTimeDisplay}" Width="170" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />
                                 <DataGridTextColumn Header="{DynamicResource Monitor.ColRunTime}" Binding="{Binding RunTimeDisplay}" Width="110" ElementStyle="{StaticResource MonitorCompactTextColumnStyle}" />

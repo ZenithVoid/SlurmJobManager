@@ -230,8 +230,11 @@ public sealed class ConsoleViewModel : ViewModelBase, IDisposable
         {
             var askText = string.Format(L("Console.BusySwitchDirectoryPrompt"), CollapseHomePath(target));
             var askTitle = L("Console.BusySwitchDirectoryTitle");
-            var decision = MessageBox.Show(askText, askTitle, MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (decision != MessageBoxResult.Yes)
+            if (!AppDialogService.ConfirmWarning(
+                    askTitle,
+                    askText,
+                    confirmButtonText: L("Btn.Confirm"),
+                    cancelButtonText: L("Btn.Cancel")))
                 return false;
         }
 

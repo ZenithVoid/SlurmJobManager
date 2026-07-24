@@ -29,6 +29,7 @@ public sealed class ConfirmationDialogViewModel : ViewModelBase
     public string CancelButtonText { get; }
     public bool IsWarning { get; }
     public bool ShowCancelButton { get; }
+    public string ConfirmButtonStyleKey => IsWarning ? "DangerButtonStyle" : "AccentButtonStyle";
 
     /// <summary>Optional text for a neutral "discard" button shown between Cancel and Confirm.
     /// When empty, no discard button is shown. When clicked, <see cref="Views.Dialogs.ConfirmationDialogView.DiscardChosen"/>

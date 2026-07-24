@@ -25,6 +25,7 @@ public partial class App : Application
 {
     private MainViewModel?      _mainVm;
     private ISshClientService?  _sshService;
+    private AppPreferencesService? _prefs;
     private SerilogAppLogger?   _logger;
     private CrashHandler?       _crashHandler;
     private readonly SemaphoreSlim _shutdownGate = new(1, 1);
@@ -35,6 +36,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
         // Initialize toast service (must be first so VMs can use it)
         ToastService.Initialize();
@@ -52,6 +54,7 @@ public partial class App : Application
 
         // App-level user preferences (auto-connect on startup, etc.)
         var prefs = new AppPreferencesService();
+        _prefs = prefs;
         ILogFileService logFileService = new LogFileService();
         IExternalTargetOpener externalTargetOpener = new ShellExternalTargetOpener();
         IApplicationVersionService versionService = new ApplicationVersionService();
@@ -195,7 +198,79 @@ public partial class App : Application
             return;
         }
         e.Cancel = true;
-        _ = ConfirmUnsavedAndCloseMainWindowAsync(sender as Window);
+        _ = HandleMainWindowCloseRequestAsync(sender as Window);
+    }
+
+    public void RequestApplicationExit(Window? window = null)
+    {
+        var targetWindow = window ?? Current.MainWindow;
+        if (targetWindow is MainWindow mainWindow && !mainWindow.IsVisible)
+            mainWindow.RestoreFromTray();
+
+        if (_closeConfirmationInProgress)
+            return;
+
+        _ = ConfirmUnsavedAndCloseMainWindowAsync(targetWindow);
+    }
+
+    private async Task HandleMainWindowCloseRequestAsync(Window? window)
+    {
+        var behavior = _prefs?.CloseButtonBehavior ?? CloseButtonBehavior.Ask;
+        if (behavior == CloseButtonBehavior.Ask)
+        {
+            behavior = PromptForCloseButtonBehavior();
+            if (behavior == CloseButtonBehavior.Ask)
+                return;
+
+            if (_prefs != null && !_prefs.TrySetCloseButtonBehavior(behavior, out var saveError))
+                _logger?.Warning($"Failed to save close button behavior. Error={saveError}");
+            _mainVm?.Settings.NotifyCloseButtonBehaviorChanged();
+        }
+
+        if (behavior == CloseButtonBehavior.MinimizeToTray)
+        {
+            if (window is MainWindow mainWindow)
+                mainWindow.MinimizeToTray();
+            else
+                window?.Hide();
+            return;
+        }
+
+        await ConfirmUnsavedAndCloseMainWindowAsync(window);
+    }
+
+    private CloseButtonBehavior PromptForCloseButtonBehavior()
+    {
+        if (_closeConfirmationInProgress)
+            return CloseButtonBehavior.Ask;
+
+        _closeConfirmationInProgress = true;
+        try
+        {
+            var vm = new ConfirmationDialogViewModel(
+                title: L("App.CloseBehaviorTitle"),
+                message: L("App.CloseBehaviorMessage"),
+                details: L("App.CloseBehaviorDetails"),
+                confirmButtonText: L("App.CloseBehaviorCloseApplication"),
+                cancelButtonText: L("Btn.Cancel"),
+                isWarning: false,
+                discardButtonText: L("App.CloseBehaviorMinimizeToTray"));
+
+            var dialog = new ConfirmationDialogView { DataContext = vm };
+            if (Current.MainWindow is { IsVisible: true } mainWindow)
+                dialog.Owner = mainWindow;
+
+            if (dialog.ShowDialog() != true)
+                return CloseButtonBehavior.Ask;
+
+            return dialog.DiscardChosen
+                ? CloseButtonBehavior.MinimizeToTray
+                : CloseButtonBehavior.CloseApplication;
+        }
+        finally
+        {
+            _closeConfirmationInProgress = false;
+        }
     }
 
     private async Task ConfirmUnsavedAndCloseMainWindowAsync(Window? window)
@@ -352,12 +427,39 @@ public partial class App : Application
         _closeAfterCleanup = true;
         try
         {
+            CloseOwnedApplicationWindows(window);
             window.Closing -= OnMainWindowClosing;
             window.Close();
+            if (!Current.Dispatcher.HasShutdownStarted)
+                Current.Shutdown(0);
         }
         catch
         {
             // best effort
+        }
+    }
+
+    private static void CloseOwnedApplicationWindows(Window? mainWindow)
+    {
+        DesktopJobNotificationService.Instance.Shutdown();
+
+        var windows = Current.Windows
+            .OfType<Window>()
+            .Where(w => !ReferenceEquals(w, mainWindow))
+            .ToList();
+
+        foreach (var ownedWindow in windows)
+        {
+            try
+            {
+                ownedWindow.Owner = null;
+                ownedWindow.DataContext = null;
+                ownedWindow.Close();
+            }
+            catch
+            {
+                // best effort
+            }
         }
     }
 
@@ -368,6 +470,7 @@ public partial class App : Application
         {
             if (_shutdownCompleted) return;
             _shutdownCompleted = true;
+            DesktopJobNotificationService.Instance.Shutdown();
 
             if (_mainVm?.Monitor is MonitorViewModel monitor)
             {
@@ -427,6 +530,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        try { DesktopJobNotificationService.Instance.Shutdown(); } catch { /* best effort */ }
         _shutdownGate.Dispose();
         base.OnExit(e);
     }

@@ -16,14 +16,13 @@ namespace SlurmJobManager.App.ViewModels;
 public sealed class MonitorViewModel : ViewModelBase, IDisposable
 {
     private const int HistoryFetchLimit = 200;
-    private const int TerminalNotificationMaxAccountingAttempts = 5;
-
     private readonly ISlurmService _slurm;
     private readonly AppSettings _settings;
     private readonly AppPreferencesService? _prefs;
     private readonly IAppLogger? _logger;
     private readonly ConnectionViewModel? _connection;
     private readonly INotificationService? _notificationService;
+    private Func<long, Task>? _openJobNotificationAsync;
     private Func<JobRow?, string?>? _resolveHistoryWorkDir;
     private Func<string, CancellationToken, Task<bool>>? _openRemoteFileAsync;
     private Func<string, CancellationToken, Task<bool>>? _openInConsoleAsync;
@@ -40,6 +39,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private readonly HashSet<long> _notifiedCompletedJobIds = new();
     private readonly Dictionary<long, PendingTerminalNotification> _pendingTerminalNotifications = new();
     private readonly object _completionNotificationGate = new();
+    private int _currentJobsScopeVersion;
 
     private string _watchedUser = string.Empty;
     private int _pollIntervalSeconds = 3;
@@ -52,6 +52,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private string _allStatusFilter = string.Empty;
     private string _statusFilter = string.Empty;
     private string _searchText = string.Empty;
+    private int _selectedMonitorTabIndex;
 
     public string WatchedUser
     {
@@ -60,6 +61,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         {
             if (SetField(ref _watchedUser, value))
             {
+                ResetCompletionNotificationBaseline();
                 OnPropertyChanged(nameof(IsEmptyState));
                 OnPropertyChanged(nameof(CanQueryHistory));
                 OnPropertyChanged(nameof(MonitorContextSummary));
@@ -161,6 +163,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         {
             if (SetField(ref _showAllUsers, value))
             {
+                ResetCompletionNotificationBaseline();
                 _prefs?.TrySetMonitorAllUsersJobs(value, out _);
                 if (!value)
                     SyncWatchedUserToConnection(force: true);
@@ -176,8 +179,8 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     /// <summary>True when no watched user has been configured yet.</summary>
     public bool IsEmptyState => !ShowAllUsers && string.IsNullOrWhiteSpace(WatchedUser);
 
-    /// <summary>True when a concrete username is available for history lookup.</summary>
-    public bool CanQueryHistory => !string.IsNullOrWhiteSpace(GetHistoryQueryUser());
+    /// <summary>True when history lookup has a valid scope.</summary>
+    public bool CanQueryHistory => ShowAllUsers || !string.IsNullOrWhiteSpace(GetHistoryQueryUser());
     public string MonitorContextSummary
     {
         get
@@ -185,10 +188,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             var scope = ShowAllUsers ? L("Monitor.ScopeAllUsers") : string.Format(L("Monitor.ScopeSingleUser"), WatchedUser.Trim());
             if (!ShowAllUsers && string.IsNullOrWhiteSpace(WatchedUser))
                 scope = L("Monitor.ScopeUnset");
-            var historyUser = GetHistoryQueryUser();
-            var query = string.IsNullOrWhiteSpace(historyUser)
-                ? L("Monitor.HistoryQueryUnset")
-                : string.Format(L("Monitor.HistoryQueryUser"), historyUser);
+            var query = GetHistoryQueryDisplay();
             var refresh = IsPolling
                 ? string.Format(L("Monitor.RefreshPolling"), PollIntervalSeconds)
                 : L("Monitor.RefreshManual");
@@ -216,6 +216,12 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
     public int AttentionJobCount
         => _allCurrentJobs.Count(row => IsAttentionState(row.State));
+
+    public int SelectedMonitorTabIndex
+    {
+        get => _selectedMonitorTabIndex;
+        set => SetField(ref _selectedMonitorTabIndex, value);
+    }
 
     public string StatusFilter
     {
@@ -318,7 +324,11 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
     private async Task RefreshCurrentJobsAsync(CancellationToken ct)
     {
-        if (!ShowAllUsers && string.IsNullOrWhiteSpace(WatchedUser))
+        var scopeVersion = _currentJobsScopeVersion;
+        var queryAllUsers = ShowAllUsers;
+        var queryUser = WatchedUser;
+
+        if (!queryAllUsers && string.IsNullOrWhiteSpace(queryUser))
         {
             SetStatus("Monitor.EmptyState", "InfoTextStyle");
             return;
@@ -327,15 +337,27 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         SetStatus("Monitor.CurrentRefreshing", "InfoTextStyle");
         try
         {
-            IReadOnlyList<SlurmJobStatus> jobs = ShowAllUsers
+            IReadOnlyList<SlurmJobStatus> jobs = queryAllUsers
                 ? await _slurm.GetAllJobsAsync(ct)
-                : await _slurm.GetUserJobsAsync(WatchedUser, ct);
+                : await _slurm.GetUserJobsAsync(queryUser, ct);
+
+            if (!IsCurrentJobsScopeVersionCurrent(scopeVersion))
+            {
+                QueueCurrentJobsRefresh();
+                return;
+            }
 
             var mappedJobs = jobs
                 .Select(MapCurrentJob)
                 .OrderByDescending(j => j.JobId)
                 .ToList();
             var completionNotifications = await DetectCompletionNotificationsAsync(mappedJobs, ct);
+            if (!IsCurrentJobsScopeVersionCurrent(scopeVersion))
+            {
+                ResetCompletionNotificationBaseline();
+                QueueCurrentJobsRefresh();
+                return;
+            }
 
             Application.Current.Dispatcher.Invoke(() =>
             {
@@ -347,7 +369,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
             _consecutiveFailures = 0;
             SetStatus(string.Format(L("Monitor.CurrentUpdated"), DateTime.Now, jobs.Count), "SuccessTextStyle", localize: false);
-            _logger?.Debug($"Monitor current jobs refreshed: {jobs.Count} job(s)");
+            _logger?.Debug($"Monitor current jobs refreshed: {jobs.Count} job(s), scope='{(queryAllUsers ? "all" : queryUser)}'");
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
@@ -364,16 +386,19 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private async Task RefreshHistoryJobsAsync(CancellationToken ct)
     {
         var historyUser = GetHistoryQueryUser();
-        if (string.IsNullOrWhiteSpace(historyUser))
+        if (!ShowAllUsers && string.IsNullOrWhiteSpace(historyUser))
         {
             SetStatus("Monitor.HistoryNeedUser", "WarningTextStyle");
             return;
         }
 
-        SetStatus(string.Format(L("Monitor.HistoryRefreshing"), historyUser), "InfoTextStyle", localize: false);
+        var historyScope = GetHistoryQueryDisplay();
+        SetStatus(string.Format(L("Monitor.HistoryRefreshing"), historyScope), "InfoTextStyle", localize: false);
         try
         {
-            var jobs = await _slurm.GetUserJobHistoryAsync(historyUser, HistoryFetchLimit, ct);
+            var jobs = ShowAllUsers
+                ? await _slurm.GetAllJobHistoryAsync(HistoryFetchLimit, ct)
+                : await _slurm.GetUserJobHistoryAsync(historyUser, HistoryFetchLimit, ct);
             Application.Current.Dispatcher.Invoke(() =>
             {
                 HistoryJobs.Clear();
@@ -381,8 +406,8 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
                     HistoryJobs.Add(row);
             });
 
-            SetStatus(string.Format(L("Monitor.HistoryUpdated"), DateTime.Now, jobs.Count, historyUser), "SuccessTextStyle", localize: false);
-            _logger?.Debug($"Monitor history refreshed: {jobs.Count} job(s) for '{historyUser}'");
+            SetStatus(string.Format(L("Monitor.HistoryUpdated"), DateTime.Now, jobs.Count, historyScope), "SuccessTextStyle", localize: false);
+            _logger?.Debug($"Monitor history refreshed: {jobs.Count} job(s), scope='{historyScope}'");
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
@@ -391,6 +416,47 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             SetStatus(string.Format(L("Monitor.HistoryRefreshFailed"), msg), "ErrorTextStyle", localize: false);
             _logger?.Warning($"History refresh failed: {ex.Message}");
         }
+    }
+
+    private void ResetCompletionNotificationBaseline()
+    {
+        lock (_completionNotificationGate)
+        {
+            unchecked { _currentJobsScopeVersion++; }
+            _lastCurrentSnapshot.Clear();
+            _pendingTerminalNotifications.Clear();
+        }
+    }
+
+    private bool IsCurrentJobsScopeVersionCurrent(int scopeVersion)
+        => scopeVersion == _currentJobsScopeVersion;
+
+    private void QueueCurrentJobsRefresh()
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null)
+            return;
+
+        dispatcher.InvokeAsync(() => RefreshCommand.Execute(null), DispatcherPriority.Background);
+    }
+
+    private void UpsertHistoryRow(JobRow row)
+    {
+        var existing = HistoryJobs.FirstOrDefault(item => item.JobId == row.JobId);
+        if (existing != null)
+        {
+            existing.UpdateFrom(row, DateTime.Now);
+            return;
+        }
+
+        var insertIndex = 0;
+        while (insertIndex < HistoryJobs.Count
+               && (HistoryJobs[insertIndex].StartTime ?? DateTime.MinValue) > (row.StartTime ?? DateTime.MinValue))
+        {
+            insertIndex++;
+        }
+
+        HistoryJobs.Insert(insertIndex, row);
     }
 
     // ── Polling (current jobs only) ────────────────────────────────────────
@@ -602,14 +668,13 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         var jobId = job.JobId;
         var confirmTemplate = L("Monitor.CancelConfirm");
         var confirmTitle = L("Monitor.CancelConfirmTitle");
-        var confirm = MessageBox.Show(
-            string.Format(confirmTemplate, jobId, job.JobName),
+        var confirm = AppDialogService.ConfirmWarning(
             confirmTitle,
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
+            string.Format(confirmTemplate, jobId, job.JobName),
+            confirmButtonText: L("Btn.Confirm"),
+            cancelButtonText: L("Btn.Cancel"));
 
-        if (confirm != MessageBoxResult.Yes)
+        if (!confirm)
         {
             SetStatus("Monitor.CancelAborted", "InfoTextStyle");
             return;
@@ -624,7 +689,8 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             ShowJobNotification(
                 L("Monitor.JobCancelNotificationTitle"),
                 string.Format(L("Monitor.JobCancelNotificationBody"), jobId, ValueOrDash(job.JobName)),
-                ToastType.Warning);
+                ToastType.Warning,
+                jobId);
             _logger?.Info($"Job {jobId} cancelled by user.");
         }
         catch (Exception ex)
@@ -673,8 +739,10 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         }
 
         var details = string.Join(Environment.NewLine, detailLines);
-
-        MessageBox.Show(details, L("Monitor.HistoryDetailTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
+        AppDialogService.ShowInfo(
+            L("Monitor.HistoryDetailTitle"),
+            $"{L("Monitor.ColJobId")}: {row.JobId}",
+            details);
     }
 
     public void SetDiagnosticNavigationHandlers(
@@ -685,6 +753,49 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         _resolveHistoryWorkDir = resolveHistoryWorkDir;
         _openRemoteFileAsync = openRemoteFileAsync;
         _openInConsoleAsync = openInConsoleAsync;
+    }
+
+    public void SetJobNotificationNavigationHandler(Func<long, Task>? openJobNotificationAsync)
+    {
+        _openJobNotificationAsync = openJobNotificationAsync;
+    }
+
+    public async Task FocusHistoryJobAsync(long jobId, CancellationToken ct = default)
+    {
+        if (jobId <= 0)
+            return;
+
+        SelectedMonitorTabIndex = 1;
+        try
+        {
+            if (CanQueryHistory)
+                await RefreshHistoryJobsAsync(ct);
+
+            var row = HistoryJobs.FirstOrDefault(item => item.JobId == jobId);
+            if (row == null)
+            {
+                var accounting = await _slurm.GetJobAccountingStatusAsync(jobId, ct);
+                if (accounting != null)
+                {
+                    row = MapHistoricalJob(accounting);
+                    Application.Current.Dispatcher.Invoke(() => UpsertHistoryRow(row));
+                }
+            }
+
+            if (row != null)
+            {
+                SelectedHistoryJob = HistoryJobs.FirstOrDefault(item => item.JobId == jobId) ?? row;
+                SetStatus(string.Format(L("Monitor.NotificationOpenedHistory"), jobId), "SuccessTextStyle", localize: false);
+            }
+            else
+            {
+                SetStatus(string.Format(L("Monitor.NotificationHistoryUnavailable"), jobId), "WarningTextStyle", localize: false);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            SetStatus(string.Format(L("Monitor.NotificationHistoryOpenFailed"), jobId, ConnectionViewModel.ClassifyError(ex)), "WarningTextStyle", localize: false);
+        }
     }
 
     private async Task OpenHistoryStdoutAsync(JobRow? row, CancellationToken ct)
@@ -851,7 +962,10 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         foreach (var row in currentSnapshot.Where(row => IsTerminalState(row.State)))
         {
             if (!notifiedSnapshot.Contains(row.JobId))
-                readyToNotify[row.JobId] = JobTerminalNotification.FromTerminalRow(row);
+            {
+                var accountingRow = await TryGetAccountingRowAsync(row.JobId, row, ct);
+                readyToNotify[row.JobId] = JobTerminalNotification.FromTerminalRow(accountingRow);
+            }
         }
 
         var disappeared = previousSnapshot.Values
@@ -910,17 +1024,13 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         foreach (var pending in pendingNotifications)
         {
             var jobId = pending.JobId;
-            var attempt = 0;
             try
             {
                 lock (_completionNotificationGate)
                 {
                     if (_notifiedCompletedJobIds.Contains(jobId)
-                        || !_pendingTerminalNotifications.TryGetValue(jobId, out var currentPending))
+                        || !_pendingTerminalNotifications.ContainsKey(jobId))
                         continue;
-
-                    currentPending.AccountingAttempts++;
-                    attempt = currentPending.AccountingAttempts;
                 }
 
                 var accounting = await _slurm.GetJobAccountingStatusAsync(jobId, ct);
@@ -932,11 +1042,8 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
                     continue;
                 }
 
-                if (attempt >= TerminalNotificationMaxAccountingAttempts)
-                {
-                    resolved.Add(JobTerminalNotification.MissingFromQueue(pending.LastSeen));
-                    RemovePendingTerminalNotification(jobId);
-                }
+                resolved.Add(JobTerminalNotification.MissingFromQueue(pending.LastSeen));
+                RemovePendingTerminalNotification(jobId);
             }
             catch (OperationCanceledException)
             {
@@ -945,15 +1052,32 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             catch (Exception ex)
             {
                 _logger?.Warning($"Monitor completion accounting lookup failed for job {jobId}: {ex.Message}");
-                if (attempt >= TerminalNotificationMaxAccountingAttempts)
-                {
-                    resolved.Add(JobTerminalNotification.MissingFromQueue(pending.LastSeen));
-                    RemovePendingTerminalNotification(jobId);
-                }
+                resolved.Add(JobTerminalNotification.MissingFromQueue(pending.LastSeen));
+                RemovePendingTerminalNotification(jobId);
             }
         }
 
         return resolved;
+    }
+
+    private async Task<JobRow> TryGetAccountingRowAsync(long jobId, JobRow fallback, CancellationToken ct)
+    {
+        try
+        {
+            var accounting = await _slurm.GetJobAccountingStatusAsync(jobId, ct);
+            if (accounting != null)
+                return MapHistoricalJob(accounting);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Warning($"Monitor accounting lookup failed for terminal job {jobId}: {ex.Message}");
+        }
+
+        return fallback;
     }
 
     private void RemovePendingTerminalNotification(long jobId)
@@ -976,7 +1100,9 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             try
             {
                 var (title, message, toastType) = BuildJobNotificationContent(notification);
-                ShowJobNotification(title, message, toastType);
+                if (notification.Kind != JobTerminalNotificationKind.MissingFromQueue && row.IsHistorical)
+                    Application.Current.Dispatcher.Invoke(() => UpsertHistoryRow(row));
+                ShowJobNotification(title, message, toastType, row.JobId);
             }
             catch (Exception ex)
             {
@@ -992,7 +1118,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         {
             JobTerminalNotificationKind.Completed => (
                 L("Monitor.JobCompletionNotificationTitle"),
-                string.Format(L("Monitor.JobCompletionNotificationBody"), row.JobId, ValueOrDash(row.JobName)),
+                string.Format(L("Monitor.JobCompletionNotificationBody"), row.JobId, ValueOrDash(row.JobName), ValueOrDash(row.ExitCode)),
                 ToastType.Success),
             JobTerminalNotificationKind.MissingFromQueue => (
                 L("Monitor.JobMissingNotificationTitle"),
@@ -1000,8 +1126,8 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
                 ToastType.Warning),
             _ => (
                 L("Monitor.JobTerminalNotificationTitle"),
-                string.Format(L("Monitor.JobTerminalNotificationBody"), row.JobId, ValueOrDash(row.JobName), ValueOrDash(row.State)),
-                ToastType.Warning)
+                string.Format(L("Monitor.JobTerminalNotificationBody"), row.JobId, ValueOrDash(row.JobName), ValueOrDash(row.State), ValueOrDash(row.ExitCode), ValueOrDash(row.Reason)),
+                ToastType.Error)
         };
     }
 
@@ -1018,7 +1144,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private void ShowJobNotification(string title, string message, ToastType toastType)
+    private void ShowJobNotification(string title, string message, ToastType toastType, long? jobId = null)
     {
         var mode = _prefs?.JobMonitorNotificationMode ?? JobMonitorNotificationMode.Windows;
         var persistent = _prefs?.JobMonitorNotificationPersistent ?? false;
@@ -1033,12 +1159,16 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var toastMessage = string.IsNullOrWhiteSpace(title)
-            ? message
-            : $"{title}{Environment.NewLine}{message}";
         try
         {
-            ToastService.Instance.Show(toastMessage, toastType, persistent ? 0 : durationSeconds);
+            DesktopJobNotificationService.Instance.Show(
+                title,
+                message,
+                toastType,
+                persistent ? null : TimeSpan.FromSeconds(durationSeconds),
+                jobId.HasValue && _openJobNotificationAsync != null
+                    ? () => _ = _openJobNotificationAsync(jobId.Value)
+                    : null);
         }
         catch (Exception ex)
         {
@@ -1056,7 +1186,12 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             || value.Equals(SlurmJobState.Failed, StringComparison.OrdinalIgnoreCase)
             || value.Equals(SlurmJobState.Cancelled, StringComparison.OrdinalIgnoreCase)
             || value.Equals(SlurmJobState.Timeout, StringComparison.OrdinalIgnoreCase)
-            || value.Equals(SlurmJobState.NodeFail, StringComparison.OrdinalIgnoreCase);
+            || value.Equals(SlurmJobState.NodeFail, StringComparison.OrdinalIgnoreCase)
+            || value.Equals("OUT_OF_MEMORY", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("BOOT_FAIL", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("DEADLINE", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("PREEMPTED", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("SPECIAL_EXIT", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsAttentionState(string? state)
@@ -1068,7 +1203,12 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         return value.Equals(SlurmJobState.Failed, StringComparison.OrdinalIgnoreCase)
             || value.Equals(SlurmJobState.Cancelled, StringComparison.OrdinalIgnoreCase)
             || value.Equals(SlurmJobState.Timeout, StringComparison.OrdinalIgnoreCase)
-            || value.Equals(SlurmJobState.NodeFail, StringComparison.OrdinalIgnoreCase);
+            || value.Equals(SlurmJobState.NodeFail, StringComparison.OrdinalIgnoreCase)
+            || value.Equals("OUT_OF_MEMORY", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("BOOT_FAIL", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("DEADLINE", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("PREEMPTED", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("SPECIAL_EXIT", StringComparison.OrdinalIgnoreCase);
     }
 
     private string GetHistoryQueryUser()
@@ -1078,6 +1218,17 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         if (!string.IsNullOrWhiteSpace(_connection?.Username))
             return _connection.Username.Trim();
         return string.Empty;
+    }
+
+    private string GetHistoryQueryDisplay()
+    {
+        if (ShowAllUsers)
+            return L("Monitor.HistoryQueryAllUsers");
+
+        var historyUser = GetHistoryQueryUser();
+        return string.IsNullOrWhiteSpace(historyUser)
+            ? L("Monitor.HistoryQueryUnset")
+            : string.Format(L("Monitor.HistoryQueryUser"), historyUser);
     }
 
     private static string L(string key)
@@ -1170,7 +1321,6 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
         public long JobId => LastSeen.JobId;
         public JobRow LastSeen { get; set; }
-        public int AccountingAttempts { get; set; }
     }
 
     private sealed record JobTerminalNotification(JobRow Row, JobTerminalNotificationKind Kind)

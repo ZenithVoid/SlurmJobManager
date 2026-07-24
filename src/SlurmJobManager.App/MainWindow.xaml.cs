@@ -6,6 +6,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using SlurmJobManager.App.Services;
 using SlurmJobManager.App.ViewModels;
+using WF = System.Windows.Forms;
 
 namespace SlurmJobManager.App;
 
@@ -14,6 +15,9 @@ public partial class MainWindow : Window
     // Map tab IDs to page grids and their ScaleTransforms
     private IReadOnlyDictionary<string, (System.Windows.Controls.Grid Page, ScaleTransform Scale)>? _pages;
     private MainViewModel? _subscribedVm;
+    private WF.NotifyIcon? _trayIcon;
+    private WF.ContextMenuStrip? _trayMenu;
+    private bool _hasShownTrayHint;
 
     public MainWindow()
     {
@@ -43,6 +47,7 @@ public partial class MainWindow : Window
 
         // Subscribe to navigation changes for page transitions
         SubscribeToViewModel();
+        EnsureTrayIcon();
     }
 
     // ── Page transition animation ─────────────────────────────────────────
@@ -287,6 +292,121 @@ public partial class MainWindow : Window
         if (_subscribedVm != null)
             _subscribedVm.PropertyChanged -= OnMainViewModelPropertyChanged;
         _subscribedVm = null;
+        DisposeTrayIcon();
+    }
+
+    public void MinimizeToTray()
+    {
+        EnsureTrayIcon();
+        ShowInTaskbar = false;
+        WindowState = WindowState.Minimized;
+        Hide();
+
+        if (_trayIcon == null)
+            return;
+
+        _trayIcon.Visible = true;
+        UpdateTrayText();
+        if (!_hasShownTrayHint)
+        {
+            _hasShownTrayHint = true;
+            _trayIcon.ShowBalloonTip(
+                2500,
+                L("Tray.HiddenTitle"),
+                L("Tray.HiddenText"),
+                WF.ToolTipIcon.Info);
+        }
+    }
+
+    public void RestoreFromTray()
+    {
+        EnsureTrayIcon();
+        ShowInTaskbar = true;
+        Show();
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+        Activate();
+        Focus();
+
+        if (_trayIcon != null)
+            _trayIcon.Visible = false;
+    }
+
+    private void EnsureTrayIcon()
+    {
+        if (_trayIcon != null)
+        {
+            UpdateTrayText();
+            return;
+        }
+
+        _trayMenu = new WF.ContextMenuStrip();
+        var openItem = new WF.ToolStripMenuItem();
+        openItem.Click += (_, _) => Dispatcher.Invoke(RestoreFromTray);
+        var exitItem = new WF.ToolStripMenuItem();
+        exitItem.Click += (_, _) => Dispatcher.Invoke(() =>
+        {
+            RestoreFromTray();
+            (Application.Current as App)?.RequestApplicationExit(this);
+        });
+        _trayMenu.Items.Add(openItem);
+        _trayMenu.Items.Add(new WF.ToolStripSeparator());
+        _trayMenu.Items.Add(exitItem);
+
+        _trayIcon = new WF.NotifyIcon
+        {
+            Icon = LoadTrayIcon(),
+            ContextMenuStrip = _trayMenu,
+            Visible = false,
+        };
+        _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(RestoreFromTray);
+        UpdateTrayText();
+    }
+
+    private void UpdateTrayText()
+    {
+        if (_trayIcon == null)
+            return;
+
+        _trayIcon.Text = L("Tray.ToolTip");
+        if (_trayMenu?.Items.Count >= 3)
+        {
+            _trayMenu.Items[0].Text = L("Tray.Open");
+            _trayMenu.Items[2].Text = L("Tray.Exit");
+        }
+    }
+
+    private static System.Drawing.Icon LoadTrayIcon()
+    {
+        try
+        {
+            var processPath = Environment.ProcessPath;
+            if (!string.IsNullOrWhiteSpace(processPath))
+            {
+                var icon = System.Drawing.Icon.ExtractAssociatedIcon(processPath);
+                if (icon != null)
+                    return icon;
+            }
+        }
+        catch
+        {
+            // Best effort: fall back to the stock application icon.
+        }
+
+        return System.Drawing.SystemIcons.Application;
+    }
+
+    private void DisposeTrayIcon()
+    {
+        if (_trayIcon != null)
+        {
+            _trayIcon.Visible = false;
+            _trayIcon.Dispose();
+            _trayIcon = null;
+        }
+
+        _trayMenu?.Dispose();
+        _trayMenu = null;
     }
 
     private static T? FindAncestor<T>(DependencyObject? child) where T : DependencyObject
@@ -313,4 +433,7 @@ public partial class MainWindow : Window
         vm.TaskEditor.OpenTaskFileCommand.Execute(fileEntry);
         e.Handled = true;
     }
+
+    private static string L(string key)
+        => Application.Current?.TryFindResource(key) as string ?? key;
 }

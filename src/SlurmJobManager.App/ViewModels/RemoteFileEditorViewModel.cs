@@ -215,12 +215,12 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
             {
                 var confirmText = string.Format(L("RemoteEditor.VeryLargeConfirm"), FileSizeText);
                 var confirmTitle = L("RemoteEditor.VeryLargeTitle");
-                var confirm = MessageBox.Show(
-                    confirmText,
+                var confirm = AppDialogService.ConfirmWarning(
                     confirmTitle,
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
-                if (confirm != MessageBoxResult.Yes)
+                    confirmText,
+                    confirmButtonText: L("Btn.Confirm"),
+                    cancelButtonText: L("Btn.Cancel"));
+                if (!confirm)
                 {
                     SetStatus("RemoteEditor.OpenCancelled", "WarningTextStyle");
                     _logger?.Warning($"Remote editor open cancelled for very large file. Path='{RemotePath}'.");
@@ -359,12 +359,12 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
 
         if (contentToSave.Length == 0 && FileSizeBytes > 0)
         {
-            var confirm = MessageBox.Show(
-                string.Format(L("RemoteEditor.EmptyOverwriteConfirm"), FileSizeText),
+            var confirm = AppDialogService.ConfirmWarning(
                 L("RemoteEditor.EmptyOverwriteTitle"),
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-            if (confirm != MessageBoxResult.Yes)
+                string.Format(L("RemoteEditor.EmptyOverwriteConfirm"), FileSizeText),
+                confirmButtonText: L("Btn.Confirm"),
+                cancelButtonText: L("Btn.Cancel"));
+            if (!confirm)
             {
                 SetStatus("RemoteEditor.SaveCancelled", "WarningTextStyle");
                 _logger?.Warning($"Remote editor cancelled empty overwrite save. Path='{RemotePath}'.");
@@ -375,12 +375,12 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
         if (IsVeryLargeFileMode)
         {
             var confirmText = string.Format(L("RemoteEditor.VeryLargeSaveConfirm"), FileSizeText);
-            var confirm = MessageBox.Show(
-                confirmText,
+            var confirm = AppDialogService.ConfirmWarning(
                 L("RemoteEditor.VeryLargeSaveTitle"),
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-            if (confirm != MessageBoxResult.Yes)
+                confirmText,
+                confirmButtonText: L("Btn.Confirm"),
+                cancelButtonText: L("Btn.Cancel"));
+            if (!confirm)
             {
                 SetStatus("RemoteEditor.SaveCancelled", "WarningTextStyle");
                 _logger?.Warning($"Remote editor cancelled very large file save. Path='{RemotePath}'.");
@@ -484,7 +484,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
 
         if (item.ShouldPreferDirectoryPicker)
         {
-            var vm = new RemoteDirectoryPickerViewModel(_ssh, startDir);
+            var vm = new RemoteDirectoryPickerViewModel(_ssh, startDir, _homeDirectory);
             var win = new Views.RemoteDirectoryPickerView { DataContext = vm };
             if (Application.Current.MainWindow is { } mainWin) win.Owner = mainWin;
             await vm.LoadInitialAsync(ct);
@@ -502,7 +502,7 @@ public sealed class RemoteFileEditorViewModel : ViewModelBase
     {
         var configured = _prefs.DefaultRemotePickerDirectory;
         if (!string.IsNullOrWhiteSpace(configured))
-            return configured;
+            return RemotePathDisplayHelper.ExpandHomePath(configured, _homeDirectory);
 
         return AppPreferencesService.DefaultRemotePickerDirectoryFallback;
     }

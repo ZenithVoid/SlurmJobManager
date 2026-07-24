@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
     <ProjectReference Include="..\SlurmJobManager.Core\SlurmJobManager.Core.csproj" />
     <ProjectReference Include="..\SlurmJobManager.Infrastructure\SlurmJobManager.Infrastructure.csproj" />
   </ItemGroup>

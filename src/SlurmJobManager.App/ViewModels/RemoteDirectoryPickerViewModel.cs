@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using SlurmJobManager.App.Services;
 using SlurmJobManager.Core.Interfaces;
 
 namespace SlurmJobManager.App.ViewModels;
@@ -13,14 +14,16 @@ namespace SlurmJobManager.App.ViewModels;
 public sealed class RemoteDirectoryPickerViewModel : ViewModelBase
 {
     private readonly ISshClientService _ssh;
+    private readonly string _homeDirectory;
 
     private string _currentPath = string.Empty;
+    private string _pathInput = string.Empty;
     private string? _selectedEntry;
     private bool _isBusy;
     private string _statusMessage = string.Empty;
     private string _statusStyleKey = "InfoTextStyle";
 
-    public string HomeDirectory { get; }
+    public string HomeDirectory => _homeDirectory;
 
     public string CurrentPath
     {
@@ -28,7 +31,20 @@ public sealed class RemoteDirectoryPickerViewModel : ViewModelBase
         private set
         {
             if (SetField(ref _currentPath, value))
+            {
+                PathInput = value;
                 OnPropertyChanged(nameof(CanGoUp));
+            }
+        }
+    }
+
+    public string PathInput
+    {
+        get => _pathInput;
+        set
+        {
+            if (SetField(ref _pathInput, value))
+                CommandManager.InvalidateRequerySuggested();
         }
     }
 
@@ -53,23 +69,27 @@ public sealed class RemoteDirectoryPickerViewModel : ViewModelBase
     public string? ResultPath { get; private set; }
 
     public ObservableCollection<string> Entries { get; } = new();
+    public ObservableCollection<string> QuickPaths { get; } = new();
 
-    /// <summary>True when navigation upward is possible (still within <see cref="HomeDirectory"/>).</summary>
-    public bool CanGoUp => CurrentPath != HomeDirectory && CurrentPath.StartsWith(HomeDirectory, StringComparison.Ordinal);
+    public bool CanGoUp => GetParent(CurrentPath) != null;
 
     public ICommand NavigateIntoCommand { get; }
     public ICommand GoUpCommand         { get; }
+    public ICommand GoToPathCommand     { get; }
     public ICommand RefreshCommand      { get; }
     public ICommand SelectCurrentCommand { get; }
 
-    public RemoteDirectoryPickerViewModel(ISshClientService ssh, string homeDirectory)
+    public RemoteDirectoryPickerViewModel(ISshClientService ssh, string initialDirectory, string? homeDirectory = null)
     {
         _ssh          = ssh ?? throw new ArgumentNullException(nameof(ssh));
-        HomeDirectory = homeDirectory.TrimEnd('/');
-        _currentPath  = HomeDirectory;
+        _homeDirectory = NormalizeDirectory(string.IsNullOrWhiteSpace(homeDirectory) ? initialDirectory : homeDirectory);
+        _currentPath  = NormalizeDirectory(ExpandHomePath(initialDirectory));
+        _pathInput = _currentPath;
+        SeedQuickPaths(_currentPath);
 
         NavigateIntoCommand  = new AsyncRelayCommand<string>(NavigateIntoAsync);
         GoUpCommand          = new AsyncRelayCommand(GoUpAsync, () => CanGoUp && !IsBusy);
+        GoToPathCommand      = new AsyncRelayCommand(GoToPathAsync, () => !IsBusy && !string.IsNullOrWhiteSpace(PathInput));
         RefreshCommand       = new AsyncRelayCommand(RefreshAsync, () => !IsBusy);
         SelectCurrentCommand = new RelayCommand(SelectCurrent);
     }
@@ -80,15 +100,24 @@ public sealed class RemoteDirectoryPickerViewModel : ViewModelBase
     private async Task NavigateIntoAsync(string? entry, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(entry)) return;
-        var target = $"{CurrentPath.TrimEnd('/')}/{entry}";
+        var target = NormalizeDirectory($"{CurrentPath.TrimEnd('/')}/{entry}");
         await LoadEntriesAsync(target, ct);
     }
 
     private async Task GoUpAsync(CancellationToken ct)
     {
         var parent = GetParent(CurrentPath);
-        if (parent != null && parent.StartsWith(HomeDirectory, StringComparison.Ordinal))
+        if (parent != null)
             await LoadEntriesAsync(parent, ct);
+    }
+
+    private async Task GoToPathAsync(CancellationToken ct)
+    {
+        var target = NormalizeDirectory(ExpandHomePath(PathInput));
+        if (string.IsNullOrWhiteSpace(target))
+            return;
+
+        await LoadEntriesAsync(target, ct);
     }
 
     private async Task RefreshAsync(CancellationToken ct)
@@ -104,7 +133,8 @@ public sealed class RemoteDirectoryPickerViewModel : ViewModelBase
             Entries.Clear();
             foreach (var d in dirs)
                 Entries.Add(d);
-            CurrentPath = path;
+            CurrentPath = NormalizeDirectory(path);
+            AddQuickPath(CurrentPath);
             SelectedEntry = null;
             SetStatus(string.Empty, "InfoTextStyle");
         }
@@ -121,15 +151,99 @@ public sealed class RemoteDirectoryPickerViewModel : ViewModelBase
     private void SelectCurrent()
     {
         ResultPath = SelectedEntry != null
-            ? $"{CurrentPath.TrimEnd('/')}/{SelectedEntry}"
+            ? NormalizeDirectory($"{CurrentPath.TrimEnd('/')}/{SelectedEntry}")
             : CurrentPath;
+    }
+
+    public async Task<bool> TrySelectCurrentAsync(CancellationToken ct = default)
+    {
+        SelectCurrent();
+        if (string.IsNullOrWhiteSpace(ResultPath))
+            return false;
+
+        var access = await CheckDirectoryReadWriteAsync(ResultPath, ct);
+        if (access == RemoteDirectoryAccessResult.ReadWrite)
+            return true;
+
+        ResultPath = null;
+        SetStatus(access switch
+        {
+            RemoteDirectoryAccessResult.NotFound => L("RemotePicker.AccessNotFound"),
+            RemoteDirectoryAccessResult.NotReadable => L("RemotePicker.AccessNotReadable"),
+            RemoteDirectoryAccessResult.NotWritable => L("RemotePicker.AccessNotWritable"),
+            _ => L("RemotePicker.AccessCheckFailed"),
+        }, "ErrorTextStyle", localize: false);
+        return false;
     }
 
     private static string? GetParent(string path)
     {
-        var idx = path.TrimEnd('/').LastIndexOf('/');
-        return idx > 0 ? path[..idx] : null;
+        var trimmed = NormalizeDirectory(path);
+        if (trimmed == "/")
+            return null;
+
+        var idx = trimmed.LastIndexOf('/');
+        if (idx > 0) return trimmed[..idx];
+        return "/";
     }
+
+    private async Task<RemoteDirectoryAccessResult> CheckDirectoryReadWriteAsync(string path, CancellationToken ct)
+    {
+        try
+        {
+            var escaped = EscapeShellArg(NormalizeDirectory(ExpandHomePath(path)));
+            var (stdout, _, exitCode) = await _ssh.ExecuteAsync(
+                $"if [ ! -d {escaped} ]; then echo missing; elif [ ! -r {escaped} ]; then echo unreadable; elif [ ! -w {escaped} ]; then echo unwritable; else echo ok; fi",
+                ct);
+            if (exitCode != 0)
+                return RemoteDirectoryAccessResult.CheckFailed;
+
+            return stdout.Trim() switch
+            {
+                "ok" => RemoteDirectoryAccessResult.ReadWrite,
+                "missing" => RemoteDirectoryAccessResult.NotFound,
+                "unreadable" => RemoteDirectoryAccessResult.NotReadable,
+                "unwritable" => RemoteDirectoryAccessResult.NotWritable,
+                _ => RemoteDirectoryAccessResult.CheckFailed,
+            };
+        }
+        catch
+        {
+            return RemoteDirectoryAccessResult.CheckFailed;
+        }
+    }
+
+    private void SeedQuickPaths(string currentPath)
+    {
+        AddQuickPath(currentPath);
+        AddQuickPath(_homeDirectory);
+        AddQuickPath("~/");
+        AddQuickPath("/gpfs");
+        AddQuickPath("/");
+    }
+
+    private void AddQuickPath(string? path)
+    {
+        var normalized = NormalizeDirectory(path);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return;
+        if (!QuickPaths.Contains(normalized))
+            QuickPaths.Add(normalized);
+    }
+
+    private string ExpandHomePath(string? path)
+        => RemotePathDisplayHelper.ExpandHomePath(path, _homeDirectory);
+
+    private static string NormalizeDirectory(string? path)
+    {
+        var normalized = RemotePathDisplayHelper.NormalizeRemotePath(path);
+        if (normalized == "~")
+            return "~/";
+        return normalized;
+    }
+
+    private static string EscapeShellArg(string arg)
+        => "'" + arg.Replace("'", "'\\''") + "'";
 
     private static string L(string key)
         => Application.Current?.TryFindResource(key) as string ?? key;
@@ -141,4 +255,13 @@ public sealed class RemoteDirectoryPickerViewModel : ViewModelBase
             ? string.Empty
             : (localize ? L(messageOrKey) : messageOrKey);
     }
+}
+
+public enum RemoteDirectoryAccessResult
+{
+    ReadWrite,
+    NotFound,
+    NotReadable,
+    NotWritable,
+    CheckFailed,
 }

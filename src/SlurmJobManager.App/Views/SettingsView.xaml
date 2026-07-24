@@ -107,6 +107,22 @@
                         Style="{StaticResource MutedTextStyle}"
                         TextWrapping="Wrap" />
 
+                    <TextBlock
+                        Margin="0,12,0,4"
+                        Text="{DynamicResource Settings.CloseButtonBehaviorLabel}"
+                        Style="{StaticResource FieldLabelStyle}" />
+                    <ComboBox
+                        Margin="0,0,0,6"
+                        SelectedIndex="{Binding SelectedCloseButtonBehaviorIndex, Mode=TwoWay}">
+                        <ComboBoxItem Content="{DynamicResource Settings.CloseButtonBehaviorAsk}" />
+                        <ComboBoxItem Content="{DynamicResource Settings.CloseButtonBehaviorClose}" />
+                        <ComboBoxItem Content="{DynamicResource Settings.CloseButtonBehaviorMinimizeToTray}" />
+                    </ComboBox>
+                    <TextBlock
+                        Text="{DynamicResource Settings.CloseButtonBehaviorDesc}"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap" />
+
                     <TextBlock Margin="0,10,0,2" Text="{DynamicResource Settings.Appearance}" Style="{StaticResource FieldLabelStyle}" />
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <TextBlock

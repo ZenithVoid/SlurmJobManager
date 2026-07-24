@@ -150,11 +150,42 @@ public sealed class SettingsViewModel : ViewModelBase
         set
         {
             if (_prefs.TrySetDefaultRemotePickerDirectory(value, out var saveError))
+            {
                 ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+                _ = ValidateDefaultRemotePickerDirectoryAsync(_prefs.DefaultRemotePickerDirectory);
+            }
             else
+            {
                 ToastService.Instance.Error(string.Format(L("Settings.AutoSaveFailedFormat"), saveError ?? L("Settings.UnknownError")));
+            }
 
             OnPropertyChanged();
+        }
+    }
+
+    private async Task ValidateDefaultRemotePickerDirectoryAsync(string path)
+    {
+        if (!_main.Connection.IsConnected)
+            return;
+
+        var result = await _main.TaskEditor.CheckRemoteDirectoryReadWriteAccessAsync(path, CancellationToken.None);
+        switch (result)
+        {
+            case RemoteDirectoryAccessResult.ReadWrite:
+                ToastService.Instance.Success(L("Settings.DefaultRemotePickerDirectoryAccessOk"));
+                break;
+            case RemoteDirectoryAccessResult.NotFound:
+                ToastService.Instance.Warning(string.Format(L("Settings.DefaultRemotePickerDirectoryMissing"), path));
+                break;
+            case RemoteDirectoryAccessResult.NotReadable:
+                ToastService.Instance.Warning(string.Format(L("Settings.DefaultRemotePickerDirectoryUnreadable"), path));
+                break;
+            case RemoteDirectoryAccessResult.NotWritable:
+                ToastService.Instance.Warning(string.Format(L("Settings.DefaultRemotePickerDirectoryUnwritable"), path));
+                break;
+            default:
+                ToastService.Instance.Warning(string.Format(L("Settings.DefaultRemotePickerDirectoryCheckFailed"), path));
+                break;
         }
     }
 
@@ -189,6 +220,37 @@ public sealed class SettingsViewModel : ViewModelBase
             _main.Monitor.ShowAllUsers = value;
             OnPropertyChanged();
         }
+    }
+
+    public int SelectedCloseButtonBehaviorIndex
+    {
+        get => _prefs.CloseButtonBehavior switch
+        {
+            CloseButtonBehavior.CloseApplication => 1,
+            CloseButtonBehavior.MinimizeToTray => 2,
+            _ => 0,
+        };
+        set
+        {
+            var behavior = value switch
+            {
+                1 => CloseButtonBehavior.CloseApplication,
+                2 => CloseButtonBehavior.MinimizeToTray,
+                _ => CloseButtonBehavior.Ask,
+            };
+
+            if (_prefs.TrySetCloseButtonBehavior(behavior, out var saveError))
+                ToastService.Instance.Success(L("Settings.AutoSaveSuccess"));
+            else
+                ToastService.Instance.Error(string.Format(L("Settings.AutoSaveFailedFormat"), saveError ?? L("Settings.UnknownError")));
+
+            OnPropertyChanged();
+        }
+    }
+
+    public void NotifyCloseButtonBehaviorChanged()
+    {
+        OnPropertyChanged(nameof(SelectedCloseButtonBehaviorIndex));
     }
 
     public int SelectedJobMonitorNotificationModeIndex
@@ -856,7 +918,13 @@ public sealed class SettingsViewModel : ViewModelBase
         UpdateStatusMessage = L("Settings.UpdateLaunchingAndClosing");
         ToastService.Instance.Success(L("Settings.UpdateLaunchSuccess"));
         await Task.Delay(UpdateLaunchGracePeriod);
-        Application.Current?.Dispatcher.BeginInvoke(() => Application.Current?.MainWindow?.Close());
+        Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            if (Application.Current is App app)
+                app.RequestApplicationExit(Application.Current.MainWindow);
+            else
+                Application.Current?.MainWindow?.Close();
+        });
     }
 
     private void OpenUpdateTarget()
