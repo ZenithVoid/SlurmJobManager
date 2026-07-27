@@ -297,8 +297,8 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         StartPollingCommand = new RelayCommand(StartPolling, () => !IsPolling);
         StopPollingCommand = new RelayCommand(StopPolling, () => IsPolling);
         TogglePollingCommand = new RelayCommand(TogglePolling);
-        CancelJobCommand = new AsyncRelayCommand(ct => CancelJobAsync(SelectedCurrentJob, ct), () => SelectedCurrentJob != null);
-        CancelCurrentJobCommand = new AsyncRelayCommand<JobRow>((row, ct) => CancelJobAsync(row, ct), row => row is not null);
+        CancelJobCommand = new AsyncRelayCommand(ct => CancelJobAsync(SelectedCurrentJob, ct), () => CanCancelJob(SelectedCurrentJob));
+        CancelCurrentJobCommand = new AsyncRelayCommand<JobRow>((row, ct) => CancelJobAsync(row, ct), CanCancelJob);
         ViewHistoryDetailCommand = new RelayCommand<JobRow>(ShowHistoryDetail, row => row is not null);
         OpenHistoryStdoutCommand = new AsyncRelayCommand<JobRow>((row, ct) => OpenHistoryStdoutAsync(row, ct), row => row is not null);
         OpenHistoryStderrCommand = new AsyncRelayCommand<JobRow>((row, ct) => OpenHistoryStderrAsync(row, ct), row => row is not null);
@@ -665,6 +665,12 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        if (!CanCancelJob(job))
+        {
+            SetStatus(string.Format(L("Monitor.CancelUnauthorized"), job.JobId, ValueOrDash(job.User), ValueOrDash(CurrentLoginUser)), "WarningTextStyle", localize: false);
+            return;
+        }
+
         var jobId = job.JobId;
         var confirmTemplate = L("Monitor.CancelConfirm");
         var confirmTitle = L("Monitor.CancelConfirmTitle");
@@ -904,6 +910,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             ExitCode = status.ExitCode,
             Reason = status.Reason,
             IsHistorical = false,
+            CanCancelJob = IsCurrentUserJob(status.User),
         };
         row.RefreshDisplays(DateTime.Now);
         return row;
@@ -925,6 +932,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             ExitCode = status.ExitCode,
             Reason = status.Reason,
             IsHistorical = true,
+            CanCancelJob = false,
         };
         row.RefreshDisplays(DateTime.Now);
         return row;
@@ -1234,6 +1242,34 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private static string L(string key)
         => Application.Current?.TryFindResource(key) as string ?? key;
 
+    private string CurrentLoginUser => _connection?.Username?.Trim() ?? string.Empty;
+
+    private bool CanCancelJob(JobRow? row)
+        => row is not null
+           && !row.IsHistorical
+           && row.CanCancelJob
+           && IsCurrentUserJob(row.User);
+
+    private bool IsCurrentUserJob(string? jobUser)
+    {
+        var currentUser = CurrentLoginUser;
+        var owner = jobUser?.Trim() ?? string.Empty;
+        return currentUser.Length > 0
+               && owner.Length > 0
+               && string.Equals(owner, currentUser, StringComparison.Ordinal);
+    }
+
+    private void RefreshCurrentJobPermissions()
+    {
+        foreach (var row in _allCurrentJobs)
+            row.CanCancelJob = IsCurrentUserJob(row.User);
+
+        foreach (var row in CurrentJobs)
+            row.CanCancelJob = IsCurrentUserJob(row.User);
+
+        CommandManager.InvalidateRequerySuggested();
+    }
+
     internal void NotifyLocaleChanged()
     {
         var previousAll = _allStatusFilter;
@@ -1276,6 +1312,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         if (e.PropertyName is nameof(ConnectionViewModel.Username))
         {
             OnPropertyChanged(nameof(CanQueryHistory));
+            RefreshCurrentJobPermissions();
             CommandManager.InvalidateRequerySuggested();
             return;
         }
@@ -1359,6 +1396,7 @@ public sealed class JobRow : ViewModelBase
     private string? _exitCode;
     private string? _reason;
     private bool _isHistorical;
+    private bool _canCancelJob;
     private string _runTimeDisplay = string.Empty;
     private string _startTimeDisplay = string.Empty;
     private string _endTimeDisplay = string.Empty;
@@ -1376,6 +1414,7 @@ public sealed class JobRow : ViewModelBase
     public string? ExitCode { get => _exitCode; set => SetField(ref _exitCode, value); }
     public string? Reason { get => _reason; set => SetField(ref _reason, value); }
     public bool IsHistorical { get => _isHistorical; set => SetField(ref _isHistorical, value); }
+    public bool CanCancelJob { get => _canCancelJob; set => SetField(ref _canCancelJob, value); }
 
     public string RunTimeDisplay
     {
@@ -1420,6 +1459,7 @@ public sealed class JobRow : ViewModelBase
         ExitCode = latest.ExitCode;
         Reason = latest.Reason;
         IsHistorical = latest.IsHistorical;
+        CanCancelJob = latest.CanCancelJob;
         RefreshDisplays(now);
     }
 

@@ -1066,6 +1066,7 @@
     <sys:String x:Key="Monitor.CancelAborted">已取消作业取消操作。</sys:String>
     <sys:String x:Key="Monitor.Cancelling">正在取消作业 {0}…</sys:String>
     <sys:String x:Key="Monitor.CancelSucceeded">作业 {0} 已取消。</sys:String>
+    <sys:String x:Key="Monitor.CancelUnauthorized">未取消作业 {0}：该作业属于用户“{1}”，当前登录用户为“{2}”。</sys:String>
     <sys:String x:Key="Monitor.CancelFailed">取消作业 {0} 失败：{1}</sys:String>
     <sys:String x:Key="Monitor.CancelStale">作业 {0} 已不可取消（可能已结束）。</sys:String>
     <sys:String x:Key="Monitor.FilterAll">全部</sys:String>

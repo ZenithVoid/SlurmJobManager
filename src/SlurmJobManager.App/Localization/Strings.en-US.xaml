@@ -1063,6 +1063,7 @@
     <sys:String x:Key="Monitor.CancelAborted">Job cancellation was aborted.</sys:String>
     <sys:String x:Key="Monitor.Cancelling">Cancelling job {0}…</sys:String>
     <sys:String x:Key="Monitor.CancelSucceeded">Job {0} was cancelled.</sys:String>
+    <sys:String x:Key="Monitor.CancelUnauthorized">Job {0} was not cancelled: it belongs to user '{1}', while the current login user is '{2}'.</sys:String>
     <sys:String x:Key="Monitor.CancelFailed">Failed to cancel job {0}: {1}</sys:String>
     <sys:String x:Key="Monitor.CancelStale">Job {0} is no longer cancellable (it may have already finished).</sys:String>
     <sys:String x:Key="Monitor.FilterAll">All</sys:String>

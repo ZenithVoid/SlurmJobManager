@@ -317,6 +317,7 @@
                                                     Padding="8,2"
                                                     VerticalAlignment="Center"
                                                     HorizontalAlignment="Center"
+                                                    Visibility="{Binding CanCancelJob, Converter={StaticResource BoolToVis}}"
                                                     Style="{StaticResource DangerButtonStyle}"
                                                     Command="{Binding DataContext.CancelCurrentJobCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                     CommandParameter="{Binding}" />
