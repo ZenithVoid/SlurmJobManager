@@ -349,19 +349,13 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         var queryAllUsers = ShowAllUsers;
         var queryUser = WatchedUser;
 
-        if (!queryAllUsers && string.IsNullOrWhiteSpace(queryUser))
-        {
-            SetStatus("Monitor.EmptyState", "InfoTextStyle");
-            return;
-        }
+        Task<IReadOnlyList<SlurmJobStatus>> QueryJobsAsync(CancellationToken token) =>
+            queryAllUsers
+                ? _slurm.GetAllJobsAsync(token)
+                : _slurm.GetUserJobsAsync(queryUser, token);
 
-        SetStatus("Monitor.CurrentRefreshing", "InfoTextStyle");
-        try
+        async Task ApplyJobsAsync(IReadOnlyList<SlurmJobStatus> jobs, CancellationToken token)
         {
-            IReadOnlyList<SlurmJobStatus> jobs = queryAllUsers
-                ? await _slurm.GetAllJobsAsync(ct)
-                : await _slurm.GetUserJobsAsync(queryUser, ct);
-
             if (!IsCurrentJobsScopeVersionCurrent(scopeVersion))
             {
                 QueueCurrentJobsRefresh();
@@ -372,7 +366,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
                 .Select(MapCurrentJob)
                 .OrderByDescending(j => j.JobId)
                 .ToList();
-            var completionNotifications = await DetectCompletionNotificationsAsync(mappedJobs, ct);
+            var completionNotifications = await DetectCompletionNotificationsAsync(mappedJobs, token);
             if (!IsCurrentJobsScopeVersionCurrent(scopeVersion))
             {
                 ResetCompletionNotificationBaseline();
@@ -387,6 +381,19 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
                 UpdateCurrentElapsedDisplays();
             });
             NotifyCompletedJobs(completionNotifications);
+        }
+
+        if (!queryAllUsers && string.IsNullOrWhiteSpace(queryUser))
+        {
+            SetStatus("Monitor.EmptyState", "InfoTextStyle");
+            return;
+        }
+
+        SetStatus("Monitor.CurrentRefreshing", "InfoTextStyle");
+        try
+        {
+            var jobs = await QueryJobsAsync(ct);
+            await ApplyJobsAsync(jobs, ct);
 
             _consecutiveFailures = 0;
             SetStatus(string.Format(L("Monitor.CurrentUpdated"), DateTime.Now, jobs.Count), "SuccessTextStyle", localize: false);
@@ -395,10 +402,29 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
+            var failure = ex;
+            if (await TryReconnectAfterConnectionLossAsync(ex, ct))
+            {
+                try
+                {
+                    var jobs = await QueryJobsAsync(ct);
+                    await ApplyJobsAsync(jobs, ct);
+                    _consecutiveFailures = 0;
+                    SetStatus(string.Format(L("Monitor.CurrentUpdated"), DateTime.Now, jobs.Count), "SuccessTextStyle", localize: false);
+                    _logger?.Info($"Monitor current jobs recovered after SSH reconnect: {jobs.Count} job(s).");
+                    return;
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception retryEx)
+                {
+                    failure = retryEx;
+                }
+            }
+
             _consecutiveFailures++;
-            var msg = ConnectionViewModel.ClassifyError(ex);
+            var msg = ConnectionViewModel.ClassifyError(failure);
             SetStatus(string.Format(L("Monitor.CurrentRefreshFailed"), msg), "ErrorTextStyle", localize: false);
-            _logger?.Warning($"Current job refresh failed ({_consecutiveFailures}× consecutive): {ex.Message}");
+            _logger?.Warning($"Current job refresh failed ({_consecutiveFailures}× consecutive): {failure.Message}");
         }
     }
 
@@ -414,18 +440,26 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         }
 
         var historyScope = GetHistoryQueryDisplay();
-        SetStatus(string.Format(L("Monitor.HistoryRefreshing"), historyScope), "InfoTextStyle", localize: false);
-        try
+        Task<IReadOnlyList<SlurmJobStatus>> QueryHistoryAsync(CancellationToken token) =>
+            ShowAllUsers
+                ? _slurm.GetAllJobHistoryAsync(HistoryFetchLimit, token)
+                : _slurm.GetUserJobHistoryAsync(historyUser, HistoryFetchLimit, token);
+
+        void ApplyHistory(IReadOnlyList<SlurmJobStatus> jobs)
         {
-            var jobs = ShowAllUsers
-                ? await _slurm.GetAllJobHistoryAsync(HistoryFetchLimit, ct)
-                : await _slurm.GetUserJobHistoryAsync(historyUser, HistoryFetchLimit, ct);
             Application.Current.Dispatcher.Invoke(() =>
             {
                 HistoryJobs.Clear();
                 foreach (var row in jobs.Select(MapHistoricalJob).OrderByDescending(j => j.StartTime ?? DateTime.MinValue))
                     HistoryJobs.Add(row);
             });
+        }
+
+        SetStatus(string.Format(L("Monitor.HistoryRefreshing"), historyScope), "InfoTextStyle", localize: false);
+        try
+        {
+            var jobs = await QueryHistoryAsync(ct);
+            ApplyHistory(jobs);
 
             SetStatus(string.Format(L("Monitor.HistoryUpdated"), DateTime.Now, jobs.Count, historyScope), "SuccessTextStyle", localize: false);
             _logger?.Debug($"Monitor history refreshed: {jobs.Count} job(s), scope='{historyScope}'");
@@ -433,9 +467,27 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            var msg = ConnectionViewModel.ClassifyError(ex);
+            var failure = ex;
+            if (await TryReconnectAfterConnectionLossAsync(ex, ct))
+            {
+                try
+                {
+                    var jobs = await QueryHistoryAsync(ct);
+                    ApplyHistory(jobs);
+                    SetStatus(string.Format(L("Monitor.HistoryUpdated"), DateTime.Now, jobs.Count, historyScope), "SuccessTextStyle", localize: false);
+                    _logger?.Info($"Monitor history recovered after SSH reconnect: {jobs.Count} job(s), scope='{historyScope}'.");
+                    return;
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception retryEx)
+                {
+                    failure = retryEx;
+                }
+            }
+
+            var msg = ConnectionViewModel.ClassifyError(failure);
             SetStatus(string.Format(L("Monitor.HistoryRefreshFailed"), msg), "ErrorTextStyle", localize: false);
-            _logger?.Warning($"History refresh failed: {ex.Message}");
+            _logger?.Warning($"History refresh failed: {failure.Message}");
         }
     }
 
@@ -459,6 +511,60 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
             return;
 
         dispatcher.InvokeAsync(() => RefreshCommand.Execute(null), DispatcherPriority.Background);
+    }
+
+    private async Task<bool> TryReconnectAfterConnectionLossAsync(Exception ex, CancellationToken ct)
+    {
+        if (_connection is null || !IsLikelyConnectionLoss(ex))
+            return false;
+
+        _connection.Status = ConnectionStatus.Reconnecting;
+        SetStatus("Monitor.ConnectionLostReconnecting", "WarningTextStyle");
+        _logger?.Warning($"SSH connection appears to be interrupted; attempting immediate reconnect. Error={ex.Message}");
+
+        try
+        {
+            using var reconnectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            reconnectCts.CancelAfter(_settings.ConnectionTimeout);
+            var reconnected = await _connection.TryReconnectAsync(reconnectCts.Token);
+            if (!reconnected)
+                return false;
+
+            SetStatus("Monitor.ConnectionRestoredRetrying", "InfoTextStyle");
+            return true;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception reconnectEx)
+        {
+            _logger?.Warning($"Immediate SSH reconnect failed: {reconnectEx.Message}");
+            return false;
+        }
+    }
+
+    private static bool IsLikelyConnectionLoss(Exception ex)
+    {
+        foreach (var item in FlattenExceptions(ex))
+        {
+            if (RetryHelper.IsRetryable(item))
+                return true;
+
+            if (item is InvalidOperationException &&
+                item.Message.Contains("not connected", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (item.InnerException is not null && IsLikelyConnectionLoss(item.InnerException))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static IEnumerable<Exception> FlattenExceptions(Exception ex)
+    {
+        if (ex is AggregateException aggregate)
+            return aggregate.Flatten().InnerExceptions;
+
+        return new[] { ex };
     }
 
     private void UpsertHistoryRow(JobRow row)

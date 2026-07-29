@@ -1,5 +1,8 @@
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using SlurmPilot.App.Services;
 using SlurmPilot.App.Services.CrashHandling;
@@ -23,12 +26,18 @@ namespace SlurmPilot.App;
 
 public partial class App : Application
 {
+    private const string SingleInstanceMutexName = @"Local\SlurmPilot.SingleInstance.Mutex";
+    private const string SingleInstanceActivationEventName = @"Local\SlurmPilot.SingleInstance.Activate";
+
     private MainViewModel?      _mainVm;
     private ISshClientService?  _sshService;
     private INotificationService? _notificationService;
     private AppPreferencesService? _prefs;
     private SerilogAppLogger?   _logger;
     private CrashHandler?       _crashHandler;
+    private Mutex? _singleInstanceMutex;
+    private EventWaitHandle? _singleInstanceActivationEvent;
+    private RegisteredWaitHandle? _singleInstanceActivationRegistration;
     private readonly SemaphoreSlim _shutdownGate = new(1, 1);
     private bool _shutdownCompleted;
     private bool _closeAfterCleanup;
@@ -36,6 +45,13 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (!TryAcquireSingleInstance())
+        {
+            SignalExistingInstance();
+            Shutdown(0);
+            return;
+        }
+
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
@@ -119,6 +135,7 @@ public partial class App : Application
         var mainWindow = new MainWindow { DataContext = _mainVm };
         mainWindow.Closing += OnMainWindowClosing;
         mainWindow.Show();
+        StartSingleInstanceActivationListener();
 
         _ = _mainVm.Settings.TryAutoCheckUpdatesOnStartupAsync();
 
@@ -170,6 +187,115 @@ public partial class App : Application
 
     private static string L(string key)
         => Current.TryFindResource(key) as string ?? key;
+
+    private bool TryAcquireSingleInstance()
+    {
+        try
+        {
+            _singleInstanceMutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out var createdNew);
+            if (!createdNew)
+            {
+                _singleInstanceMutex.Dispose();
+                _singleInstanceMutex = null;
+                return false;
+            }
+
+            _singleInstanceActivationEvent = new EventWaitHandle(
+                initialState: false,
+                mode: EventResetMode.AutoReset,
+                name: SingleInstanceActivationEventName);
+
+            return true;
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    private static void SignalExistingInstance()
+    {
+        TryAllowExistingInstanceToForeground();
+
+        try
+        {
+            using var activationEvent = EventWaitHandle.OpenExisting(SingleInstanceActivationEventName);
+            activationEvent.Set();
+        }
+        catch
+        {
+            // If the first instance is still starting, failing to signal is non-fatal.
+        }
+    }
+
+    private void StartSingleInstanceActivationListener()
+    {
+        if (_singleInstanceActivationEvent == null)
+            return;
+
+        _singleInstanceActivationRegistration = ThreadPool.RegisterWaitForSingleObject(
+            _singleInstanceActivationEvent,
+            (_, _) => Dispatcher.BeginInvoke(ActivateExistingMainWindow),
+            state: null,
+            millisecondsTimeOutInterval: Timeout.Infinite,
+            executeOnlyOnce: false);
+    }
+
+    private void ActivateExistingMainWindow()
+    {
+        if (MainWindow is MainWindow mainWindow)
+        {
+            mainWindow.RestoreFromTray();
+            BringWindowToForeground(mainWindow);
+            return;
+        }
+
+        if (MainWindow is { } window)
+        {
+            window.ShowInTaskbar = true;
+            window.Show();
+            if (window.WindowState == WindowState.Minimized)
+                window.WindowState = WindowState.Normal;
+            window.Activate();
+            BringWindowToForeground(window);
+        }
+    }
+
+    private static void TryAllowExistingInstanceToForeground()
+    {
+        try
+        {
+            using var current = Process.GetCurrentProcess();
+            var existing = Process
+                .GetProcessesByName(current.ProcessName)
+                .FirstOrDefault(p => p.Id != current.Id);
+
+            if (existing != null)
+            {
+                AllowSetForegroundWindow(existing.Id);
+                existing.Dispose();
+            }
+        }
+        catch
+        {
+            // Windows may deny this in some launch contexts; normal activation still runs.
+        }
+    }
+
+    private static void BringWindowToForeground(Window window)
+    {
+        try
+        {
+            window.Activate();
+            var handle = new WindowInteropHelper(window).Handle;
+            if (handle != IntPtr.Zero)
+                SetForegroundWindow(handle);
+        }
+        catch
+        {
+            // Best effort: Windows foreground rules can reject activation.
+        }
+    }
 
     private async Task HandleConnectionEstablishedAsync(
         ConnectionViewModel connectionVm,
@@ -367,7 +493,36 @@ public partial class App : Application
     private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
     {
         e.SetObserved(); // prevent CLR from crashing the process for unobserved tasks
+        if (IsExpectedBackgroundCancellation(e.Exception))
+        {
+            _logger?.Warning($"Suppressed expected background cancellation: {e.Exception.GetBaseException().Message}");
+            return;
+        }
+
         _crashHandler?.HandleException(e.Exception, "UnobservedTaskException");
+    }
+
+    private static bool IsExpectedBackgroundCancellation(Exception exception)
+    {
+        IEnumerable<Exception> exceptions = exception is AggregateException aggregate
+            ? aggregate.Flatten().InnerExceptions
+            : new[] { exception };
+
+        return exceptions.Any() && exceptions.All(IsExpectedBackgroundCancellationItem);
+    }
+
+    private static bool IsExpectedBackgroundCancellationItem(Exception exception)
+    {
+        if (exception is OperationCanceledException)
+            return true;
+
+        if (exception is ObjectDisposedException disposed)
+        {
+            return string.Equals(disposed.ObjectName, "Renci.SshNet.SshCommand", StringComparison.Ordinal) ||
+                   disposed.Message.Contains("SshCommand", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return exception.InnerException is not null && IsExpectedBackgroundCancellationItem(exception.InnerException);
     }
 
     /// <summary>
@@ -539,7 +694,17 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         try { DesktopJobNotificationService.Instance.Shutdown(); } catch { /* best effort */ }
+        try { _singleInstanceActivationRegistration?.Unregister(null); } catch { /* best effort */ }
+        try { _singleInstanceActivationEvent?.Dispose(); } catch { /* best effort */ }
+        try { _singleInstanceMutex?.ReleaseMutex(); } catch { /* best effort */ }
+        try { _singleInstanceMutex?.Dispose(); } catch { /* best effort */ }
         _shutdownGate.Dispose();
         base.OnExit(e);
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool AllowSetForegroundWindow(int dwProcessId);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 }

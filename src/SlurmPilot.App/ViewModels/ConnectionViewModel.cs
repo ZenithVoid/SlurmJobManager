@@ -296,6 +296,9 @@ public sealed class ConnectionViewModel : ViewModelBase
         if (root is SshOperationTimeoutException || root is TimeoutException || root is OperationCanceledException)
             return string.Format(L("Conn.ErrTimeout"), raw);
 
+        if (root is ObjectDisposedException disposed && IsDisposedSshObject(disposed))
+            return string.Format(L("Conn.ErrNetwork"), raw);
+
         if (root is SocketException socketEx)
             return socketEx.SocketErrorCode switch
             {
@@ -325,6 +328,17 @@ public sealed class ConnectionViewModel : ViewModelBase
             return string.Format(L("Conn.ErrKeyAuth"), raw);
 
         return string.Format(L("Conn.ErrUnknown"), raw);
+    }
+
+    private static bool IsDisposedSshObject(ObjectDisposedException ex)
+    {
+        var objectName = ex.ObjectName ?? string.Empty;
+        return objectName.Contains("Renci.SshNet.SshCommand", StringComparison.OrdinalIgnoreCase) ||
+               objectName.Contains("Renci.SshNet.SshClient", StringComparison.OrdinalIgnoreCase) ||
+               objectName.Contains("Renci.SshNet.SftpClient", StringComparison.OrdinalIgnoreCase) ||
+               ex.Message.Contains("SshCommand", StringComparison.OrdinalIgnoreCase) ||
+               ex.Message.Contains("SshClient", StringComparison.OrdinalIgnoreCase) ||
+               ex.Message.Contains("SftpClient", StringComparison.OrdinalIgnoreCase);
     }
 
     private static Exception Unwrap(Exception ex)

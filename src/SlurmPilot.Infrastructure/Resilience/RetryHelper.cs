@@ -97,7 +97,20 @@ public static class RetryHelper
         if (ex is System.Net.Sockets.SocketException)            return true;
         if (ex is TimeoutException)                              return true;
         if (ex is IOException)                                   return true;
+        if (ex is ObjectDisposedException disposed && IsSshObjectDisposed(disposed))
+            return true;
 
         return false;
+    }
+
+    private static bool IsSshObjectDisposed(ObjectDisposedException ex)
+    {
+        var objectName = ex.ObjectName ?? string.Empty;
+        return objectName.Contains("Renci.SshNet.SshCommand", StringComparison.OrdinalIgnoreCase) ||
+               objectName.Contains("Renci.SshNet.SshClient", StringComparison.OrdinalIgnoreCase) ||
+               objectName.Contains("Renci.SshNet.SftpClient", StringComparison.OrdinalIgnoreCase) ||
+               ex.Message.Contains("SshCommand", StringComparison.OrdinalIgnoreCase) ||
+               ex.Message.Contains("SshClient", StringComparison.OrdinalIgnoreCase) ||
+               ex.Message.Contains("SftpClient", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -1145,6 +1145,8 @@
     <sys:String x:Key="Monitor.PollingEvery">Polling every {0}s…</sys:String>
     <sys:String x:Key="Monitor.PollingStopped">Polling stopped.</sys:String>
     <sys:String x:Key="Monitor.PollingHalted">Polling stopped after {0} consecutive failures. Check connection and restart polling manually.</sys:String>
+    <sys:String x:Key="Monitor.ConnectionLostReconnecting">SSH connection interrupted. Reconnecting…</sys:String>
+    <sys:String x:Key="Monitor.ConnectionRestoredRetrying">SSH reconnected. Refreshing again…</sys:String>
     <sys:String x:Key="Monitor.ReconnectFailed">Reconnect failed ({0}/{1})…</sys:String>
     <sys:String x:Key="Log.EmptyState">No log data loaded. Submit a job or enter a remote file path above to load logs.</sys:String>
     <sys:String x:Key="Log.EmptyTitle">No Log Content</sys:String>

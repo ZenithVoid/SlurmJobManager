@@ -18,7 +18,9 @@ public sealed class SshClientService : ISshClientService
     private readonly List<IInteractiveShellSession> _interactiveSessions = new();
     private readonly object _sessionLock = new();
     private readonly object _clientLock = new();
+    private readonly object _activeCommandLock = new();
     private readonly object _fingerprintLock = new();
+    private readonly HashSet<SshCommand> _activeCommands = new();
 
     private SshClient? _sshClient;
     private SftpClient? _sftpClient;
@@ -126,24 +128,48 @@ public sealed class SshClientService : ISshClientService
     public async Task<(string StdOut, string StdErr, int ExitCode)> ExecuteAsync(
         string command, CancellationToken ct = default)
     {
-        EnsureConnected();
+        SshCommand? cmd = null;
 
         try
         {
-            using var cmd = _sshClient!.CreateCommand(command);
+            cmd = CreateTrackedCommand(command);
             cmd.CommandTimeout = _settings.CommandTimeout;
 
             // Link the caller's token with the command timeout so whichever fires first wins.
             using var timeoutCts = new CancellationTokenSource(_settings.CommandTimeout);
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
-            await Task.Run(() => cmd.Execute(), linked.Token);
+            await cmd.ExecuteAsync(linked.Token).ConfigureAwait(false);
             return (cmd.Result, cmd.Error, cmd.ExitStatus ?? -1);
+        }
+        catch (ObjectDisposedException ex) when (_disposed || ct.IsCancellationRequested)
+        {
+            _logger?.Warning($"SSH remote command was cancelled because the session closed. Command={command}");
+            throw new OperationCanceledException("SSH command was cancelled because the SSH session closed.", ex, ct);
+        }
+        catch (OperationCanceledException ex) when (_disposed || ct.IsCancellationRequested)
+        {
+            _logger?.Warning($"SSH remote command was cancelled. Command={command}. Reason={ex.Message}");
+            throw;
+        }
+        catch (Exception ex) when (IsConnectionFault(ex))
+        {
+            _logger?.Warning($"SSH connection fault while executing remote command. Command={command}. Error={ex.Message}");
+            Disconnect();
+            throw;
         }
         catch (Exception ex)
         {
             _logger?.Error("SSH remote command execution failed.", ex);
             throw;
+        }
+        finally
+        {
+            if (cmd != null)
+            {
+                ReleaseTrackedCommand(cmd);
+                try { cmd.Dispose(); } catch (ObjectDisposedException) { /* already closed */ }
+            }
         }
     }
 
@@ -404,6 +430,8 @@ public sealed class SshClientService : ISshClientService
             _sshClient = null;
         }
 
+        CancelActiveCommands();
+
         List<IInteractiveShellSession> sessionsToClose;
         lock (_sessionLock)
         {
@@ -421,6 +449,74 @@ public sealed class SshClientService : ISshClientService
         try { sshClient?.Disconnect(); } catch (Exception) { /* best-effort cleanup */ }
         try { sftpClient?.Dispose(); } catch (Exception) { /* best-effort cleanup */ }
         try { sshClient?.Dispose(); } catch (Exception) { /* best-effort cleanup */ }
+    }
+
+    private SshCommand CreateTrackedCommand(string command)
+    {
+        SshCommand cmd;
+        lock (_clientLock)
+        {
+            ThrowIfDisposed();
+            if (_sshClient is not { IsConnected: true } sshClient)
+                throw new InvalidOperationException("SSH client is not connected. Call ConnectAsync first.");
+
+            cmd = sshClient.CreateCommand(command);
+        }
+
+        lock (_activeCommandLock)
+            _activeCommands.Add(cmd);
+
+        return cmd;
+    }
+
+    private void ReleaseTrackedCommand(SshCommand command)
+    {
+        lock (_activeCommandLock)
+            _activeCommands.Remove(command);
+    }
+
+    private void CancelActiveCommands()
+    {
+        SshCommand[] commands;
+        lock (_activeCommandLock)
+            commands = _activeCommands.ToArray();
+
+        foreach (var command in commands)
+            TryCancelCommand(command);
+    }
+
+    private static void TryCancelCommand(SshCommand command)
+    {
+        try { command.CancelAsync(false, 500); }
+        catch (ObjectDisposedException) { /* already closed */ }
+        catch (SshException) { /* connection is already closing */ }
+        catch (InvalidOperationException) { /* command did not start or already finished */ }
+    }
+
+    private static bool IsConnectionFault(Exception ex)
+    {
+        if (ex is SshConnectionException or System.Net.Sockets.SocketException or IOException)
+            return true;
+
+        if (ex is ObjectDisposedException disposed)
+        {
+            return IsSshObjectName(disposed.ObjectName) ||
+                   disposed.Message.Contains("SshCommand", StringComparison.OrdinalIgnoreCase) ||
+                   disposed.Message.Contains("SshClient", StringComparison.OrdinalIgnoreCase) ||
+                   disposed.Message.Contains("SftpClient", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return ex.InnerException is not null && IsConnectionFault(ex.InnerException);
+    }
+
+    private static bool IsSshObjectName(string? objectName)
+    {
+        if (string.IsNullOrWhiteSpace(objectName))
+            return false;
+
+        return objectName.Contains("Renci.SshNet.SshCommand", StringComparison.OrdinalIgnoreCase) ||
+               objectName.Contains("Renci.SshNet.SshClient", StringComparison.OrdinalIgnoreCase) ||
+               objectName.Contains("Renci.SshNet.SftpClient", StringComparison.OrdinalIgnoreCase);
     }
 
     private void OnInteractiveSessionClosed(object? sender, EventArgs e)
