@@ -1,0 +1,55 @@
+<Window x:Class="SlurmPilot.App.Views.Dialogs.RecentLogViewerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding ViewerTitle}"
+        Height="680"
+        Width="980"
+        MinHeight="420"
+        MinWidth="640"
+        Background="{DynamicResource BgBaseBrush}">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Margin="0,0,0,8"
+                   Text="{Binding FilePath}"
+                   Foreground="{DynamicResource TextMutedBrush}"
+                   FontFamily="Consolas"
+                   TextTrimming="CharacterEllipsis" />
+
+        <TextBox Grid.Row="1"
+                 Text="{Binding LogContent}"
+                 IsReadOnly="True"
+                 AcceptsReturn="True"
+                 VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Auto"
+                 TextWrapping="NoWrap"
+                 FontFamily="Consolas"
+                 FontSize="12"
+                 BorderBrush="{DynamicResource BorderBrush}"
+                 Background="{DynamicResource BgCrustBrush}"
+                 Foreground="{DynamicResource TextPrimaryBrush}" />
+
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,10,0,0">
+            <Button Content="{DynamicResource Btn.Copy}"
+                    Margin="0,0,8,0"
+                    MinWidth="90"
+                    Padding="12,6"
+                    Style="{StaticResource NeutralButtonStyle}"
+                    Click="CopyButton_Click" />
+            <Button Content="{DynamicResource Btn.Close}"
+                    MinWidth="90"
+                    Padding="12,6"
+                    Style="{StaticResource NeutralButtonStyle}"
+                    IsDefault="True"
+                    Click="CloseButton_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

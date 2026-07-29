@@ -1,15 +1,15 @@
 # Third-Party Notices
 
-This document lists the **direct NuGet dependencies** currently referenced by the projects in `SlurmJobManager.sln`.
+This document lists the **direct NuGet dependencies** currently referenced by the projects in `SlurmPilot.sln`.
 
 ## Scope and source
 
 - Scope date: 2026-05-08 (UTC)
 - Scope: direct `<PackageReference />` items in:
-  - `src/SlurmJobManager.App/SlurmJobManager.App.csproj`
-  - `src/SlurmJobManager.Infrastructure/SlurmJobManager.Infrastructure.csproj`
-  - `src/SlurmJobManager.Core/SlurmJobManager.Core.csproj`
-  - `src/SlurmJobManager.Updater/SlurmJobManager.Updater.csproj`
+  - `src/SlurmPilot.App/SlurmPilot.App.csproj`
+  - `src/SlurmPilot.Infrastructure/SlurmPilot.Infrastructure.csproj`
+  - `src/SlurmPilot.Core/SlurmPilot.Core.csproj`
+  - `src/SlurmPilot.Updater/SlurmPilot.Updater.csproj`
 - License metadata source: NuGet V3 catalog (`catalogEntry.licenseExpression` / `licenseUrl`)
 
 > If a dependency license cannot be confirmed from NuGet metadata, verify it from the upstream project before distribution.

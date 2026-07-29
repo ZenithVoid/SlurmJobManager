@@ -54,3 +54,8 @@ TestResult.xml
 nunit-*.xml
 
 .vs/
+
+# Visual Studio user settings
+*.csproj.user
+*.pubxml.user
+FolderProfile.pubxml

@@ -18,14 +18,14 @@ A Windows WPF desktop application for submitting, monitoring, and debugging Slur
 
 1. 先发布主程序（示例）：
 
-   `dotnet publish --nologo ./src/SlurmJobManager.App/SlurmJobManager.App.csproj -c Release -r win-x64`
+   `dotnet publish --nologo ./src/SlurmPilot.App/SlurmPilot.App.csproj -c Release -r win-x64`
 
 2. 生成更新产物（zip + latest.json）：
 
    `pwsh ./scripts/Generate-ReleaseArtifacts.ps1 -PublishDirectory <publish-output-dir> -OutputDirectory <release-output-dir> -RuntimeIdentifier win-x64 -Notes "release notes"`
 
 > 发布说明（App + Updater）：
-> - 发布 `SlurmJobManager.App` 时会自动构建并打包 `SlurmJobManager.Updater` 到发布目录下的 `Updater/`。
+> - 发布 `SlurmPilot.App` 时会自动构建并打包 `SlurmPilot.Updater` 到发布目录下的 `Updater/`。
 > - 已兼容两种 Updater 输出布局：`bin/<Configuration>/net10.0-windows/<RID>/` 与 `bin/<Configuration>/net10.0-windows/`。
 > - Visual Studio Publish 与 `dotnet publish` 均可使用，无需手动先发布 Updater。
 > - 若未找到 Updater 关键产物（`.exe` / `.deps.json` / `.runtimeconfig.json`），构建会输出包含已搜索路径、Configuration、RID 的诊断错误信息。
@@ -197,7 +197,7 @@ App.xaml
 | **Graceful shutdown** | Polling and follow-mode timers are stopped; SSH resources are released when the main window closes |
 | **Log UI preservation** | Log viewer errors update only the status bar — previously loaded log lines are never cleared |
 | **Error classification** | Auth failures, network errors, timeouts, and missing files produce distinct actionable messages |
-| **Rolling local logs** | All key events written to `%AppData%\SlurmJobManager\logs\sjm-YYYYMMDD.log` (7-day rolling) |
+| **Rolling local logs** | All key events written to `%AppData%\SlurmPilot\logs\sjm-YYYYMMDD.log` (7-day rolling) |
 
 ---
 
@@ -243,7 +243,7 @@ Passwords and SSH private key passphrases are **never written to disk in plain t
 
 When you click **💾 Save Profile**, the application:
 1. Serialises non-sensitive fields (host, port, username, key path) as JSON to  
-   `%AppData%\SlurmJobManager\profile.json`
+   `%AppData%\SlurmPilot\profile.json`
 2. Encrypts the password and passphrase with **Windows Data Protection API (DPAPI)**  
    using `CurrentUser` scope and application-specific entropy
 3. Stores only the Base-64 cipher text in the JSON file
@@ -333,7 +333,7 @@ When the main window closes:
 The application writes structured logs to a daily rolling file:
 
 ```
-%AppData%\SlurmJobManager\logs\sjm-YYYYMMDD.log
+%AppData%\SlurmPilot\logs\sjm-YYYYMMDD.log
 ```
 
 Up to **7 days** of log files are retained automatically (older files are deleted).
@@ -369,8 +369,8 @@ Up to **7 days** of log files are retained automatically (older files are delete
 ### Theme switching
 Click **☀ Light** / **🌙 Dark** in the title bar to swap the application colour palette instantly.
 The two themes are defined in:
-- `src/SlurmJobManager.App/Themes/Dark.xaml`  — Catppuccin Mocha-inspired dark palette
-- `src/SlurmJobManager.App/Themes/Light.xaml` — Catppuccin Latte-inspired light palette
+- `src/SlurmPilot.App/Themes/Dark.xaml`  — Catppuccin Mocha-inspired dark palette
+- `src/SlurmPilot.App/Themes/Light.xaml` — Catppuccin Latte-inspired light palette
 
 All brushes are dynamic resources — adding a third theme requires only a new XAML file and a URI change.
 
@@ -420,7 +420,7 @@ Type in the **🔍** search box to filter the currently cached lines.  The statu
 
 ```
 src/
-├── SlurmJobManager.Core/
+├── SlurmPilot.Core/
 │   ├── Interfaces/
 │   │   ├── IAppLogger.cs             # NEW: application logging abstraction
 │   │   ├── IConnectionProfileStore.cs # NEW: encrypted profile persistence
@@ -433,7 +433,7 @@ src/
 │   │   ├── AppSettings.cs            # NEW: timeout/retry/reconnect settings
 │   │   └── ...
 │   └── Services/
-├── SlurmJobManager.Infrastructure/
+├── SlurmPilot.Infrastructure/
 │   ├── Logs/
 │   │   ├── SerilogAppLogger.cs       # NEW: rolling file logger via Serilog
 │   │   └── SshLogChunkService.cs     # UPDATED: per-fetch timeout, retry
@@ -446,7 +446,7 @@ src/
 │   │   ├── SlurmService.cs           # UPDATED: logger + retry
 │   │   └── SshClientService.cs       # UPDATED: configurable timeouts
 │   └── Storage/
-├── SlurmJobManager.App/
+├── SlurmPilot.App/
 │   ├── Themes/
 │   ├── Styles/
 │   ├── Converters/
@@ -477,9 +477,9 @@ src/
 ## Build & run
 
 ```bash
-dotnet restore SlurmJobManager.sln
-dotnet build   SlurmJobManager.sln
-dotnet run --project src/SlurmJobManager.App
+dotnet restore SlurmPilot.sln
+dotnet build   SlurmPilot.sln
+dotnet run --project src/SlurmPilot.App
 ```
 
 ---
@@ -562,8 +562,8 @@ Extra rows in the **Extra Parameters** grid are substituted too.
 ### Theme switching
 Click **☀ Light** / **🌙 Dark** in the title bar to swap the application colour palette instantly.
 The two themes are defined in:
-- `src/SlurmJobManager.App/Themes/Dark.xaml`  — Catppuccin Mocha-inspired dark palette
-- `src/SlurmJobManager.App/Themes/Light.xaml` — Catppuccin Latte-inspired light palette
+- `src/SlurmPilot.App/Themes/Dark.xaml`  — Catppuccin Mocha-inspired dark palette
+- `src/SlurmPilot.App/Themes/Light.xaml` — Catppuccin Latte-inspired light palette
 
 All brushes are dynamic resources — adding a third theme requires only a new XAML file and a URI change.
 
@@ -647,15 +647,15 @@ Search: 1/400 match(es)
 
 ```
 src/
-├── SlurmJobManager.Core/
+├── SlurmPilot.Core/
 │   ├── Interfaces/
 │   ├── Models/
 │   └── Services/
-├── SlurmJobManager.Infrastructure/
+├── SlurmPilot.Infrastructure/
 │   ├── Logs/
 │   ├── Ssh/
 │   └── Storage/
-└── SlurmJobManager.App/
+└── SlurmPilot.App/
     ├── Themes/
     │   ├── Dark.xaml             # NEW: dark colour palette
     │   └── Light.xaml            # NEW: light colour palette
@@ -692,9 +692,9 @@ src/
 ## Build & run
 
 ```bash
-dotnet restore SlurmJobManager.sln
-dotnet build   SlurmJobManager.sln
-dotnet run --project src/SlurmJobManager.App
+dotnet restore SlurmPilot.sln
+dotnet build   SlurmPilot.sln
+dotnet run --project src/SlurmPilot.App
 ```
 
 ---

@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "SlurmPilot (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "SlurmPilot (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

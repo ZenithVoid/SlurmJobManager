@@ -1,0 +1,79 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ── Dark palette (Windows 11 / PowerToys Fluent-aligned) ───────────── -->
+    <Color x:Key="BgBaseColor">#FF202020</Color>
+    <Color x:Key="BgMantle">#FF1C1C1C</Color>
+    <Color x:Key="BgCrust">#FF181818</Color>
+    <Color x:Key="BgSurface0">#0FFFFFFF</Color>
+    <Color x:Key="BgSurface1">#15FFFFFF</Color>
+    <Color x:Key="BgSurface2">#21FFFFFF</Color>
+    <Color x:Key="BgOverlay0">#87FFFFFF</Color>
+    <Color x:Key="BgPanel">#FF1C1C1C</Color>
+    <Color x:Key="BgCard">#0DFFFFFF</Color>
+    <Color x:Key="BorderColor">#1AFFFFFF</Color>
+
+    <Color x:Key="TextPrimary">#FFFFFFFF</Color>
+    <Color x:Key="TextSecondary">#C5FFFFFF</Color>
+    <Color x:Key="TextMuted">#87FFFFFF</Color>
+    <Color x:Key="TextOnAccent">#000000</Color>
+
+    <Color x:Key="AccentBlue">#FF60CDFF</Color>
+    <Color x:Key="AccentGreen">#6CCB5F</Color>
+    <Color x:Key="AccentRed">#FF99A4</Color>
+    <Color x:Key="AccentYellow">#FCE100</Color>
+    <Color x:Key="AccentPurple">#B39DFF</Color>
+    <Color x:Key="AccentPeach">#FFB77C</Color>
+
+    <!-- Job state colours -->
+    <Color x:Key="StateRunning">#6CCB5F</Color>
+    <Color x:Key="StatePending">#FCE100</Color>
+    <Color x:Key="StateFailed">#FF99A4</Color>
+    <Color x:Key="StateCancelled">#FFB77C</Color>
+    <Color x:Key="StateCompleted">#60CDFF</Color>
+    <Color x:Key="StateDefault">#D6D6D6</Color>
+
+    <!-- Scrollbar colours -->
+    <Color x:Key="ScrollThumb">#8BFFFFFF</Color>
+    <Color x:Key="ScrollThumbHover">#C5FFFFFF</Color>
+    <Color x:Key="ScrollThumbActive">#FFFFFFFF</Color>
+    <Color x:Key="ScrollTrack">#00FFFFFF</Color>
+
+    <!-- SolidColorBrushes -->
+    <SolidColorBrush x:Key="BgBaseBrush"      Color="{StaticResource BgBaseColor}" />
+    <SolidColorBrush x:Key="BgMantleBrush"    Color="{StaticResource BgMantle}" />
+    <SolidColorBrush x:Key="BgCrustBrush"     Color="{StaticResource BgCrust}" />
+    <SolidColorBrush x:Key="BgSurface0Brush"  Color="{StaticResource BgSurface0}" />
+    <SolidColorBrush x:Key="BgSurface1Brush"  Color="{StaticResource BgSurface1}" />
+    <SolidColorBrush x:Key="BgSurface2Brush"  Color="{StaticResource BgSurface2}" />
+    <SolidColorBrush x:Key="BgOverlay0Brush"  Color="{StaticResource BgOverlay0}" />
+    <SolidColorBrush x:Key="BgPanelBrush"     Color="{StaticResource BgPanel}" />
+    <SolidColorBrush x:Key="BgCardBrush"      Color="{StaticResource BgCard}" />
+    <SolidColorBrush x:Key="BorderBrush"      Color="{StaticResource BorderColor}" />
+
+    <SolidColorBrush x:Key="TextPrimaryBrush"   Color="{StaticResource TextPrimary}" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}" />
+    <SolidColorBrush x:Key="TextMutedBrush"     Color="{StaticResource TextMuted}" />
+    <SolidColorBrush x:Key="TextOnAccentBrush"  Color="{StaticResource TextOnAccent}" />
+
+    <SolidColorBrush x:Key="AccentBlueBrush"   Color="{StaticResource AccentBlue}" />
+    <SolidColorBrush x:Key="AccentGreenBrush"  Color="{StaticResource AccentGreen}" />
+    <SolidColorBrush x:Key="AccentRedBrush"    Color="{StaticResource AccentRed}" />
+    <SolidColorBrush x:Key="AccentYellowBrush" Color="{StaticResource AccentYellow}" />
+    <SolidColorBrush x:Key="AccentPurpleBrush" Color="{StaticResource AccentPurple}" />
+    <SolidColorBrush x:Key="AccentPeachBrush"  Color="{StaticResource AccentPeach}" />
+
+    <SolidColorBrush x:Key="StateRunningBrush"   Color="{StaticResource StateRunning}" />
+    <SolidColorBrush x:Key="StatePendingBrush"   Color="{StaticResource StatePending}" />
+    <SolidColorBrush x:Key="StateFailedBrush"    Color="{StaticResource StateFailed}" />
+    <SolidColorBrush x:Key="StateCancelledBrush" Color="{StaticResource StateCancelled}" />
+    <SolidColorBrush x:Key="StateCompletedBrush" Color="{StaticResource StateCompleted}" />
+    <SolidColorBrush x:Key="StateDefaultBrush"   Color="{StaticResource StateDefault}" />
+
+    <SolidColorBrush x:Key="ScrollThumbBrush"       Color="{StaticResource ScrollThumb}" />
+    <SolidColorBrush x:Key="ScrollThumbHoverBrush"  Color="{StaticResource ScrollThumbHover}" />
+    <SolidColorBrush x:Key="ScrollThumbActiveBrush" Color="{StaticResource ScrollThumbActive}" />
+    <SolidColorBrush x:Key="ScrollTrackBrush"       Color="{StaticResource ScrollTrack}" />
+
+</ResourceDictionary>

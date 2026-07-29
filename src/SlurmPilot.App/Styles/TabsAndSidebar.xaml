@@ -1,0 +1,141 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:conv="clr-namespace:SlurmPilot.App.Converters">
+
+    <conv:LocalizationKeyConverter x:Key="LocalizationKeyConverter" />
+
+    <!-- ── Sidebar navigation styles ─────────────────────────────────────── -->
+
+    <!-- Individual nav item (ListBoxItem container) -->
+    <Style x:Key="SidebarNavItemStyle" TargetType="ListBoxItem">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="FocusVisualStyle"      Value="{x:Null}" />
+        <Setter Property="Cursor"                Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Grid Height="46">
+                        <!-- Selection/hover background -->
+                        <Border x:Name="BgBd"
+                                Background="Transparent"
+                                Margin="6,2" CornerRadius="6" />
+                        <!-- Left accent bar for selected state -->
+                        <Border x:Name="AccentBar"
+                                Width="3" HorizontalAlignment="Left"
+                                CornerRadius="0,3,3,0"
+                                Background="Transparent" />
+                        <!-- Icon + Label row -->
+                        <StackPanel Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Margin="20,0,12,0">
+                            <TextBlock x:Name="IconText"
+                                       Text="{Binding Icon}"
+                                       FontSize="15"
+                                       Width="22"
+                                       TextAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock x:Name="LabelText"
+                                       Text="{Binding LocalizationKey,
+                                                       Converter={StaticResource LocalizationKeyConverter}}"
+                                       FontSize="13"
+                                       Margin="10,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                        </StackPanel>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="BgBd"      Property="Background"
+                                    Value="{DynamicResource BgSurface0Brush}" />
+                            <Setter TargetName="AccentBar" Property="Background"
+                                    Value="{DynamicResource AccentBlueBrush}" />
+                            <Setter TargetName="IconText"  Property="Foreground"
+                                    Value="{DynamicResource AccentBlueBrush}" />
+                            <Setter TargetName="LabelText" Property="Foreground"
+                                    Value="{DynamicResource AccentBlueBrush}" />
+                            <Setter TargetName="LabelText" Property="FontWeight"
+                                    Value="SemiBold" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="IsSelected"  Value="False" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="BgBd" Property="Background"
+                                    Value="{DynamicResource BgCardBrush}" />
+                            <Setter TargetName="IconText"  Property="Foreground"
+                                    Value="{DynamicResource TextPrimaryBrush}" />
+                            <Setter TargetName="LabelText" Property="Foreground"
+                                    Value="{DynamicResource TextPrimaryBrush}" />
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Sidebar ListBox (the nav list itself) -->
+    <Style x:Key="SidebarListBoxStyle" TargetType="ListBox">
+        <Setter Property="Background"        Value="Transparent" />
+        <Setter Property="BorderThickness"   Value="0" />
+        <Setter Property="Padding"           Value="0,4" />
+        <Setter Property="FocusVisualStyle"  Value="{x:Null}" />
+        <Setter Property="ItemContainerStyle"
+                Value="{StaticResource SidebarNavItemStyle}" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility"   Value="Auto" />
+    </Style>
+
+    <!-- ── Legacy TabControl styles (kept for backward compatibility) ──── -->
+
+    <Style TargetType="TabControl">
+        <Setter Property="Background"  Value="{DynamicResource BgBaseBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    </Style>
+
+    <Style TargetType="TabItem">
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Background" Value="{DynamicResource BgPanelBrush}" />
+        <Setter Property="Padding"    Value="10,5" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1,1,1,0"
+                            CornerRadius="6,6,0,0"
+                            Margin="2,4,2,0"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="Content"
+                                          ContentSource="Header"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Bd"      Property="Background"
+                                    Value="{DynamicResource BgBaseBrush}" />
+                            <Setter TargetName="Content" Property="TextElement.Foreground"
+                                    Value="{DynamicResource AccentBlueBrush}" />
+                            <Setter TargetName="Content" Property="TextElement.FontWeight"
+                                    Value="Bold" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.85" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- GridSplitter -->
+    <Style TargetType="GridSplitter">
+        <Setter Property="Background"          Value="{DynamicResource BorderBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
+</ResourceDictionary>
