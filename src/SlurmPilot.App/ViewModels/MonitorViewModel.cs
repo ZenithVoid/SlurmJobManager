@@ -32,6 +32,8 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     private readonly DispatcherTimer _elapsedTimer;
     private int _consecutiveFailures;
     private bool _isRefreshing;
+    private CancellationTokenSource? _pollRefreshCts;
+    private DateTime _pollRefreshStartedAt;
 
     // Source-of-truth caches
     private List<JobRow> _allCurrentJobs = new();
@@ -611,6 +613,7 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
     {
         _pollTimer?.Stop();
         _pollTimer = null;
+        try { _pollRefreshCts?.Cancel(); } catch (ObjectDisposedException) { /* already completed */ }
         IsPolling = false;
         SetStatus("Monitor.PollingStopped", "InfoTextStyle");
         _logger?.Info("Monitor polling stopped.");
@@ -618,10 +621,19 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
 
     private async void OnPollTick(object? sender, EventArgs e)
     {
-        if (_isRefreshing) return;
+        if (_isRefreshing)
+        {
+            CancelStalePollingRefreshIfNeeded();
+            return;
+        }
+
         _isRefreshing = true;
+        _pollRefreshStartedAt = DateTime.Now;
         OnPropertyChanged(nameof(EffectiveStatusStyleKey));
         OnPropertyChanged(nameof(EffectiveStatusMessage));
+
+        using var pollRefreshCts = new CancellationTokenSource(GetPollingRefreshTimeout());
+        _pollRefreshCts = pollRefreshCts;
 
         try
         {
@@ -652,14 +664,52 @@ public sealed class MonitorViewModel : ViewModelBase, IDisposable
                 _logger?.Info("Reconnected successfully — resuming polling.");
             }
 
-            await RefreshCurrentJobsAsync(CancellationToken.None);
+            await RefreshCurrentJobsAsync(pollRefreshCts.Token);
+        }
+        catch (OperationCanceledException) when (pollRefreshCts.IsCancellationRequested)
+        {
+            _consecutiveFailures++;
+            SetStatus(string.Format(L("Monitor.PollRefreshTimedOut"), GetPollingRefreshTimeout().TotalSeconds), "WarningTextStyle", localize: false);
+            _logger?.Warning($"Monitor polling refresh timed out after {GetPollingRefreshTimeout().TotalSeconds:F0}s.");
+        }
+        catch (Exception ex)
+        {
+            _consecutiveFailures++;
+            var msg = ConnectionViewModel.ClassifyError(ex);
+            SetStatus(string.Format(L("Monitor.CurrentRefreshFailed"), msg), "ErrorTextStyle", localize: false);
+            _logger?.Warning($"Monitor polling tick failed ({_consecutiveFailures}× consecutive): {ex.Message}");
         }
         finally
         {
+            if (ReferenceEquals(_pollRefreshCts, pollRefreshCts))
+                _pollRefreshCts = null;
+            _pollRefreshStartedAt = default;
             _isRefreshing = false;
             OnPropertyChanged(nameof(EffectiveStatusStyleKey));
             OnPropertyChanged(nameof(EffectiveStatusMessage));
         }
+    }
+
+    private TimeSpan GetPollingRefreshTimeout()
+    {
+        var configuredSeconds = _settings.CommandTimeout.TotalSeconds
+                                + _settings.ConnectionTimeout.TotalSeconds
+                                + 5;
+        var intervalSeconds = Math.Max(_pollIntervalSeconds * 2, 10);
+        return TimeSpan.FromSeconds(Math.Clamp(Math.Max(configuredSeconds, intervalSeconds), 10, 90));
+    }
+
+    private void CancelStalePollingRefreshIfNeeded()
+    {
+        if (_pollRefreshCts == null || _pollRefreshStartedAt == default)
+            return;
+
+        var timeout = GetPollingRefreshTimeout();
+        if (DateTime.Now - _pollRefreshStartedAt <= timeout)
+            return;
+
+        _logger?.Warning($"Monitor polling refresh is still running after {timeout.TotalSeconds:F0}s; cancelling stale refresh.");
+        try { _pollRefreshCts.Cancel(); } catch (ObjectDisposedException) { /* already completed */ }
     }
 
     private void OnElapsedTick(object? sender, EventArgs e)

@@ -1150,6 +1150,7 @@
     <sys:String x:Key="Monitor.PollingHalted">连续失败 {0} 次后已停止轮询。请检查连接后手动重启。</sys:String>
     <sys:String x:Key="Monitor.ConnectionLostReconnecting">SSH 连接中断，正在尝试重连…</sys:String>
     <sys:String x:Key="Monitor.ConnectionRestoredRetrying">SSH 已重连，正在重新刷新…</sys:String>
+    <sys:String x:Key="Monitor.PollRefreshTimedOut">本轮自动轮询超过 {0:F0} 秒未完成，已取消并等待下一轮刷新。</sys:String>
     <sys:String x:Key="Monitor.ReconnectFailed">重连失败（{0}/{1}）…</sys:String>
     <sys:String x:Key="Log.EmptyState">暂无日志，请先提交任务或在上方输入远程文件路径后加载。</sys:String>
     <sys:String x:Key="Log.EmptyTitle">暂无日志内容</sys:String>
