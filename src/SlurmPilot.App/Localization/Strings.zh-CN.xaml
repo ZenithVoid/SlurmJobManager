@@ -15,6 +15,7 @@
     <sys:String x:Key="Nav.Monitor">监控</sys:String>
     <sys:String x:Key="Nav.Logs">日志</sys:String>
     <sys:String x:Key="Nav.Console">终端</sys:String>
+    <sys:String x:Key="Nav.Plugins">插件</sys:String>
     <sys:String x:Key="Nav.Settings">设置</sys:String>
     <sys:String x:Key="Nav.About">关于</sys:String>
 
@@ -1159,4 +1160,8 @@
     <sys:String x:Key="Dashboard.EmptyHint">请先配置 SSH 连接信息，连接到集群后即可查看作业概览。</sys:String>
     <sys:String x:Key="Dashboard.EmptyAction">⚙ 前往设置</sys:String>
 
+    <sys:String x:Key="Plugins.Title">插件</sys:String>
+    <sys:String x:Key="Plugins.Reload">重新加载</sys:String>
+    <sys:String x:Key="Plugins.Unload">卸载插件并释放资源</sys:String>
+    <sys:String x:Key="Plugins.Empty">plugin 文件夹中没有可用插件</sys:String>
 </ResourceDictionary>

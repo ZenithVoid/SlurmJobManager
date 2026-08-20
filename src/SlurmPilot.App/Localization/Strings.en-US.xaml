@@ -15,6 +15,7 @@
     <sys:String x:Key="Nav.Monitor">Monitor</sys:String>
     <sys:String x:Key="Nav.Logs">Logs</sys:String>
     <sys:String x:Key="Nav.Console">Console</sys:String>
+    <sys:String x:Key="Nav.Plugins">Plugins</sys:String>
     <sys:String x:Key="Nav.Settings">Settings</sys:String>
     <sys:String x:Key="Nav.About">About</sys:String>
 
@@ -1156,4 +1157,8 @@
     <sys:String x:Key="Dashboard.EmptyHint">Configure SSH connection settings to connect to your cluster and view job summaries.</sys:String>
     <sys:String x:Key="Dashboard.EmptyAction">⚙ Go to Settings</sys:String>
 
+    <sys:String x:Key="Plugins.Title">Plugins</sys:String>
+    <sys:String x:Key="Plugins.Reload">Reload</sys:String>
+    <sys:String x:Key="Plugins.Unload">Unload plugin and release resources</sys:String>
+    <sys:String x:Key="Plugins.Empty">No compatible plugins were found in the plugin folder</sys:String>
 </ResourceDictionary>

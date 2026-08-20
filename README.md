@@ -482,6 +482,64 @@ dotnet build   SlurmPilot.sln
 dotnet run --project src/SlurmPilot.App
 ```
 
+## Runtime plugins
+
+SlurmPilot discovers WPF plugins from the `plugin` directory beside the executable. The
+directory is created during build/publish. Expand **插件 / Plugins** in the main sidebar and
+click a child item to create its UI on demand. Use the `×` button beside a plugin to detach its
+view, invoke its unload lifecycle, and release its collectible assembly load context. Use
+**重新加载 / Reload** on the plugin page to rescan the directory without restarting SlurmPilot.
+
+### Plugin contract
+
+1. Create a `net10.0-windows` class library with WPF enabled.
+2. Reference `src/SlurmPilot.Plugin.Abstractions` (or its built DLL).
+3. Implement exactly one `ISlurmPilotPlugin` per entry assembly, with a public parameterless constructor.
+4. Return the plugin UI from `CreateView(IPluginContext)`.
+5. Name the entry assembly `*Plugin.dll`, then copy it and any private dependencies into the
+   application's `plugin` folder. Dependency DLLs are resolved but are not scanned as entries.
+
+See `src/SlurmPilot.SamplePlugin/SamplePlugin.cs` for a minimal implementation. Each plugin
+assembly is loaded independently; discovery or initialization failures are logged and do not
+prevent other plugins from loading. Plugin IDs must be non-empty and unique.
+
+> Security: plugins are trusted in-process .NET code. They have the same operating-system
+> permissions as SlurmPilot, so only install plugins from sources you trust.
+
+### 3D TIFF / high-low MP4 volume plugin
+
+`SlurmPilot.VolumeTiffPlugin` provides GPU volume rendering for multi-page TIFF stacks and
+paired 8-bit MP4 streams:
+
+- 8-bit or 16-bit unsigned grayscale, exactly one sample/channel per pixel;
+- consistent width, height and bit depth across all TIFF directories;
+- strip-based and tiled TIFF storage, including compression supported by LibTiff.NET;
+- OpenGL 3.3 3D texture ray marching with mouse rotation, wheel zoom, threshold and density;
+- asynchronous loading with cancellation and a 1.5 GB decoded CPU-buffer safety limit;
+- lazy OpenGL initialization and explicit disposal when the plugin is unloaded;
+- `_high.mp4` + `_low.mp4` selection, reconstructed as `(high << 8) | low` 16-bit voxels;
+- strict high/low width, height, frame-count and decoded-byte-count validation;
+- TIFF tag inspection and FFmpeg codec/container inspection in the host application's dialog;
+- FFmpeg runs out of process and is terminated on cancellation or plugin unload, so decoder
+  resources do not remain loaded in SlurmPilot.
+
+MP4 support requires `ffmpeg.exe` and `ffprobe.exe`. Put both files in
+`plugin/ffmpeg/bin`, beside the application, or add them to `PATH`. The plugin uses `ffprobe`
+JSON metadata and decodes each video as raw 8-bit grayscale before combining the corresponding
+bytes. When distributing FFmpeg with SlurmPilot, include the notices and license required by the
+specific FFmpeg build you ship (LGPL or GPL depending on its configuration).
+
+The renderer currently derives volume proportions from voxel counts. TIFF stacks whose physical
+Z spacing differs from X/Y pixel spacing will need a future spacing override or metadata mapping
+for physically accurate proportions. GPU texture-size limits still depend on the installed driver.
+
+The byte-composition smoke test runs without arguments; optional TIFF paths also exercise the
+TIFF decoder:
+
+```bash
+dotnet run --project tests/SlurmPilot.VolumeTiffPlugin.SmokeTests -- volume8.tif volume16.tif
+```
+
 ---
 
 ## Minimal workflow

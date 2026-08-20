@@ -44,6 +44,7 @@ public partial class MainWindow : Window
             { "Monitor",   (PageMonitor,   ScaleMonitor) },
             { "Logs",      (PageLogs,      ScaleLogs) },
             { "Console",   (PageConsole,   ScaleConsole) },
+            { "Plugins",   (PagePlugins,   ScalePlugins) },
             { "Settings",  (PageSettings,  ScaleSettings) },
             { "About",     (PageAbout,     ScaleAbout) },
         };
@@ -232,6 +233,12 @@ public partial class MainWindow : Window
 
         AnimatePageIn(vm.ActiveTab);
         ApplyTabFocus(vm.ActiveTab);
+    }
+
+    private void SidebarNavList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm && e.AddedItems.OfType<NavItem>().FirstOrDefault() is { } item)
+            vm.ActiveTab = item.TabId;
     }
 
     // ── Custom title-bar interactions ─────────────────────────────────────

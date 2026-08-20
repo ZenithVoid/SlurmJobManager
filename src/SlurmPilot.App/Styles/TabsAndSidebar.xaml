@@ -88,6 +88,108 @@
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility"   Value="Auto" />
     </Style>
 
+    <!-- Codex-like plugin section: a flat disclosure row instead of the native Expander chrome. -->
+    <Style x:Key="PluginMenuToggleStyle" TargetType="ToggleButton">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid Height="44" Margin="6,2">
+                        <Border x:Name="RowBackground" Background="Transparent" CornerRadius="6" />
+                        <Grid Margin="10,0,10,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="26" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Path x:Name="Chevron" Width="7" Height="5" Stretch="Fill"
+                                  Fill="{DynamicResource TextMutedBrush}"
+                                  Data="M 0 0 L 7 0 L 3.5 5 Z"
+                                  RenderTransformOrigin="0.5,0.5">
+                                <Path.RenderTransform><RotateTransform Angle="-90" /></Path.RenderTransform>
+                            </Path>
+                            <Grid Grid.Column="1" Width="20" Height="20">
+                                <Ellipse Width="7" Height="7" Margin="0,0,8,8" Fill="{DynamicResource AccentBlueBrush}" />
+                                <Ellipse Width="7" Height="7" Margin="8,0,0,8" Fill="{DynamicResource AccentBlueBrush}" Opacity="0.7" />
+                                <Ellipse Width="7" Height="7" Margin="0,8,8,0" Fill="{DynamicResource AccentBlueBrush}" Opacity="0.7" />
+                                <Ellipse Width="7" Height="7" Margin="8,8,0,0" Fill="{DynamicResource AccentBlueBrush}" />
+                            </Grid>
+                            <ContentPresenter Grid.Column="2" VerticalAlignment="Center" />
+                        </Grid>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Chevron" Property="RenderTransform">
+                                <Setter.Value><RotateTransform Angle="0" /></Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="RowBackground" Property="Background" Value="{DynamicResource BgCardBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="PluginSubmenuButtonStyle" TargetType="Button">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="RowBackground" Height="38" Background="Transparent" CornerRadius="6"
+                            Padding="7,0" BorderThickness="1" BorderBrush="Transparent">
+                        <ContentPresenter VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="RowBackground" Property="Background" Value="{DynamicResource BgCardBrush}" />
+                        </Trigger>
+                        <Trigger Property="Tag" Value="True">
+                            <Setter TargetName="RowBackground" Property="Background" Value="{DynamicResource BgSurface0Brush}" />
+                            <Setter TargetName="RowBackground" Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="PluginUnloadButtonStyle" TargetType="Button">
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Opacity" Value="0.55" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Background" Background="{TemplateBinding Background}" CornerRadius="4">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Opacity" Value="1" />
+                            <Setter TargetName="Background" Property="Background" Value="{DynamicResource BgCardBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource AccentRedBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ── Legacy TabControl styles (kept for backward compatibility) ──── -->
 
     <Style TargetType="TabControl">

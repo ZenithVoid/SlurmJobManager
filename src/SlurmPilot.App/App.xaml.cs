@@ -9,6 +9,7 @@ using SlurmPilot.App.Services.CrashHandling;
 using SlurmPilot.App.Services.ExternalTargets;
 using SlurmPilot.App.Services.Logging;
 using SlurmPilot.App.Services.Packaging;
+using SlurmPilot.App.Services.Plugins;
 using SlurmPilot.App.Services.Updates;
 using SlurmPilot.App.Services.Validation;
 using SlurmPilot.App.ViewModels;
@@ -107,6 +108,7 @@ public partial class App : Application
         var monitorVm    = new MonitorViewModel(slurm, settings, prefs, logger, connectionVm, notificationService);
         var logViewerVm  = new LogViewerViewModel(logChunk, logger);
         var consoleVm    = new ConsoleViewModel(ssh, logger, connectionVm);
+        var pluginVm     = new PluginHostViewModel(new PluginManager(logger));
 
         // Wire SSH connection → TaskEditor auto-fill and optional task auto-restore
         connectionVm.ConnectionEstablished += username =>
@@ -114,12 +116,14 @@ public partial class App : Application
             _ = HandleConnectionEstablishedAsync(connectionVm, taskEditorVm, prefs, username);
         };
 
+        logger.Info("Creating the main view model.");
         _mainVm = new MainViewModel(
             connectionVm,
             taskEditorVm,
             monitorVm,
             logViewerVm,
             consoleVm,
+            pluginVm,
             prefs,
             updateCheckService,
             versionService,
@@ -128,13 +132,17 @@ public partial class App : Application
             logFileService,
             externalTargetOpener,
             logger);
+        logger.Info("Main view model created.");
 
         // Default locale: zh-CN (loaded regardless of system language)
         _mainVm.ApplyLocale("zh-CN");
+        logger.Info("Default locale applied; creating the main window.");
 
         var mainWindow = new MainWindow { DataContext = _mainVm };
+        logger.Info("Main window created; showing it now.");
         mainWindow.Closing += OnMainWindowClosing;
         mainWindow.Show();
+        logger.Info("Main window shown.");
         StartSingleInstanceActivationListener();
 
         _ = _mainVm.Settings.TryAutoCheckUpdatesOnStartupAsync();
@@ -649,6 +657,9 @@ public partial class App : Application
 
             if (_mainVm?.Console is ConsoleViewModel console)
                 await RunBoundedAsync(() => Task.Run(console.Dispose), TimeSpan.FromSeconds(3));
+
+            if (_mainVm?.Plugins is PluginHostViewModel plugins)
+                plugins.Dispose();
 
             if (_mainVm?.TaskEditor is TaskEditorViewModel taskEditor)
                 await RunBoundedAsync(() => Task.Run(taskEditor.Dispose), TimeSpan.FromSeconds(1));

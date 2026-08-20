@@ -20,17 +20,21 @@ public sealed class MainViewModel : ViewModelBase
     private bool     _isDarkTheme    = true;
     private string   _activeTab      = "Dashboard";
     private NavItem? _activeNavItem;
+    private bool     _isPluginMenuExpanded = true;
 
     public ConnectionViewModel Connection { get; }
     public TaskEditorViewModel TaskEditor  { get; }
     public MonitorViewModel    Monitor     { get; }
     public LogViewerViewModel  LogViewer   { get; }
     public ConsoleViewModel    Console     { get; }
+    public PluginHostViewModel Plugins     { get; }
     public DashboardViewModel  Dashboard   { get; }
     public SettingsViewModel   Settings    { get; }
     public AboutViewModel      About       { get; }
 
     public IReadOnlyList<NavItem> NavItems { get; }
+    public IReadOnlyList<NavItem> PrimaryNavItems { get; }
+    public IReadOnlyList<NavItem> SecondaryNavItems { get; }
 
     public string StatusMessage
     {
@@ -65,12 +69,13 @@ public sealed class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(ShowMonitor));
             OnPropertyChanged(nameof(ShowLogs));
             OnPropertyChanged(nameof(ShowConsole));
+            OnPropertyChanged(nameof(ShowPlugins));
             OnPropertyChanged(nameof(ShowSettings));
             OnPropertyChanged(nameof(ShowAbout));
 
             // Keep ActiveNavItem in sync when ActiveTab is set directly
             var matching = NavItems?.FirstOrDefault(n => n.TabId == value);
-            if (matching != null && !ReferenceEquals(_activeNavItem, matching))
+            if (!ReferenceEquals(_activeNavItem, matching))
             {
                 _activeNavItem = matching;
                 OnPropertyChanged(nameof(ActiveNavItem));
@@ -97,12 +102,20 @@ public sealed class MainViewModel : ViewModelBase
     public bool ShowMonitor   => ActiveTab == "Monitor";
     public bool ShowLogs      => ActiveTab == "Logs";
     public bool ShowConsole   => ActiveTab == "Console";
+    public bool ShowPlugins   => ActiveTab == "Plugins";
     public bool ShowSettings  => ActiveTab == "Settings";
     public bool ShowAbout     => ActiveTab == "About";
+
+    public bool IsPluginMenuExpanded
+    {
+        get => _isPluginMenuExpanded;
+        set => SetField(ref _isPluginMenuExpanded, value);
+    }
 
     public ICommand ToggleThemeCommand  { get; }
     public ICommand NavigateCommand     { get; }
     public ICommand SwitchLocaleCommand { get; }
+    public ICommand TogglePluginMenuCommand { get; }
 
     // ── Locale ────────────────────────────────────────────────────────────
 
@@ -138,6 +151,7 @@ public sealed class MainViewModel : ViewModelBase
         MonitorViewModel    monitor,
         LogViewerViewModel  logViewer,
         ConsoleViewModel    console,
+        PluginHostViewModel plugins,
         AppPreferencesService prefs,
         IUpdateCheckService updateCheckService,
         IApplicationVersionService versionService,
@@ -152,26 +166,37 @@ public sealed class MainViewModel : ViewModelBase
         Monitor    = monitor    ?? throw new ArgumentNullException(nameof(monitor));
         LogViewer  = logViewer  ?? throw new ArgumentNullException(nameof(logViewer));
         Console    = console    ?? throw new ArgumentNullException(nameof(console));
+        Plugins    = plugins    ?? throw new ArgumentNullException(nameof(plugins));
+        Plugins.SelectedPluginChanged += (_, _) =>
+        {
+            if (Plugins.SelectedPlugin != null) ActiveTab = "Plugins";
+        };
 
         ToggleThemeCommand  = new RelayCommand(() => IsDarkTheme = !IsDarkTheme);
         NavigateCommand     = new RelayCommand<string>(tab => { if (tab != null) ActivateTab(tab); });
         SwitchLocaleCommand = new RelayCommand<string>(locale => { if (locale != null) ApplyLocale(locale); });
+        TogglePluginMenuCommand = new RelayCommand(() => IsPluginMenuExpanded = !IsPluginMenuExpanded);
 
-        NavItems = new NavItem[]
+        PrimaryNavItems = new NavItem[]
         {
             new("Dashboard", "🏠", "Nav.Dashboard"),
             new("Tasks",     "⚡", "Nav.Tasks"),
             new("Monitor",   "📊", "Nav.Monitor"),
             new("Logs",      "📋", "Nav.Logs"),
             new("Console",   "⌨", "Nav.Console"),
+        };
+        SecondaryNavItems = new NavItem[]
+        {
             new("Settings",  "⚙", "Nav.Settings"),
             new("About",     "ℹ", "Nav.About"),
         };
+        NavItems = PrimaryNavItems.Concat(SecondaryNavItems).ToArray();
 
         // Set initial selection to Dashboard
         _activeNavItem = NavItems[0];
 
         Dashboard = new DashboardViewModel(connection, monitor, tab => ActiveTab = tab);
+        logger?.Info("Creating settings view model.");
         Settings  = new SettingsViewModel(
             this,
             prefs,
@@ -182,6 +207,7 @@ public sealed class MainViewModel : ViewModelBase
             logFileService,
             externalTargetOpener,
             logger);
+        logger?.Info("Settings view model created.");
         About     = new AboutViewModel(versionService, externalTargetOpener, () =>
         {
             ActivateTab("Settings");

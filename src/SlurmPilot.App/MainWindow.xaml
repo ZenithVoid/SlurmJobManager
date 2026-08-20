@@ -147,11 +147,66 @@
                                    TextTrimming="CharacterEllipsis" />
                     </Border>
 
-                    <!-- Navigation list -->
-                    <ListBox ItemsSource="{Binding NavItems}"
-                             SelectedItem="{Binding ActiveNavItem, Mode=TwoWay}"
-                             Style="{StaticResource SidebarListBoxStyle}"
-                             Margin="0,4,0,0" />
+                    <!-- Navigation and collapsible plugin submenu -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="0,4,0,0">
+                            <ListBox ItemsSource="{Binding PrimaryNavItems}"
+                                     SelectedItem="{Binding ActiveNavItem, Mode=OneWay}"
+                                     SelectionChanged="SidebarNavList_SelectionChanged"
+                                     Style="{StaticResource SidebarListBoxStyle}" />
+
+                            <ToggleButton IsChecked="{Binding IsPluginMenuExpanded, Mode=TwoWay}"
+                                          Style="{StaticResource PluginMenuToggleStyle}">
+                                <TextBlock Text="{DynamicResource Nav.Plugins}" FontSize="13"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            </ToggleButton>
+                            <ItemsControl ItemsSource="{Binding Plugins.Plugins}" Margin="24,0,6,5"
+                                          Visibility="{Binding IsPluginMenuExpanded, Converter={StaticResource BoolToVis}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Height="40" ToolTip="{Binding Description}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="26" />
+                                                </Grid.ColumnDefinitions>
+                                                <Button Grid.Column="0" Tag="{Binding IsActive}"
+                                                        Style="{StaticResource PluginSubmenuButtonStyle}"
+                                                        Command="{Binding DataContext.Plugins.ActivatePluginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="30" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border Width="23" Height="23" HorizontalAlignment="Left" CornerRadius="5"
+                                                                Background="{DynamicResource BgSurface0Brush}"
+                                                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                                            <TextBlock Text="{Binding Icon}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       FontFamily="Segoe UI" FontSize="9" FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource AccentBlueBrush}" />
+                                                        </Border>
+                                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center"
+                                                                   FontSize="12.5" TextTrimming="CharacterEllipsis"
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                    </Grid>
+                                                </Button>
+                                                <Button Grid.Column="1" ToolTip="{DynamicResource Plugins.Unload}"
+                                                        Style="{StaticResource PluginUnloadButtonStyle}"
+                                                        Command="{Binding DataContext.Plugins.UnloadPluginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                            <ListBox ItemsSource="{Binding SecondaryNavItems}"
+                                     SelectedItem="{Binding ActiveNavItem, Mode=OneWay}"
+                                     SelectionChanged="SidebarNavList_SelectionChanged"
+                                     Style="{StaticResource SidebarListBoxStyle}" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </DockPanel>
             </Border>
 
@@ -516,6 +571,16 @@
                     <views:ConsoleView x:Name="ConsolePageView"
                                        DataContext="{Binding Console}"
                                        Margin="24,20,24,20" />
+                </Grid>
+
+                <!-- Plugins -->
+                <Grid x:Name="PagePlugins"
+                      Visibility="{Binding ShowPlugins, Converter={StaticResource BoolToVis}}"
+                      RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <ScaleTransform x:Name="ScalePlugins" ScaleX="1" ScaleY="1" />
+                    </Grid.RenderTransform>
+                    <views:PluginHostView DataContext="{Binding Plugins}" />
                 </Grid>
 
                 <!-- Settings -->
