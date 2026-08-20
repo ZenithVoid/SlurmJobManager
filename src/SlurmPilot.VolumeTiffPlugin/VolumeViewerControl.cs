@@ -20,6 +20,12 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
     private readonly Button _openMp4Button = new() { Content = "打开高/低位 MP4…", Padding = new Thickness(12, 6, 12, 6) };
     private readonly Button _infoButton = new() { Content = "查看信息", Padding = new Thickness(12, 6, 12, 6) };
     private readonly Button _cancelButton = new() { Content = "取消读取", Padding = new Thickness(12, 6, 12, 6), IsEnabled = false };
+    private readonly Button _autoButton = new() { Content = "Auto", Padding = new Thickness(14, 5, 14, 5), IsEnabled = false };
+    private readonly Slider _minimumSlider = new() { Minimum = 0, Maximum = 65535, IsEnabled = false };
+    private readonly Slider _maximumSlider = new() { Minimum = 0, Maximum = 65535, Value = 65535, IsEnabled = false };
+    private readonly TextBlock _minimumLabel = new() { Text = "最低值 0", FontSize = 11 };
+    private readonly TextBlock _maximumLabel = new() { Text = "最高值 65535", FontSize = 11 };
+    private readonly TextBlock _densityLabel = new() { Text = "密度 0.75", FontSize = 11 };
     private readonly object _volumeGate = new();
     private CancellationTokenSource? _loadCancellation;
     private CancellationTokenSource? _infoCancellation;
@@ -34,8 +40,15 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
     private float _yaw = 0.65f;
     private float _pitch = -0.35f;
     private float _distance = 2.4f;
-    private float _threshold = 0.08f;
+    private float _windowMinimum;
+    private float _windowMaximum = 1f;
     private float _opacity = 0.75f;
+    private int _displayMaximum = 65535;
+    private int _imageMinimum;
+    private int _imageMaximum = 65535;
+    private int _autoMinimum;
+    private int _autoMaximum = 65535;
+    private bool _updatingWindowControls;
     private Point _lastMouse;
     private bool _rotating;
     private string? _tiffPath;
@@ -78,15 +91,15 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
     private void BuildToolbar()
     {
         var toolbar = new Grid { Margin = new Thickness(14, 12, 14, 10) };
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        toolbar.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        toolbar.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var commandRow = new Grid();
+        commandRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        commandRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        commandRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        commandRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        commandRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         _openButton.SetResourceReference(StyleProperty, "AccentButtonStyle");
         _openMp4Button.SetResourceReference(StyleProperty, "NeutralButtonStyle");
@@ -96,42 +109,74 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         _openMp4Button.Click += OpenMp4Pair;
         _infoButton.Click += ShowSourceInfo;
         _cancelButton.Click += (_, _) => _loadCancellation?.Cancel();
-        toolbar.Children.Add(_openButton);
+        commandRow.Children.Add(_openButton);
         SetColumn(_openMp4Button, 1);
         _openMp4Button.Margin = new Thickness(8, 0, 0, 0);
-        toolbar.Children.Add(_openMp4Button);
+        commandRow.Children.Add(_openMp4Button);
         SetColumn(_infoButton, 2);
         _infoButton.Margin = new Thickness(8, 0, 0, 0);
-        toolbar.Children.Add(_infoButton);
+        commandRow.Children.Add(_infoButton);
         SetColumn(_cancelButton, 3);
         _cancelButton.Margin = new Thickness(4, 0, 0, 0);
-        toolbar.Children.Add(_cancelButton);
-
-        var thresholdPanel = SliderPanel("阈值", _threshold, value => _threshold = (float)value);
-        SetColumn(thresholdPanel, 5);
-        toolbar.Children.Add(thresholdPanel);
-        var opacityPanel = SliderPanel("密度", _opacity, value => _opacity = (float)value);
-        SetColumn(opacityPanel, 7);
-        toolbar.Children.Add(opacityPanel);
+        commandRow.Children.Add(_cancelButton);
 
         _status.Text = "请选择多页 TIFF 或一组 _high/_low MP4。左键拖动旋转，滚轮缩放。";
         _status.VerticalAlignment = VerticalAlignment.Center;
         _status.TextAlignment = TextAlignment.Right;
         _status.TextTrimming = TextTrimming.CharacterEllipsis;
         _status.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-        SetColumn(_status, 8);
-        toolbar.Children.Add(_status);
+        SetColumn(_status, 4);
+        commandRow.Children.Add(_status);
+        toolbar.Children.Add(commandRow);
+
+        var adjustmentRow = new Grid { Margin = new Thickness(0, 8, 0, 0) };
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        _minimumLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+        _maximumLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+        _densityLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+        _minimumSlider.ValueChanged += MinimumChanged;
+        _maximumSlider.ValueChanged += MaximumChanged;
+        var minimumPanel = SliderPanel(_minimumLabel, _minimumSlider);
+        adjustmentRow.Children.Add(minimumPanel);
+        var maximumPanel = SliderPanel(_maximumLabel, _maximumSlider);
+        SetColumn(maximumPanel, 2);
+        adjustmentRow.Children.Add(maximumPanel);
+
+        _autoButton.SetResourceReference(StyleProperty, "NeutralButtonStyle");
+        _autoButton.ToolTip = "忽略两端少量异常像素，自动设置显示最低值和最高值";
+        _autoButton.VerticalAlignment = VerticalAlignment.Bottom;
+        _autoButton.Margin = new Thickness(10, 0, 0, 0);
+        _autoButton.Click += (_, _) => ApplyAutoWindow();
+        SetColumn(_autoButton, 3);
+        adjustmentRow.Children.Add(_autoButton);
+
+        var densitySlider = new Slider { Minimum = 0, Maximum = 1, Value = _opacity };
+        densitySlider.ValueChanged += (_, e) =>
+        {
+            _opacity = (float)e.NewValue;
+            _densityLabel.Text = $"密度 {_opacity:0.00}";
+            _glControl.InvalidateVisual();
+        };
+        var densityPanel = SliderPanel(_densityLabel, densitySlider);
+        SetColumn(densityPanel, 5);
+        adjustmentRow.Children.Add(densityPanel);
+        SetRow(adjustmentRow, 1);
+        toolbar.Children.Add(adjustmentRow);
         Children.Add(toolbar);
     }
 
-    private StackPanel SliderPanel(string label, double value, Action<double> changed)
+    private static StackPanel SliderPanel(TextBlock label, Slider slider)
     {
         var panel = new StackPanel();
-        var text = new TextBlock { Text = label, FontSize = 11 };
-        text.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-        panel.Children.Add(text);
-        var slider = new Slider { Minimum = 0, Maximum = 1, Value = value, Margin = new Thickness(0, 2, 0, 0) };
-        slider.ValueChanged += (_, e) => { changed(e.NewValue); _glControl.InvalidateVisual(); };
+        panel.Children.Add(label);
+        slider.Margin = new Thickness(0, 2, 0, 0);
         panel.Children.Add(slider);
         return panel;
     }
@@ -181,8 +226,10 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         try
         {
             var data = await Task.Run(() => TiffVolumeReader.Read(dialog.FileName, _loadCancellation!.Token));
+            ConfigureWindowForVolume(data);
             lock (_volumeGate) _pendingVolume = data;
-            _status.Text = $"{System.IO.Path.GetFileName(dialog.FileName)} · {data.Width}×{data.Height}×{data.Depth} · {data.BitsPerSample} 位";
+            _status.Text = $"{System.IO.Path.GetFileName(dialog.FileName)} · {data.Width}×{data.Height}×{data.Depth} · " +
+                           $"{data.BitsPerSample} 位 · 范围 {_imageMinimum}–{_imageMaximum}";
             _context.Log(PluginLogLevel.Information,
                 $"Loaded TIFF volume {data.Width}x{data.Height}x{data.Depth}, {data.BitsPerSample}-bit.");
             _glControl.InvalidateVisual();
@@ -223,9 +270,11 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         try
         {
             var data = await FfmpegVolumeReader.ReadPairAsync(high, low, _context, _loadCancellation!.Token);
+            ConfigureWindowForVolume(data);
             lock (_volumeGate) _pendingVolume = data;
             var baseName = Path.GetFileNameWithoutExtension(high).Replace("_high", string.Empty, StringComparison.OrdinalIgnoreCase);
-            _status.Text = $"{baseName} · {data.Width}×{data.Height}×{data.Depth} · 高低位合成 16 位";
+            _status.Text = $"{baseName} · {data.Width}×{data.Height}×{data.Depth} · " +
+                           $"高低位合成 16 位 · 范围 {_imageMinimum}–{_imageMaximum}";
             _context.Log(PluginLogLevel.Information,
                 $"Loaded high/low MP4 volume {data.Width}x{data.Height}x{data.Depth}, 16-bit.");
             _glControl.InvalidateVisual();
@@ -311,6 +360,112 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         _openMp4Button.IsEnabled = true;
         _infoButton.IsEnabled = true;
         _cancelButton.IsEnabled = false;
+    }
+
+    private void ConfigureWindowForVolume(VolumeData data)
+    {
+        _displayMaximum = data.BitsPerSample == 8 ? byte.MaxValue : ushort.MaxValue;
+        _imageMinimum = ToDisplayValue(data.Minimum, data.BitsPerSample);
+        _imageMaximum = ToDisplayValue(data.Maximum, data.BitsPerSample);
+        (_autoMinimum, _autoMaximum) = CalculateAutoRange(data);
+        _updatingWindowControls = true;
+        _minimumSlider.Maximum = _displayMaximum;
+        _maximumSlider.Maximum = _displayMaximum;
+        _minimumSlider.IsEnabled = true;
+        _maximumSlider.IsEnabled = true;
+        _autoButton.IsEnabled = true;
+        _updatingWindowControls = false;
+        ApplyWindow(_imageMinimum, _imageMaximum);
+    }
+
+    private void ApplyAutoWindow()
+    {
+        if (!_minimumSlider.IsEnabled) return;
+        ApplyWindow(_autoMinimum, _autoMaximum);
+    }
+
+    private void ApplyWindow(int minimum, int maximum)
+    {
+        _updatingWindowControls = true;
+        if (maximum <= minimum)
+        {
+            minimum = 0;
+            maximum = _displayMaximum;
+        }
+        _minimumSlider.Value = Math.Clamp(minimum, 0, _displayMaximum - 1);
+        _maximumSlider.Value = Math.Clamp(maximum, minimum + 1, _displayMaximum);
+        _updatingWindowControls = false;
+        UpdateWindowValues();
+    }
+
+    internal static int ToDisplayValue(ushort value, int bitsPerSample)
+        => bitsPerSample == 8 ? (int)Math.Round(value / 257d) : value;
+
+    private void MinimumChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_updatingWindowControls) return;
+        _updatingWindowControls = true;
+        if (_minimumSlider.Value >= _maximumSlider.Value)
+            _minimumSlider.Value = Math.Max(0, _maximumSlider.Value - 1);
+        _updatingWindowControls = false;
+        UpdateWindowValues();
+    }
+
+    private void MaximumChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_updatingWindowControls) return;
+        _updatingWindowControls = true;
+        if (_maximumSlider.Value <= _minimumSlider.Value)
+            _maximumSlider.Value = Math.Min(_displayMaximum, _minimumSlider.Value + 1);
+        _updatingWindowControls = false;
+        UpdateWindowValues();
+    }
+
+    private void UpdateWindowValues()
+    {
+        var minimum = (int)Math.Round(_minimumSlider.Value);
+        var maximum = (int)Math.Round(_maximumSlider.Value);
+        _minimumLabel.Text = $"最低值 {minimum}";
+        _maximumLabel.Text = $"最高值 {maximum}";
+        _windowMinimum = minimum / (float)_displayMaximum;
+        _windowMaximum = maximum / (float)_displayMaximum;
+        _glControl.InvalidateVisual();
+    }
+
+    internal static (int Minimum, int Maximum) CalculateAutoRange(VolumeData data)
+    {
+        const int bins16 = 4096;
+        var binCount = data.BitsPerSample == 8 ? 256 : bins16;
+        var histogram = new long[binCount];
+        foreach (var voxel in data.Voxels)
+        {
+            var bin = data.BitsPerSample == 8 ? voxel >> 8 : voxel >> 4;
+            histogram[Math.Min(bin, binCount - 1)]++;
+        }
+
+        // Ignore a small number of extreme pixels at each end, similar to an automatic
+        // brightness/contrast stretch, so isolated hot/dead pixels do not flatten the volume.
+        var clippedPerTail = Math.Max(1L, (long)(data.Voxels.LongLength * 0.0035));
+        long cumulative = 0;
+        var lowerBin = 0;
+        for (; lowerBin < histogram.Length - 1; lowerBin++)
+        {
+            cumulative += histogram[lowerBin];
+            if (cumulative > clippedPerTail) break;
+        }
+        cumulative = 0;
+        var upperBin = histogram.Length - 1;
+        for (; upperBin > lowerBin; upperBin--)
+        {
+            cumulative += histogram[upperBin];
+            if (cumulative > clippedPerTail) break;
+        }
+
+        var minimum = data.BitsPerSample == 8 ? lowerBin : lowerBin << 4;
+        var maximum = data.BitsPerSample == 8 ? upperBin : Math.Min(ushort.MaxValue, ((upperBin + 1) << 4) - 1);
+        if (maximum <= minimum)
+            return (0, data.BitsPerSample == 8 ? byte.MaxValue : ushort.MaxValue);
+        return (minimum, maximum);
     }
 
     private bool SelectSourceForInfo()
@@ -399,7 +554,8 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         GL.ActiveTexture(TextureUnit.Texture0);
         GL.BindTexture(TextureTarget.Texture3D, _volumeTexture);
         GL.Uniform1(GL.GetUniformLocation(_program, "uVolume"), 0);
-        GL.Uniform1(GL.GetUniformLocation(_program, "uThreshold"), _threshold);
+        GL.Uniform1(GL.GetUniformLocation(_program, "uWindowMinimum"), _windowMinimum);
+        GL.Uniform1(GL.GetUniformLocation(_program, "uWindowMaximum"), _windowMaximum);
         GL.Uniform1(GL.GetUniformLocation(_program, "uOpacity"), _opacity);
 
         var largest = Math.Max(_volume.Width, Math.Max(_volume.Height, _volume.Depth));
@@ -511,7 +667,8 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         out vec4 fragColor;
         uniform sampler3D uVolume;
         uniform vec3 uCameraObject;
-        uniform float uThreshold;
+        uniform float uWindowMinimum;
+        uniform float uWindowMaximum;
         uniform float uOpacity;
         void main() {
             vec3 ray = normalize(vPosition - uCameraObject);
@@ -521,7 +678,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
             for (int i = 0; i < 900; ++i) {
                 if (any(greaterThan(abs(p), vec3(0.501)))) break;
                 float value = texture(uVolume, p + vec3(0.5)).r;
-                float density = max(0.0, (value - uThreshold) / max(0.001, 1.0 - uThreshold));
+                float density = clamp((value - uWindowMinimum) / max(0.000015, uWindowMaximum - uWindowMinimum), 0.0, 1.0);
                 float alpha = 1.0 - exp(-density * uOpacity * 7.0 * stepSize);
                 vec3 color = mix(vec3(0.08, 0.35, 0.78), vec3(0.92, 0.96, 1.0), density);
                 accum.rgb += (1.0 - accum.a) * alpha * color;

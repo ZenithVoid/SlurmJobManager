@@ -4,6 +4,23 @@ if (FfmpegVolumeReader.CombineBytes(0x12, 0x34) != 0x1234)
     throw new InvalidDataException("High/low MP4 byte composition failed.");
 Console.WriteLine("PASS MP4 high/low composition: 0x12 + 0x34 = 0x1234");
 
+var auto8Voxels = new ushort[] { 0, 100 * 257, 100 * 257, 200 * 257, 200 * 257, 65535 };
+var auto8 = VolumeViewerControl.CalculateAutoRange(new VolumeData(3, 2, 1, 8, auto8Voxels, 0, 65535));
+if (auto8 != (100, 200))
+    throw new InvalidDataException($"Unexpected 8-bit auto window: {auto8}.");
+Console.WriteLine("PASS 8-bit auto window: 100..200");
+
+var auto16Voxels = new ushort[] { 0, 1000, 1000, 5000, 5000, 65535 };
+var auto16 = VolumeViewerControl.CalculateAutoRange(new VolumeData(3, 2, 1, 16, auto16Voxels, 0, 65535));
+if (auto16 != (992, 5007))
+    throw new InvalidDataException($"Unexpected 16-bit auto window: {auto16}.");
+Console.WriteLine("PASS 16-bit auto window: 992..5007");
+
+if (VolumeViewerControl.ToDisplayValue(100 * 257, 8) != 100 ||
+    VolumeViewerControl.ToDisplayValue(5000, 16) != 5000)
+    throw new InvalidDataException("Measured volume range was not converted to display values correctly.");
+Console.WriteLine("PASS measured image range conversion for 8-bit and 16-bit data");
+
 foreach (var path in args)
 {
     var volume = TiffVolumeReader.Read(path, CancellationToken.None);
