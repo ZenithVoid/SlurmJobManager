@@ -517,6 +517,8 @@ paired 8-bit MP4 streams:
 - OpenGL 3.3 3D texture ray marching with mouse rotation and wheel zoom;
 - Fiji-style display minimum/maximum windowing initialized from the image's measured range,
   linear brightness stretch, histogram-based Auto range and density control;
+- decoded display-buffer size estimation and aspect-aware initial camera fitting so the complete
+  volume is centered and visible on first display;
 - asynchronous loading with cancellation and a 1.5 GB decoded CPU-buffer safety limit;
 - lazy OpenGL initialization and explicit disposal when the plugin is unloaded;
 - `_high.mp4` + `_low.mp4` selection, reconstructed as `(high << 8) | low` 16-bit voxels;

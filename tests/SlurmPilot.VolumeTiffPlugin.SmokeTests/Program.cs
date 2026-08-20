@@ -21,6 +21,15 @@ if (VolumeViewerControl.ToDisplayValue(100 * 257, 8) != 100 ||
     throw new InvalidDataException("Measured volume range was not converted to display values correctly.");
 Console.WriteLine("PASS measured image range conversion for 8-bit and 16-bit data");
 
+var sizingVolume = new VolumeData(100, 50, 10, 16, [], 0, 0);
+if (VolumeViewerControl.EstimateDisplayBytes(sizingVolume) != 100_000)
+    throw new InvalidDataException("Unexpected display-buffer estimate.");
+var landscapeDistance = VolumeViewerControl.CalculateFitDistance(100, 100, 100, 16f / 9f);
+var portraitDistance = VolumeViewerControl.CalculateFitDistance(100, 100, 100, 0.5f);
+if (landscapeDistance < 2.6f || landscapeDistance > 2.8f || portraitDistance <= landscapeDistance)
+    throw new InvalidDataException($"Unexpected camera fit distances: {landscapeDistance}, {portraitDistance}.");
+Console.WriteLine($"PASS centered full-view sizing: 100000 bytes, camera {landscapeDistance:0.00}/{portraitDistance:0.00}");
+
 foreach (var path in args)
 {
     var volume = TiffVolumeReader.Read(path, CancellationToken.None);

@@ -49,6 +49,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
     private int _autoMinimum;
     private int _autoMaximum = 65535;
     private bool _updatingWindowControls;
+    private bool _fitViewRequested;
     private Point _lastMouse;
     private bool _rotating;
     private string? _tiffPath;
@@ -229,7 +230,8 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
             ConfigureWindowForVolume(data);
             lock (_volumeGate) _pendingVolume = data;
             _status.Text = $"{System.IO.Path.GetFileName(dialog.FileName)} · {data.Width}×{data.Height}×{data.Depth} · " +
-                           $"{data.BitsPerSample} 位 · 范围 {_imageMinimum}–{_imageMaximum}";
+                           $"{data.BitsPerSample} 位 · 范围 {_imageMinimum}–{_imageMaximum} · " +
+                           $"显示缓存约 {FormatBytes(EstimateDisplayBytes(data))}";
             _context.Log(PluginLogLevel.Information,
                 $"Loaded TIFF volume {data.Width}x{data.Height}x{data.Depth}, {data.BitsPerSample}-bit.");
             _glControl.InvalidateVisual();
@@ -274,7 +276,8 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
             lock (_volumeGate) _pendingVolume = data;
             var baseName = Path.GetFileNameWithoutExtension(high).Replace("_high", string.Empty, StringComparison.OrdinalIgnoreCase);
             _status.Text = $"{baseName} · {data.Width}×{data.Height}×{data.Depth} · " +
-                           $"高低位合成 16 位 · 范围 {_imageMinimum}–{_imageMaximum}";
+                           $"高低位合成 16 位 · 范围 {_imageMinimum}–{_imageMaximum} · " +
+                           $"显示缓存约 {FormatBytes(EstimateDisplayBytes(data))}";
             _context.Log(PluginLogLevel.Information,
                 $"Loaded high/low MP4 volume {data.Width}x{data.Height}x{data.Depth}, 16-bit.");
             _glControl.InvalidateVisual();
@@ -376,6 +379,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         _autoButton.IsEnabled = true;
         _updatingWindowControls = false;
         ApplyWindow(_imageMinimum, _imageMaximum);
+        _fitViewRequested = true;
     }
 
     private void ApplyAutoWindow()
@@ -400,6 +404,26 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
 
     internal static int ToDisplayValue(ushort value, int bitsPerSample)
         => bitsPerSample == 8 ? (int)Math.Round(value / 257d) : value;
+
+    internal static long EstimateDisplayBytes(VolumeData data)
+        => checked((long)data.Width * data.Height * data.Depth * sizeof(ushort));
+
+    internal static float CalculateFitDistance(
+        int width, int height, int depth, float viewportAspect, float verticalFieldOfViewDegrees = 42f)
+    {
+        if (width <= 0 || height <= 0 || depth <= 0) throw new ArgumentOutOfRangeException(nameof(width));
+        viewportAspect = Math.Max(0.05f, viewportAspect);
+        var largest = Math.Max(width, Math.Max(height, depth));
+        var scaledWidth = width / (float)largest;
+        var scaledHeight = height / (float)largest;
+        var scaledDepth = depth / (float)largest;
+        var boundingRadius = 0.5f * MathF.Sqrt(
+            scaledWidth * scaledWidth + scaledHeight * scaledHeight + scaledDepth * scaledDepth);
+        var verticalHalfFov = MathHelper.DegreesToRadians(verticalFieldOfViewDegrees) * 0.5f;
+        var horizontalHalfFov = MathF.Atan(MathF.Tan(verticalHalfFov) * viewportAspect);
+        var limitingHalfFov = MathF.Min(verticalHalfFov, horizontalHalfFov);
+        return boundingRadius / MathF.Sin(limitingHalfFov) * 1.12f;
+    }
 
     private void MinimumChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -541,6 +565,13 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         var dpi = VisualTreeHelper.GetDpi(_glControl);
         var width = Math.Max(1, (int)Math.Ceiling(_glControl.ActualWidth * dpi.DpiScaleX));
         var height = Math.Max(1, (int)Math.Ceiling(_glControl.ActualHeight * dpi.DpiScaleY));
+        if (_fitViewRequested && _volume != null)
+        {
+            _yaw = 0.65f;
+            _pitch = -0.35f;
+            _distance = CalculateFitDistance(_volume.Width, _volume.Height, _volume.Depth, width / (float)height);
+            _fitViewRequested = false;
+        }
         GL.Viewport(0, 0, width, height);
         GL.ClearColor(0.035f, 0.04f, 0.055f, 1f);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
@@ -565,7 +596,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
             _distance * MathF.Sin(_pitch),
             _distance * MathF.Cos(_pitch) * MathF.Cos(_yaw));
         var view = Matrix4.LookAt(camera, Vector3.Zero, Vector3.UnitY);
-        var projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(42f), width / (float)height, 0.05f, 20f);
+        var projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(42f), width / (float)height, 0.05f, 100f);
         var mvp = model * view * projection;
         Matrix4.Invert(model, out var inverseModel);
         var cameraObject = Vector3.TransformPosition(camera, inverseModel);
@@ -624,7 +655,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
     }
     private void OnMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        _distance = Math.Clamp(_distance * (e.Delta > 0 ? 0.88f : 1.14f), 1.1f, 8f);
+        _distance = Math.Clamp(_distance * (e.Delta > 0 ? 0.88f : 1.14f), 0.6f, 50f);
         _glControl.InvalidateVisual();
         e.Handled = true;
     }
