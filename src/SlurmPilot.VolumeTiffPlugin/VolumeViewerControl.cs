@@ -26,6 +26,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
     private readonly TextBlock _minimumLabel = new() { Text = "最低值 0", FontSize = 11 };
     private readonly TextBlock _maximumLabel = new() { Text = "最高值 65535", FontSize = 11 };
     private readonly TextBlock _densityLabel = new() { Text = "密度 0.75", FontSize = 11 };
+    private readonly TextBlock _thresholdLabel = new() { Text = "阈值 0.08", FontSize = 11 };
     private readonly object _volumeGate = new();
     private CancellationTokenSource? _loadCancellation;
     private CancellationTokenSource? _infoCancellation;
@@ -37,12 +38,12 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
     private int _vertexArray;
     private int _vertexBuffer;
     private int _volumeTexture;
-    private float _yaw = 0.65f;
-    private float _pitch = -0.35f;
+    private Matrix4 _rotation = Matrix4.Identity;
     private float _distance = 2.4f;
     private float _windowMinimum;
     private float _windowMaximum = 1f;
     private float _opacity = 0.75f;
+    private float _threshold = 0.08f;
     private int _displayMaximum = 65535;
     private int _imageMinimum;
     private int _imageMaximum = 65535;
@@ -121,7 +122,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         _cancelButton.Margin = new Thickness(4, 0, 0, 0);
         commandRow.Children.Add(_cancelButton);
 
-        _status.Text = "请选择多页 TIFF 或一组 _high/_low MP4。左键拖动旋转，滚轮缩放。";
+        _status.Text = "请选择多页 TIFF 或一组 _high/_low MP4。左键拖动任意旋转，滚轮缩放。";
         _status.VerticalAlignment = VerticalAlignment.Center;
         _status.TextAlignment = TextAlignment.Right;
         _status.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -136,12 +137,15 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
         adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
-        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
         adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         _minimumLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
         _maximumLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
         _densityLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+        _thresholdLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
         _minimumSlider.ValueChanged += MinimumChanged;
         _maximumSlider.ValueChanged += MaximumChanged;
         var minimumPanel = SliderPanel(_minimumLabel, _minimumSlider);
@@ -168,6 +172,17 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         var densityPanel = SliderPanel(_densityLabel, densitySlider);
         SetColumn(densityPanel, 5);
         adjustmentRow.Children.Add(densityPanel);
+
+        var thresholdSlider = new Slider { Minimum = 0, Maximum = 0.65, Value = _threshold };
+        thresholdSlider.ValueChanged += (_, e) =>
+        {
+            _threshold = (float)e.NewValue;
+            _thresholdLabel.Text = $"阈值 {_threshold:0.00}";
+            _glControl.InvalidateVisual();
+        };
+        var thresholdPanel = SliderPanel(_thresholdLabel, thresholdSlider);
+        SetColumn(thresholdPanel, 7);
+        adjustmentRow.Children.Add(thresholdPanel);
         SetRow(adjustmentRow, 1);
         toolbar.Children.Add(adjustmentRow);
         Children.Add(toolbar);
@@ -567,13 +582,12 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         var height = Math.Max(1, (int)Math.Ceiling(_glControl.ActualHeight * dpi.DpiScaleY));
         if (_fitViewRequested && _volume != null)
         {
-            _yaw = 0.65f;
-            _pitch = -0.35f;
+            _rotation = Matrix4.CreateRotationX(-0.35f) * Matrix4.CreateRotationY(0.65f);
             _distance = CalculateFitDistance(_volume.Width, _volume.Height, _volume.Depth, width / (float)height);
             _fitViewRequested = false;
         }
         GL.Viewport(0, 0, width, height);
-        GL.ClearColor(0.035f, 0.04f, 0.055f, 1f);
+        GL.ClearColor(0f, 0f, 0f, 1f);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
         if (_volume == null || _volumeTexture == 0) return;
 
@@ -588,13 +602,12 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         GL.Uniform1(GL.GetUniformLocation(_program, "uWindowMinimum"), _windowMinimum);
         GL.Uniform1(GL.GetUniformLocation(_program, "uWindowMaximum"), _windowMaximum);
         GL.Uniform1(GL.GetUniformLocation(_program, "uOpacity"), _opacity);
+        GL.Uniform1(GL.GetUniformLocation(_program, "uThreshold"), _threshold);
 
         var largest = Math.Max(_volume.Width, Math.Max(_volume.Height, _volume.Depth));
-        var model = Matrix4.CreateScale(_volume.Width / (float)largest, _volume.Height / (float)largest, _volume.Depth / (float)largest);
-        var camera = new Vector3(
-            _distance * MathF.Cos(_pitch) * MathF.Sin(_yaw),
-            _distance * MathF.Sin(_pitch),
-            _distance * MathF.Cos(_pitch) * MathF.Cos(_yaw));
+        var model = Matrix4.CreateScale(_volume.Width / (float)largest, _volume.Height / (float)largest, _volume.Depth / (float)largest)
+                    * _rotation;
+        var camera = new Vector3(0f, 0f, _distance);
         var view = Matrix4.LookAt(camera, Vector3.Zero, Vector3.UnitY);
         var projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(42f), width / (float)height, 0.05f, 100f);
         var mvp = model * view * projection;
@@ -648,11 +661,34 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
     {
         if (!_rotating) return;
         var point = e.GetPosition(_glControl);
-        _yaw += (float)(point.X - _lastMouse.X) * 0.008f;
-        _pitch = Math.Clamp(_pitch + (float)(point.Y - _lastMouse.Y) * 0.008f, -1.45f, 1.45f);
+        var from = ProjectToTrackball(_lastMouse);
+        var to = ProjectToTrackball(point);
+        var axis = Vector3.Cross(from, to);
+        if (axis.LengthSquared > 0.000001f)
+        {
+            axis.Normalize();
+            var angle = MathF.Acos(Math.Clamp(Vector3.Dot(from, to), -1f, 1f)) * 1.8f;
+            _rotation = Matrix4.CreateFromAxisAngle(axis, angle) * _rotation;
+        }
         _lastMouse = point;
         _glControl.InvalidateVisual();
     }
+
+    private Vector3 ProjectToTrackball(Point point)
+    {
+        var width = Math.Max(1.0, _glControl.ActualWidth);
+        var height = Math.Max(1.0, _glControl.ActualHeight);
+        var scale = Math.Min(width, height);
+        var x = (float)((2.0 * point.X - width) / scale);
+        var y = (float)((height - 2.0 * point.Y) / scale);
+        var radiusSquared = x * x + y * y;
+        var z = radiusSquared <= 1f
+            ? MathF.Sqrt(1f - radiusSquared)
+            : 0f;
+        var vector = new Vector3(x, y, z);
+        return vector.LengthSquared > 0.000001f ? Vector3.Normalize(vector) : Vector3.UnitZ;
+    }
+
     private void OnMouseWheel(object sender, MouseWheelEventArgs e)
     {
         _distance = Math.Clamp(_distance * (e.Delta > 0 ? 0.88f : 1.14f), 0.6f, 50f);
@@ -701,6 +737,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         uniform float uWindowMinimum;
         uniform float uWindowMaximum;
         uniform float uOpacity;
+        uniform float uThreshold;
         void main() {
             vec3 ray = normalize(vPosition - uCameraObject);
             vec3 p = vPosition + ray * 0.001;
@@ -710,8 +747,14 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
                 if (any(greaterThan(abs(p), vec3(0.501)))) break;
                 float value = texture(uVolume, p + vec3(0.5)).r;
                 float density = clamp((value - uWindowMinimum) / max(0.000015, uWindowMaximum - uWindowMinimum), 0.0, 1.0);
-                float alpha = 1.0 - exp(-density * uOpacity * 7.0 * stepSize);
-                vec3 color = mix(vec3(0.08, 0.35, 0.78), vec3(0.92, 0.96, 1.0), density);
+                float signal = clamp((density - uThreshold) / max(0.0001, 1.0 - uThreshold), 0.0, 1.0);
+                if (signal <= 0.001) {
+                    p += ray * stepSize;
+                    continue;
+                }
+                signal = pow(signal, 1.25);
+                float alpha = 1.0 - exp(-signal * uOpacity * 18.0 * stepSize);
+                vec3 color = mix(vec3(0.55, 0.68, 0.88), vec3(1.0, 1.0, 1.0), signal);
                 accum.rgb += (1.0 - accum.a) * alpha * color;
                 accum.a += (1.0 - accum.a) * alpha;
                 if (accum.a > 0.985) break;

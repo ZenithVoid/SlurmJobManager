@@ -93,8 +93,9 @@
   <Target Name="CopyBundledPluginsToBuildOutput" AfterTargets="Build">
     <MakeDir Directories="$(OutDir)plugin" />
     <ItemGroup>
-      <VolumePluginArtifacts Include="$(MSBuildProjectDirectory)\..\SlurmPilot.VolumeTiffPlugin\bin\$(Configuration)\net10.0-windows\*.*;$(MSBuildProjectDirectory)\..\SlurmPilot.VolumeTiffPlugin\bin\$(Configuration)\net10.0-windows\runtimes\win-*\**\*.*"
+      <VolumePluginArtifacts Include="$(MSBuildProjectDirectory)\..\SlurmPilot.VolumeTiffPlugin\bin\$(Configuration)\net10.0-windows\*.*"
                              Exclude="$(MSBuildProjectDirectory)\..\SlurmPilot.VolumeTiffPlugin\bin\$(Configuration)\net10.0-windows\SlurmPilot.Plugin.Abstractions.*" />
+      <VolumePluginRuntimeArtifacts Include="$(MSBuildProjectDirectory)\..\SlurmPilot.VolumeTiffPlugin\bin\$(Configuration)\net10.0-windows\runtimes\win-*\**\*.*" />
     </ItemGroup>
     <Copy SourceFiles="$(MSBuildProjectDirectory)\..\SlurmPilot.SamplePlugin\bin\$(Configuration)\net10.0-windows\SlurmPilot.SamplePlugin.dll"
           DestinationFolder="$(OutDir)plugin"
@@ -102,19 +103,26 @@
     <Copy SourceFiles="@(VolumePluginArtifacts)"
           DestinationFiles="@(VolumePluginArtifacts->'$(OutDir)plugin\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(VolumePluginRuntimeArtifacts)"
+          DestinationFiles="@(VolumePluginRuntimeArtifacts->'$(OutDir)plugin\runtimes\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
   </Target>
 
   <Target Name="CopyBundledPluginsToPublishOutput" AfterTargets="Publish">
     <MakeDir Directories="$(PublishDir)plugin" />
     <ItemGroup>
-      <VolumePluginPublishArtifacts Include="$(MSBuildProjectDirectory)\..\SlurmPilot.VolumeTiffPlugin\bin\$(Configuration)\net10.0-windows\*.*;$(MSBuildProjectDirectory)\..\SlurmPilot.VolumeTiffPlugin\bin\$(Configuration)\net10.0-windows\runtimes\win-*\**\*.*"
+      <VolumePluginPublishArtifacts Include="$(MSBuildProjectDirectory)\..\SlurmPilot.VolumeTiffPlugin\bin\$(Configuration)\net10.0-windows\*.*"
                                     Exclude="$(MSBuildProjectDirectory)\..\SlurmPilot.VolumeTiffPlugin\bin\$(Configuration)\net10.0-windows\SlurmPilot.Plugin.Abstractions.*" />
+      <VolumePluginPublishRuntimeArtifacts Include="$(MSBuildProjectDirectory)\..\SlurmPilot.VolumeTiffPlugin\bin\$(Configuration)\net10.0-windows\runtimes\win-*\**\*.*" />
     </ItemGroup>
     <Copy SourceFiles="$(MSBuildProjectDirectory)\..\SlurmPilot.SamplePlugin\bin\$(Configuration)\net10.0-windows\SlurmPilot.SamplePlugin.dll"
           DestinationFolder="$(PublishDir)plugin"
           SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(VolumePluginPublishArtifacts)"
           DestinationFiles="@(VolumePluginPublishArtifacts->'$(PublishDir)plugin\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(VolumePluginPublishRuntimeArtifacts)"
+          DestinationFiles="@(VolumePluginPublishRuntimeArtifacts->'$(PublishDir)plugin\runtimes\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 </Project>
