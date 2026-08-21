@@ -10,7 +10,7 @@ namespace SlurmPilot.Infrastructure.Ssh;
 
 internal sealed class SshInteractiveShellSession : IInteractiveShellSession
 {
-    // Reflection-based PTY resize is currently validated with SSH.NET 2024.2.0.
+    // Reflection-based PTY resize is currently validated with SSH.NET 2026.0.0.
     private static readonly TimeSpan ReaderShutdownTimeout = TimeSpan.FromSeconds(2);
     private const int ReadPollTimeoutMs = 50;
     private readonly ShellStream _shellStream;

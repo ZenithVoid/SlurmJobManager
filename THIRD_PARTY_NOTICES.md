@@ -26,7 +26,7 @@ This document lists the **direct NuGet dependencies** currently referenced by th
 | Polly | 8.6.6 | BSD-3-Clause | https://github.com/App-vNext/Polly |
 | Serilog | 4.3.1 | Apache-2.0 | https://serilog.net/ |
 | Serilog.Sinks.File | 7.0.0 | Apache-2.0 | https://github.com/serilog/serilog-sinks-file |
-| SSH.NET | 2024.2.0 | MIT | https://www.nuget.org/packages/SSH.NET/2024.2.0 |
+| SSH.NET | 2026.0.0 | MIT | https://www.nuget.org/packages/SSH.NET/2026.0.0 |
 | System.Security.Cryptography.ProtectedData | 10.0.7 | MIT | https://dot.net/ |
 | XTerm.NET | 1.0.12 | MIT | https://github.com/tomlm/XTerm.NET |
 
