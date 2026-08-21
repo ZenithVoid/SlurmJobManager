@@ -25,10 +25,12 @@ internal static class TiffVolumeReader
 {
     private const long MaximumVoxelBytes = 1_500_000_000;
 
-    public static VolumeData Read(string path, CancellationToken cancellationToken)
+    public static VolumeData Read(string path, CancellationToken cancellationToken, IProgress<double>? progress = null)
     {
+        progress?.Report(0.02);
         using var image = Tiff.Open(path, "r") ?? throw new InvalidDataException("无法打开 TIFF 文件。");
         var directories = InspectDirectories(image, cancellationToken);
+        progress?.Report(0.08);
         var first = directories[0];
         var voxelCount = checked((long)first.Width * first.Height * directories.Count);
         if (voxelCount * sizeof(ushort) > MaximumVoxelBytes || voxelCount > int.MaxValue)
@@ -48,8 +50,10 @@ internal static class TiffVolumeReader
                 ReadTiledPage(image, info, z, voxels, ref minimum, ref maximum, cancellationToken);
             else
                 ReadScanlinePage(image, info, z, voxels, ref minimum, ref maximum, cancellationToken);
+            progress?.Report(0.08 + 0.82 * (z + 1d) / directories.Count);
         }
 
+        progress?.Report(0.90);
         return new VolumeData(first.Width, first.Height, directories.Count, first.Bits, voxels, minimum, maximum);
     }
 

@@ -91,6 +91,21 @@ public sealed class PluginHostViewModel : ViewModelBase, IDisposable
 
     private void ActivatePlugin(PluginItemViewModel? plugin)
     {
-        if (plugin != null) SelectedPlugin = plugin;
+        if (plugin == null) return;
+        if (!ReferenceEquals(SelectedPlugin, plugin))
+        {
+            SelectedPlugin = plugin;
+            return;
+        }
+
+        try
+        {
+            plugin.Activate();
+            SelectedPluginChanged?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Failed to activate {plugin.DisplayName}: {ex.Message}";
+        }
     }
 }

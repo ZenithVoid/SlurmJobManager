@@ -20,13 +20,18 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
     private readonly Button _openMp4Button = new() { Content = "打开高/低位 MP4…", Padding = new Thickness(12, 6, 12, 6) };
     private readonly Button _infoButton = new() { Content = "查看信息", Padding = new Thickness(12, 6, 12, 6) };
     private readonly Button _cancelButton = new() { Content = "取消读取", Padding = new Thickness(12, 6, 12, 6), IsEnabled = false };
+    private readonly ProgressBar _loadProgress = new()
+    {
+        Minimum = 0,
+        Maximum = 100,
+        Height = 3,
+        Visibility = Visibility.Collapsed
+    };
     private readonly Button _autoButton = new() { Content = "Auto", Padding = new Thickness(14, 5, 14, 5), IsEnabled = false };
-    private readonly Slider _minimumSlider = new() { Minimum = 0, Maximum = 65535, IsEnabled = false };
-    private readonly Slider _maximumSlider = new() { Minimum = 0, Maximum = 65535, Value = 65535, IsEnabled = false };
-    private readonly TextBlock _minimumLabel = new() { Text = "最低值 0", FontSize = 11 };
-    private readonly TextBlock _maximumLabel = new() { Text = "最高值 65535", FontSize = 11 };
-    private readonly TextBlock _densityLabel = new() { Text = "密度 0.75", FontSize = 11 };
-    private readonly TextBlock _thresholdLabel = new() { Text = "阈值 0.08", FontSize = 11 };
+    private readonly VolumeWindowRangeControl _windowRange = new() { IsEnabled = false };
+    private readonly TextBlock _densityLabel = new() { Text = "密度 0.55", FontSize = 11 };
+    private readonly TextBlock _thresholdLabel = new() { Text = "阈值 0.18", FontSize = 11 };
+    private readonly TextBlock _zScaleLabel = new() { Text = "Z 比例 1.0×", FontSize = 11 };
     private readonly object _volumeGate = new();
     private CancellationTokenSource? _loadCancellation;
     private CancellationTokenSource? _infoCancellation;
@@ -34,22 +39,27 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
     private VolumeData? _volume;
     private bool _started;
     private bool _disposed;
+    private bool _renderFailureReported;
+    private bool _externalScissorReported;
     private int _program;
     private int _vertexArray;
     private int _vertexBuffer;
     private int _volumeTexture;
+    private int _sliceVertexCount;
+    private int _sliceCount;
+    private Vector3 _sliceDirection;
     private Matrix4 _rotation = Matrix4.Identity;
     private float _distance = 2.4f;
     private float _windowMinimum;
     private float _windowMaximum = 1f;
-    private float _opacity = 0.75f;
-    private float _threshold = 0.08f;
+    private float _opacity = 0.55f;
+    private float _threshold = 0.18f;
+    private float _zScale = 1f;
     private int _displayMaximum = 65535;
     private int _imageMinimum;
     private int _imageMaximum = 65535;
     private int _autoMinimum;
     private int _autoMaximum = 65535;
-    private bool _updatingWindowControls;
     private bool _fitViewRequested;
     private Point _lastMouse;
     private bool _rotating;
@@ -95,6 +105,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         var toolbar = new Grid { Margin = new Thickness(14, 12, 14, 10) };
         toolbar.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         toolbar.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        toolbar.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         var commandRow = new Grid();
         commandRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -132,34 +143,33 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         toolbar.Children.Add(commandRow);
 
         var adjustmentRow = new Grid { Margin = new Thickness(0, 8, 0, 0) };
-        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
-        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
-        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(440) });
         adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
-        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
         adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
-        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+        adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
         adjustmentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        _minimumLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-        _maximumLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
         _densityLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
         _thresholdLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-        _minimumSlider.ValueChanged += MinimumChanged;
-        _maximumSlider.ValueChanged += MaximumChanged;
-        var minimumPanel = SliderPanel(_minimumLabel, _minimumSlider);
-        adjustmentRow.Children.Add(minimumPanel);
-        var maximumPanel = SliderPanel(_maximumLabel, _maximumSlider);
-        SetColumn(maximumPanel, 2);
-        adjustmentRow.Children.Add(maximumPanel);
+        _zScaleLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+        _windowRange.RangeChanged += (_, _) => UpdateWindowValues();
+        var windowLabel = new TextBlock { Text = "显示范围", FontSize = 11 };
+        windowLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+        var windowPanel = new StackPanel();
+        windowPanel.Children.Add(windowLabel);
+        windowPanel.Children.Add(_windowRange);
+        adjustmentRow.Children.Add(windowPanel);
 
         _autoButton.SetResourceReference(StyleProperty, "NeutralButtonStyle");
         _autoButton.ToolTip = "忽略两端少量异常像素，自动设置显示最低值和最高值";
         _autoButton.VerticalAlignment = VerticalAlignment.Bottom;
         _autoButton.Margin = new Thickness(10, 0, 0, 0);
         _autoButton.Click += (_, _) => ApplyAutoWindow();
-        SetColumn(_autoButton, 3);
+        SetColumn(_autoButton, 1);
         adjustmentRow.Children.Add(_autoButton);
 
         var densitySlider = new Slider { Minimum = 0, Maximum = 1, Value = _opacity };
@@ -170,7 +180,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
             _glControl.InvalidateVisual();
         };
         var densityPanel = SliderPanel(_densityLabel, densitySlider);
-        SetColumn(densityPanel, 5);
+        SetColumn(densityPanel, 3);
         adjustmentRow.Children.Add(densityPanel);
 
         var thresholdSlider = new Slider { Minimum = 0, Maximum = 0.65, Value = _threshold };
@@ -181,10 +191,26 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
             _glControl.InvalidateVisual();
         };
         var thresholdPanel = SliderPanel(_thresholdLabel, thresholdSlider);
-        SetColumn(thresholdPanel, 7);
+        SetColumn(thresholdPanel, 5);
         adjustmentRow.Children.Add(thresholdPanel);
+
+        var zScaleSlider = new Slider { Minimum = 0.2, Maximum = 5, Value = _zScale };
+        zScaleSlider.ValueChanged += (_, e) =>
+        {
+            _zScale = (float)e.NewValue;
+            _zScaleLabel.Text = $"Z 比例 {_zScale:0.0}×";
+            _fitViewRequested = true;
+            _glControl.InvalidateVisual();
+        };
+        var zScalePanel = SliderPanel(_zScaleLabel, zScaleSlider);
+        SetColumn(zScalePanel, 7);
+        adjustmentRow.Children.Add(zScalePanel);
         SetRow(adjustmentRow, 1);
         toolbar.Children.Add(adjustmentRow);
+
+        _loadProgress.Margin = new Thickness(0, 8, 0, 0);
+        SetRow(_loadProgress, 2);
+        toolbar.Children.Add(_loadProgress);
         Children.Add(toolbar);
     }
 
@@ -238,15 +264,22 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         if (accepted != true) return;
         _tiffPath = dialog.FileName;
         _mp4Pair = null;
-        BeginLoad("正在读取并验证 TIFF 体数据…");
+        BeginLoad("正在读取并验证 TIFF 体数据…", indeterminate: false);
+        var queuedForDisplay = false;
         try
         {
-            var data = await Task.Run(() => TiffVolumeReader.Read(dialog.FileName, _loadCancellation!.Token));
+            var progress = new Progress<double>(value =>
+            {
+                _loadProgress.Value = value * 100;
+                _status.Text = $"正在读取 TIFF 体数据… {value:P0}";
+            });
+            var data = await Task.Run(() => TiffVolumeReader.Read(
+                dialog.FileName, _loadCancellation!.Token, progress));
             ConfigureWindowForVolume(data);
             lock (_volumeGate) _pendingVolume = data;
-            _status.Text = $"{System.IO.Path.GetFileName(dialog.FileName)} · {data.Width}×{data.Height}×{data.Depth} · " +
-                           $"{data.BitsPerSample} 位 · 范围 {_imageMinimum}–{_imageMaximum} · " +
-                           $"显示缓存约 {FormatBytes(EstimateDisplayBytes(data))}";
+            queuedForDisplay = true;
+            _loadProgress.Value = 94;
+            _status.Text = "读取完成，正在上传三维体数据…";
             _context.Log(PluginLogLevel.Information,
                 $"Loaded TIFF volume {data.Width}x{data.Height}x{data.Depth}, {data.BitsPerSample}-bit.");
             _glControl.InvalidateVisual();
@@ -258,7 +291,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
             _context.Log(PluginLogLevel.Error, "Failed to read TIFF volume.", ex);
             _context.ShowWarning("TIFF 读取失败", ex.Message, dialog.FileName);
         }
-        finally { EndLoad(); }
+        finally { EndLoad(queuedForDisplay); }
     }
 
     private async void OpenMp4Pair(object sender, RoutedEventArgs e)
@@ -283,16 +316,17 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         _mp4Pair = (high, low);
         _tiffPath = null;
 
-        BeginLoad("正在用 FFmpeg 解码并合并高/低 8 位 MP4…");
+        BeginLoad("正在用 FFmpeg 解码并合并高/低 8 位 MP4…", indeterminate: true);
+        var queuedForDisplay = false;
         try
         {
             var data = await FfmpegVolumeReader.ReadPairAsync(high, low, _context, _loadCancellation!.Token);
             ConfigureWindowForVolume(data);
             lock (_volumeGate) _pendingVolume = data;
-            var baseName = Path.GetFileNameWithoutExtension(high).Replace("_high", string.Empty, StringComparison.OrdinalIgnoreCase);
-            _status.Text = $"{baseName} · {data.Width}×{data.Height}×{data.Depth} · " +
-                           $"高低位合成 16 位 · 范围 {_imageMinimum}–{_imageMaximum} · " +
-                           $"显示缓存约 {FormatBytes(EstimateDisplayBytes(data))}";
+            queuedForDisplay = true;
+            _loadProgress.IsIndeterminate = false;
+            _loadProgress.Value = 94;
+            _status.Text = "解码完成，正在上传三维体数据…";
             _context.Log(PluginLogLevel.Information,
                 $"Loaded high/low MP4 volume {data.Width}x{data.Height}x{data.Depth}, 16-bit.");
             _glControl.InvalidateVisual();
@@ -304,7 +338,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
             _context.Log(PluginLogLevel.Error, "Failed to read high/low MP4 volume.", ex);
             _context.ShowWarning("MP4 读取失败", ex.Message, $"高位：{high}\n低位：{low}");
         }
-        finally { EndLoad(); }
+        finally { EndLoad(queuedForDisplay); }
     }
 
     private async void ShowSourceInfo(object sender, RoutedEventArgs e)
@@ -360,7 +394,7 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         }
     }
 
-    private void BeginLoad(string status)
+    private void BeginLoad(string status, bool indeterminate)
     {
         _loadCancellation?.Cancel();
         _loadCancellation?.Dispose();
@@ -370,14 +404,25 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         _infoButton.IsEnabled = false;
         _cancelButton.IsEnabled = true;
         _status.Text = status;
+        _loadProgress.IsIndeterminate = indeterminate;
+        _loadProgress.Value = 0;
+        _loadProgress.Visibility = Visibility.Visible;
     }
 
-    private void EndLoad()
+    private void EndLoad(bool awaitingUpload)
     {
         _openButton.IsEnabled = true;
         _openMp4Button.IsEnabled = true;
         _infoButton.IsEnabled = true;
         _cancelButton.IsEnabled = false;
+        if (!awaitingUpload) HideLoadProgress();
+    }
+
+    private void HideLoadProgress()
+    {
+        _loadProgress.IsIndeterminate = false;
+        _loadProgress.Value = 0;
+        _loadProgress.Visibility = Visibility.Collapsed;
     }
 
     private void ConfigureWindowForVolume(VolumeData data)
@@ -386,35 +431,26 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         _imageMinimum = ToDisplayValue(data.Minimum, data.BitsPerSample);
         _imageMaximum = ToDisplayValue(data.Maximum, data.BitsPerSample);
         (_autoMinimum, _autoMaximum) = CalculateAutoRange(data);
-        _updatingWindowControls = true;
-        _minimumSlider.Maximum = _displayMaximum;
-        _maximumSlider.Maximum = _displayMaximum;
-        _minimumSlider.IsEnabled = true;
-        _maximumSlider.IsEnabled = true;
+        _windowRange.IsEnabled = true;
         _autoButton.IsEnabled = true;
-        _updatingWindowControls = false;
-        ApplyWindow(_imageMinimum, _imageMaximum);
+        _windowRange.Configure(_imageMinimum, _imageMaximum, _imageMinimum, _imageMaximum);
         _fitViewRequested = true;
     }
 
     private void ApplyAutoWindow()
     {
-        if (!_minimumSlider.IsEnabled) return;
+        if (!_windowRange.IsEnabled) return;
         ApplyWindow(_autoMinimum, _autoMaximum);
     }
 
     private void ApplyWindow(int minimum, int maximum)
     {
-        _updatingWindowControls = true;
         if (maximum <= minimum)
         {
             minimum = 0;
             maximum = _displayMaximum;
         }
-        _minimumSlider.Value = Math.Clamp(minimum, 0, _displayMaximum - 1);
-        _maximumSlider.Value = Math.Clamp(maximum, minimum + 1, _displayMaximum);
-        _updatingWindowControls = false;
-        UpdateWindowValues();
+        _windowRange.SetValues(minimum, maximum);
     }
 
     internal static int ToDisplayValue(ushort value, int bitsPerSample)
@@ -423,15 +459,32 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
     internal static long EstimateDisplayBytes(VolumeData data)
         => checked((long)data.Width * data.Height * data.Depth * sizeof(ushort));
 
+    internal static float CalculateVoxelOpacity(float signal, float density)
+    {
+        if (signal <= 0.001f || density <= 0f) return 0f;
+        var shapedSignal = MathF.Pow(Math.Clamp(signal, 0f, 1f), 1.25f);
+        return Math.Clamp((0.06f + shapedSignal * 0.94f) * density, 0f, 0.92f);
+    }
+
+    internal static int CalculateRenderSliceCount(int fullSliceCount, bool interacting)
+    {
+        if (fullSliceCount <= 0) throw new ArgumentOutOfRangeException(nameof(fullSliceCount));
+        return interacting ? Math.Clamp(fullSliceCount / 4, 48, 128) : fullSliceCount;
+    }
+
     internal static float CalculateFitDistance(
         int width, int height, int depth, float viewportAspect, float verticalFieldOfViewDegrees = 42f)
+        => CalculateFitDistance((float)width, height, depth, viewportAspect, verticalFieldOfViewDegrees);
+
+    private static float CalculateFitDistance(
+        float width, float height, float depth, float viewportAspect, float verticalFieldOfViewDegrees = 42f)
     {
         if (width <= 0 || height <= 0 || depth <= 0) throw new ArgumentOutOfRangeException(nameof(width));
         viewportAspect = Math.Max(0.05f, viewportAspect);
         var largest = Math.Max(width, Math.Max(height, depth));
-        var scaledWidth = width / (float)largest;
-        var scaledHeight = height / (float)largest;
-        var scaledDepth = depth / (float)largest;
+        var scaledWidth = width / largest;
+        var scaledHeight = height / largest;
+        var scaledDepth = depth / largest;
         var boundingRadius = 0.5f * MathF.Sqrt(
             scaledWidth * scaledWidth + scaledHeight * scaledHeight + scaledDepth * scaledDepth);
         var verticalHalfFov = MathHelper.DegreesToRadians(verticalFieldOfViewDegrees) * 0.5f;
@@ -440,34 +493,10 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         return boundingRadius / MathF.Sin(limitingHalfFov) * 1.12f;
     }
 
-    private void MinimumChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_updatingWindowControls) return;
-        _updatingWindowControls = true;
-        if (_minimumSlider.Value >= _maximumSlider.Value)
-            _minimumSlider.Value = Math.Max(0, _maximumSlider.Value - 1);
-        _updatingWindowControls = false;
-        UpdateWindowValues();
-    }
-
-    private void MaximumChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_updatingWindowControls) return;
-        _updatingWindowControls = true;
-        if (_maximumSlider.Value <= _minimumSlider.Value)
-            _maximumSlider.Value = Math.Min(_displayMaximum, _minimumSlider.Value + 1);
-        _updatingWindowControls = false;
-        UpdateWindowValues();
-    }
-
     private void UpdateWindowValues()
     {
-        var minimum = (int)Math.Round(_minimumSlider.Value);
-        var maximum = (int)Math.Round(_maximumSlider.Value);
-        _minimumLabel.Text = $"最低值 {minimum}";
-        _maximumLabel.Text = $"最高值 {maximum}";
-        _windowMinimum = minimum / (float)_displayMaximum;
-        _windowMaximum = maximum / (float)_displayMaximum;
+        _windowMinimum = (float)(_windowRange.LowerValue / _displayMaximum);
+        _windowMaximum = (float)(_windowRange.UpperValue / _displayMaximum);
         _glControl.InvalidateVisual();
     }
 
@@ -571,7 +600,22 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
 
     private void Render(TimeSpan delta)
     {
-        if (_disposed) return;
+        if (_disposed || _renderFailureReported) return;
+        try
+        {
+            RenderCore();
+        }
+        catch (Exception ex)
+        {
+            _renderFailureReported = true;
+            HideLoadProgress();
+            _status.Text = $"三维渲染失败：{ex.Message}";
+            _context.Log(PluginLogLevel.Error, "Volume rendering failed.", ex);
+        }
+    }
+
+    private void RenderCore()
+    {
         EnsureRenderer();
         VolumeData? pending;
         lock (_volumeGate) { pending = _pendingVolume; _pendingVolume = null; }
@@ -583,17 +627,30 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         if (_fitViewRequested && _volume != null)
         {
             _rotation = Matrix4.CreateRotationX(-0.35f) * Matrix4.CreateRotationY(0.65f);
-            _distance = CalculateFitDistance(_volume.Width, _volume.Height, _volume.Depth, width / (float)height);
+            _distance = CalculateFitDistance(_volume.Width, _volume.Height, _volume.Depth * _zScale, width / (float)height);
             _fitViewRequested = false;
         }
+        if (GL.IsEnabled(EnableCap.ScissorTest) && !_externalScissorReported)
+        {
+            _externalScissorReported = true;
+            _context.Log(PluginLogLevel.Warning,
+                "OpenGL scissor state leaked into the volume renderer; forcing a full-frame reset.");
+        }
+        GL.Disable(EnableCap.ScissorTest);
+        GL.Disable(EnableCap.StencilTest);
+        GL.Disable(EnableCap.Blend);
+        GL.Disable(EnableCap.DepthTest);
+        GL.Disable(EnableCap.CullFace);
+        GL.Disable(EnableCap.PolygonOffsetFill);
+        GL.ColorMask(true, true, true, true);
+        GL.DepthMask(true);
         GL.Viewport(0, 0, width, height);
         GL.ClearColor(0f, 0f, 0f, 1f);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
         if (_volume == null || _volumeTexture == 0) return;
 
-        GL.Enable(EnableCap.DepthTest);
-        GL.Enable(EnableCap.CullFace);
-        GL.CullFace(TriangleFace.Back);
+        GL.Enable(EnableCap.Blend);
+        GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
         GL.UseProgram(_program);
         GL.BindVertexArray(_vertexArray);
         GL.ActiveTexture(TextureUnit.Texture0);
@@ -604,8 +661,9 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         GL.Uniform1(GL.GetUniformLocation(_program, "uOpacity"), _opacity);
         GL.Uniform1(GL.GetUniformLocation(_program, "uThreshold"), _threshold);
 
-        var largest = Math.Max(_volume.Width, Math.Max(_volume.Height, _volume.Depth));
-        var model = Matrix4.CreateScale(_volume.Width / (float)largest, _volume.Height / (float)largest, _volume.Depth / (float)largest)
+        var scaledDepth = _volume.Depth * _zScale;
+        var largest = Math.Max(_volume.Width, Math.Max(_volume.Height, scaledDepth));
+        var model = Matrix4.CreateScale(_volume.Width / largest, _volume.Height / largest, scaledDepth / largest)
                     * _rotation;
         var camera = new Vector3(0f, 0f, _distance);
         var view = Matrix4.LookAt(camera, Vector3.Zero, Vector3.UnitY);
@@ -613,24 +671,34 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         var mvp = model * view * projection;
         Matrix4.Invert(model, out var inverseModel);
         var cameraObject = Vector3.TransformPosition(camera, inverseModel);
+        var viewDirection = Vector3.Normalize(cameraObject);
+        var fullSliceCount = Math.Clamp((int)MathF.Ceiling(
+            MathF.Abs(viewDirection.X) * _volume.Width +
+            MathF.Abs(viewDirection.Y) * _volume.Height +
+            MathF.Abs(viewDirection.Z) * _volume.Depth), 128, 768);
+        var sliceCount = CalculateRenderSliceCount(fullSliceCount, _rotating);
+        EnsureSliceGeometry(viewDirection, sliceCount);
+        GL.Uniform1(GL.GetUniformLocation(_program, "uSampleScale"), fullSliceCount / (float)sliceCount);
         GL.UniformMatrix4(GL.GetUniformLocation(_program, "uMvp"), true, ref mvp);
-        GL.Uniform3(GL.GetUniformLocation(_program, "uCameraObject"), cameraObject);
-        GL.DrawArrays(PrimitiveType.Triangles, 0, 36);
+        GL.DrawArrays(PrimitiveType.Triangles, 0, _sliceVertexCount);
+        GL.Disable(EnableCap.Blend);
+        GL.BindTexture(TextureTarget.Texture3D, 0);
         GL.BindVertexArray(0);
+        GL.UseProgram(0);
     }
 
     private void EnsureRenderer()
     {
         if (_program != 0) return;
-        _program = CreateProgram(VertexShader, FragmentShader);
-        var vertices = CubeVertices;
+        _program = CreateProgram(VolumeVertexShader, VolumeFragmentShader);
         _vertexArray = GL.GenVertexArray();
         _vertexBuffer = GL.GenBuffer();
         GL.BindVertexArray(_vertexArray);
         GL.BindBuffer(BufferTarget.ArrayBuffer, _vertexBuffer);
-        GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.StaticDraw);
         GL.EnableVertexAttribArray(0);
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
+        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 6 * sizeof(float), 0);
+        GL.EnableVertexAttribArray(1);
+        GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, 6 * sizeof(float), 3 * sizeof(float));
         GL.BindVertexArray(0);
     }
 
@@ -641,13 +709,102 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         GL.BindTexture(TextureTarget.Texture3D, _volumeTexture);
         GL.TexParameter(TextureTarget.Texture3D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
         GL.TexParameter(TextureTarget.Texture3D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
-        GL.TexParameter(TextureTarget.Texture3D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
-        GL.TexParameter(TextureTarget.Texture3D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
-        GL.TexParameter(TextureTarget.Texture3D, TextureParameterName.TextureWrapR, (int)TextureWrapMode.ClampToEdge);
+        GL.TexParameter(TextureTarget.Texture3D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToBorder);
+        GL.TexParameter(TextureTarget.Texture3D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToBorder);
+        GL.TexParameter(TextureTarget.Texture3D, TextureParameterName.TextureWrapR, (int)TextureWrapMode.ClampToBorder);
         GL.PixelStore(PixelStoreParameter.UnpackAlignment, 1);
         GL.TexImage3D(TextureTarget.Texture3D, 0, PixelInternalFormat.R16, data.Width, data.Height, data.Depth,
             0, OpenTK.Graphics.OpenGL4.PixelFormat.Red, PixelType.UnsignedShort, data.Voxels);
+        var uploadError = GL.GetError();
+        if (uploadError != ErrorCode.NoError)
+            throw new InvalidOperationException($"上传三维纹理失败（OpenGL {uploadError}）。");
+        GL.BindTexture(TextureTarget.Texture3D, 0);
+        _sliceDirection = Vector3.Zero;
+        _sliceCount = 0;
         _volume = data with { Voxels = [] };
+        _loadProgress.Value = 100;
+        HideLoadProgress();
+        var sourceName = _tiffPath != null
+            ? Path.GetFileName(_tiffPath)
+            : Path.GetFileNameWithoutExtension(_mp4Pair?.High ?? "体数据")
+                .Replace("_high", string.Empty, StringComparison.OrdinalIgnoreCase);
+        _status.Text = $"{sourceName} · {data.Width}×{data.Height}×{data.Depth} · " +
+                       $"{data.BitsPerSample} 位 · 范围 {_imageMinimum}–{_imageMaximum} · " +
+                       $"显示缓存约 {FormatBytes(EstimateDisplayBytes(data))}";
+    }
+
+    private void EnsureSliceGeometry(Vector3 viewDirection, int sliceCount)
+    {
+        if (_sliceCount == sliceCount && _sliceDirection.LengthSquared > 0f &&
+            Vector3.Dot(_sliceDirection, viewDirection) > 0.99999f) return;
+        var vertices = BuildViewAlignedSliceGeometry(viewDirection, sliceCount);
+        GL.BindBuffer(BufferTarget.ArrayBuffer, _vertexBuffer);
+        GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.DynamicDraw);
+        _sliceDirection = viewDirection;
+        _sliceCount = sliceCount;
+        _sliceVertexCount = vertices.Length / 6;
+    }
+
+    internal static float[] BuildViewAlignedSliceGeometry(Vector3 viewDirection, int sliceCount)
+    {
+        if (sliceCount <= 0) throw new ArgumentOutOfRangeException(nameof(sliceCount));
+        if (viewDirection.LengthSquared <= 0.000001f) throw new ArgumentOutOfRangeException(nameof(viewDirection));
+        var normal = Vector3.Normalize(viewDirection);
+        var minimum = VolumeCorners.Min(point => Vector3.Dot(point, normal));
+        var maximum = VolumeCorners.Max(point => Vector3.Dot(point, normal));
+        var reference = MathF.Abs(normal.Y) < 0.9f ? Vector3.UnitY : Vector3.UnitX;
+        var basisU = Vector3.Normalize(Vector3.Cross(reference, normal));
+        var basisV = Vector3.Cross(normal, basisU);
+        var result = new List<float>(sliceCount * 9 * 6);
+        var intersections = new List<Vector3>(6);
+        for (var index = 0; index < sliceCount; index++)
+        {
+            var distance = minimum + (maximum - minimum) * (index + 0.5f) / sliceCount;
+            intersections.Clear();
+            foreach (var (startIndex, endIndex) in VolumeEdges)
+            {
+                var start = VolumeCorners[startIndex];
+                var end = VolumeCorners[endIndex];
+                var startDistance = Vector3.Dot(start, normal);
+                var endDistance = Vector3.Dot(end, normal);
+                var denominator = endDistance - startDistance;
+                if (MathF.Abs(denominator) < 0.000001f) continue;
+                var amount = (distance - startDistance) / denominator;
+                if (amount < -0.00001f || amount > 1.00001f) continue;
+                var point = Vector3.Lerp(start, end, Math.Clamp(amount, 0f, 1f));
+                if (intersections.All(existing => (existing - point).LengthSquared > 0.0000001f))
+                    intersections.Add(point);
+            }
+            if (intersections.Count < 3) continue;
+            var center = Vector3.Zero;
+            foreach (var point in intersections) center += point;
+            center /= intersections.Count;
+            intersections.Sort((left, right) =>
+            {
+                var leftOffset = left - center;
+                var rightOffset = right - center;
+                var leftAngle = MathF.Atan2(Vector3.Dot(leftOffset, basisV), Vector3.Dot(leftOffset, basisU));
+                var rightAngle = MathF.Atan2(Vector3.Dot(rightOffset, basisV), Vector3.Dot(rightOffset, basisU));
+                return leftAngle.CompareTo(rightAngle);
+            });
+            for (var triangle = 1; triangle < intersections.Count - 1; triangle++)
+            {
+                AddVolumeVertex(result, intersections[0]);
+                AddVolumeVertex(result, intersections[triangle]);
+                AddVolumeVertex(result, intersections[triangle + 1]);
+            }
+        }
+        return result.ToArray();
+    }
+
+    private static void AddVolumeVertex(List<float> target, Vector3 position)
+    {
+        target.Add(position.X);
+        target.Add(position.Y);
+        target.Add(position.Z);
+        target.Add(position.X + 0.5f);
+        target.Add(position.Y + 0.5f);
+        target.Add(position.Z + 0.5f);
     }
 
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
@@ -656,37 +813,35 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         _lastMouse = e.GetPosition(_glControl);
         _glControl.CaptureMouse();
     }
-    private void OnMouseUp(object sender, MouseButtonEventArgs e) { _rotating = false; _glControl.ReleaseMouseCapture(); }
+    private void OnMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_rotating) return;
+        _rotating = false;
+        _sliceDirection = Vector3.Zero;
+        _glControl.ReleaseMouseCapture();
+        _glControl.InvalidateVisual();
+    }
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
         if (!_rotating) return;
         var point = e.GetPosition(_glControl);
-        var from = ProjectToTrackball(_lastMouse);
-        var to = ProjectToTrackball(point);
-        var axis = Vector3.Cross(from, to);
-        if (axis.LengthSquared > 0.000001f)
-        {
-            axis.Normalize();
-            var angle = MathF.Acos(Math.Clamp(Vector3.Dot(from, to), -1f, 1f)) * 1.8f;
-            _rotation = Matrix4.CreateFromAxisAngle(axis, angle) * _rotation;
-        }
+        var deltaX = (float)(point.X - _lastMouse.X);
+        var deltaY = (float)(point.Y - _lastMouse.Y);
+        if (MathF.Abs(deltaX) > 0.001f || MathF.Abs(deltaY) > 0.001f)
+            _rotation = ApplyDragRotation(_rotation, deltaX, deltaY);
         _lastMouse = point;
         _glControl.InvalidateVisual();
     }
 
-    private Vector3 ProjectToTrackball(Point point)
+    internal static Matrix4 ApplyDragRotation(Matrix4 current, float deltaX, float deltaY)
     {
-        var width = Math.Max(1.0, _glControl.ActualWidth);
-        var height = Math.Max(1.0, _glControl.ActualHeight);
-        var scale = Math.Min(width, height);
-        var x = (float)((2.0 * point.X - width) / scale);
-        var y = (float)((height - 2.0 * point.Y) / scale);
-        var radiusSquared = x * x + y * y;
-        var z = radiusSquared <= 1f
-            ? MathF.Sqrt(1f - radiusSquared)
-            : 0f;
-        var vector = new Vector3(x, y, z);
-        return vector.LengthSquared > 0.000001f ? Vector3.Normalize(vector) : Vector3.UnitZ;
+        const float radiansPerPixel = 0.008f;
+        var rotated = current
+                      * Matrix4.CreateRotationY(deltaX * radiansPerPixel)
+                      * Matrix4.CreateRotationX(deltaY * radiansPerPixel);
+        var orientation = rotated.ExtractRotation();
+        orientation.Normalize();
+        return Matrix4.CreateFromQuaternion(orientation);
     }
 
     private void OnMouseWheel(object sender, MouseWheelEventArgs e)
@@ -720,58 +875,55 @@ internal sealed class VolumeViewerControl : Grid, IDisposable
         return program;
     }
 
-    private const string VertexShader = """
+    private static readonly Vector3[] VolumeCorners =
+    [
+        new(-0.5f, -0.5f, -0.5f), new(0.5f, -0.5f, -0.5f),
+        new(0.5f, 0.5f, -0.5f), new(-0.5f, 0.5f, -0.5f),
+        new(-0.5f, -0.5f, 0.5f), new(0.5f, -0.5f, 0.5f),
+        new(0.5f, 0.5f, 0.5f), new(-0.5f, 0.5f, 0.5f)
+    ];
+
+    private static readonly (int Start, int End)[] VolumeEdges =
+    [
+        (0, 1), (1, 2), (2, 3), (3, 0),
+        (4, 5), (5, 6), (6, 7), (7, 4),
+        (0, 4), (1, 5), (2, 6), (3, 7)
+    ];
+
+    internal const string VolumeVertexShader = """
         #version 330 core
         layout(location=0) in vec3 aPosition;
+        layout(location=1) in vec3 aTextureCoordinate;
         uniform mat4 uMvp;
-        out vec3 vPosition;
-        void main() { vPosition = aPosition; gl_Position = uMvp * vec4(aPosition, 1.0); }
+        out vec3 vTextureCoordinate;
+        void main() {
+            vTextureCoordinate = aTextureCoordinate;
+            gl_Position = vec4(aPosition, 1.0) * uMvp;
+        }
         """;
 
-    private const string FragmentShader = """
+    private const string VolumeFragmentShader = """
         #version 330 core
-        in vec3 vPosition;
+        in vec3 vTextureCoordinate;
         out vec4 fragColor;
         uniform sampler3D uVolume;
-        uniform vec3 uCameraObject;
         uniform float uWindowMinimum;
         uniform float uWindowMaximum;
         uniform float uOpacity;
         uniform float uThreshold;
+        uniform float uSampleScale;
+
         void main() {
-            vec3 ray = normalize(vPosition - uCameraObject);
-            vec3 p = vPosition + ray * 0.001;
-            vec4 accum = vec4(0.0);
-            const float stepSize = 0.0035;
-            for (int i = 0; i < 900; ++i) {
-                if (any(greaterThan(abs(p), vec3(0.501)))) break;
-                float value = texture(uVolume, p + vec3(0.5)).r;
-                float density = clamp((value - uWindowMinimum) / max(0.000015, uWindowMaximum - uWindowMinimum), 0.0, 1.0);
-                float signal = clamp((density - uThreshold) / max(0.0001, 1.0 - uThreshold), 0.0, 1.0);
-                if (signal <= 0.001) {
-                    p += ray * stepSize;
-                    continue;
-                }
-                signal = pow(signal, 1.25);
-                float alpha = 1.0 - exp(-signal * uOpacity * 18.0 * stepSize);
-                vec3 color = mix(vec3(0.55, 0.68, 0.88), vec3(1.0, 1.0, 1.0), signal);
-                accum.rgb += (1.0 - accum.a) * alpha * color;
-                accum.a += (1.0 - accum.a) * alpha;
-                if (accum.a > 0.985) break;
-                p += ray * stepSize;
-            }
-            if (accum.a < 0.005) discard;
-            fragColor = accum;
+            float value = texture(uVolume, vTextureCoordinate).r;
+            float windowed = clamp((value - uWindowMinimum) /
+                max(0.000015, uWindowMaximum - uWindowMinimum), 0.0, 1.0);
+            float signal = clamp((windowed - uThreshold) /
+                max(0.0001, 1.0 - uThreshold), 0.0, 1.0);
+            if (signal <= 0.001) discard;
+            signal = pow(signal, 1.25);
+            float baseAlpha = clamp((0.06 + signal * 0.94) * uOpacity, 0.0, 0.92);
+            float alpha = 1.0 - pow(1.0 - baseAlpha, uSampleScale);
+            fragColor = vec4(vec3(signal), alpha);
         }
         """;
-
-    private static readonly float[] CubeVertices =
-    [
-        -.5f,-.5f,-.5f,  -.5f,.5f,-.5f,  .5f,.5f,-.5f,  -.5f,-.5f,-.5f,  .5f,.5f,-.5f,  .5f,-.5f,-.5f,
-        -.5f,-.5f,.5f,   .5f,-.5f,.5f,   .5f,.5f,.5f,   -.5f,-.5f,.5f,   .5f,.5f,.5f,   -.5f,.5f,.5f,
-        -.5f,.5f,-.5f,   -.5f,.5f,.5f,   .5f,.5f,.5f,   -.5f,.5f,-.5f,   .5f,.5f,.5f,   .5f,.5f,-.5f,
-        -.5f,-.5f,-.5f,  .5f,-.5f,-.5f,  .5f,-.5f,.5f,  -.5f,-.5f,-.5f,  .5f,-.5f,.5f,  -.5f,-.5f,.5f,
-        -.5f,-.5f,-.5f,  -.5f,-.5f,.5f,  -.5f,.5f,.5f,  -.5f,-.5f,-.5f,  -.5f,.5f,.5f,  -.5f,.5f,-.5f,
-        .5f,-.5f,-.5f,   .5f,.5f,-.5f,   .5f,.5f,.5f,   .5f,-.5f,-.5f,   .5f,.5f,.5f,   .5f,-.5f,.5f
-    ];
 }

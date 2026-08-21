@@ -146,9 +146,32 @@ internal static class FfmpegVolumeReader
 
     private static async Task DecodeGray8Async(string ffmpeg, string input, string output, CancellationToken token)
     {
-        await RunCaptureAsync(ffmpeg,
+        string[][] attempts =
+        [
+            ["-v", "error", "-nostdin", "-i", input, "-map", "0:v:0", "-fps_mode", "passthrough",
+             "-f", "rawvideo", "-pix_fmt", "gray", "-y", output],
             ["-v", "error", "-nostdin", "-i", input, "-map", "0:v:0", "-vsync", "0",
-             "-f", "rawvideo", "-pix_fmt", "gray", "-y", output], token);
+             "-f", "rawvideo", "-pix_fmt", "gray", "-y", output],
+            ["-v", "error", "-nostdin", "-i", input, "-map", "0:v:0",
+             "-f", "rawvideo", "-pix_fmt", "gray", "-y", output]
+        ];
+
+        InvalidDataException? lastError = null;
+        foreach (var arguments in attempts)
+        {
+            token.ThrowIfCancellationRequested();
+            try
+            {
+                await RunCaptureAsync(ffmpeg, arguments, token);
+                return;
+            }
+            catch (InvalidDataException ex) when (IsOptionUnsupported(ex.Message))
+            {
+                lastError = ex;
+            }
+        }
+
+        throw lastError ?? new InvalidDataException("FFmpeg 解码失败。");
     }
 
     private static async Task<VolumeData> CombineAsync(
@@ -219,6 +242,11 @@ internal static class FfmpegVolumeReader
             throw new InvalidDataException($"{Path.GetFileName(executable)} 执行失败（{process.ExitCode}）：{stderr.Trim()}");
         return stdout;
     }
+
+    private static bool IsOptionUnsupported(string message)
+        => message.Contains("unrecognized option", StringComparison.OrdinalIgnoreCase)
+           || message.Contains("option not found", StringComparison.OrdinalIgnoreCase)
+           || message.Contains("unknown option", StringComparison.OrdinalIgnoreCase);
 
     private static string FindTool(string pluginDirectory, string executableName)
     {
